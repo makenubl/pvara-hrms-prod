@@ -102,7 +102,7 @@ const Login = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="ayesha@pvara.com"
+                    placeholder="Enter your email"
                     className={`w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent text-white placeholder-slate-400 transition-all ${
                       errors.email ? 'border-red-500' : 'border-white/20'
                     }`}
@@ -141,13 +141,6 @@ const Login = () => {
                 {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password}</p>}
               </div>
 
-              {/* Demo Credentials Alert */}
-              <div className="relative overflow-hidden rounded-xl p-4 backdrop-blur-sm bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-400/30">
-                <div className="absolute inset-0 bg-gradient-to-r from-amber-500 to-orange-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
-                <p className="text-xs font-semibold text-amber-100 mb-2 relative z-10">Demo Credentials</p>
-                <p className="text-xs text-amber-200/80 relative z-10">Email: <span className="font-mono">demo@pvara.com</span></p>
-                <p className="text-xs text-amber-200/80 relative z-10">Password: <span className="font-mono">demo123</span></p>
-              </div>
 
               {/* Sign In Button */}
               <button
