@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import authService from '../services/authService';
 
 export const useAuthStore = create(
   persist(
@@ -11,53 +12,95 @@ export const useAuthStore = create(
       role: null,
       permissions: [],
 
-      login: async (email) => {
+      // Register new company
+      register: async (companyData) => {
         set({ isLoading: true, error: null });
         try {
-          // Mock login - replace with actual API call
-          const mockUser = {
-            id: '1',
-            name: 'John Doe',
-            email,
-            role: 'HR_MANAGER',
-            department: 'Human Resources',
-            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-            permissions: [
-              'view_employees',
-              'manage_employees',
-              'approve_leave',
-              'manage_payroll',
-            ],
-          };
-
+          const result = await authService.register(companyData);
+          
           set({
-            user: mockUser,
-            token: 'mock-jwt-token',
-            role: mockUser.role,
-            permissions: mockUser.permissions,
+            user: result.user,
+            token: result.token,
+            role: result.user.role,
+            permissions: result.user.permissions || [],
             isLoading: false,
           });
 
-          return { success: true, user: mockUser };
+          return { success: true, user: result.user };
         } catch (error) {
-          set({ error: error.message, isLoading: false });
-          return { success: false, error: error.message };
+          const errorMsg = error.message || 'Registration failed';
+          set({ error: errorMsg, isLoading: false });
+          return { success: false, error: errorMsg };
         }
       },
 
+      // Login with email and password
+      login: async (email, password) => {
+        set({ isLoading: true, error: null });
+        try {
+          const result = await authService.login(email, password);
+          
+          set({
+            user: result.user,
+            token: result.token,
+            role: result.user.role,
+            permissions: result.user.permissions || [],
+            isLoading: false,
+          });
+
+          return { success: true, user: result.user };
+        } catch (error) {
+          const errorMsg = error.message || 'Login failed';
+          set({ error: errorMsg, isLoading: false });
+          return { success: false, error: errorMsg };
+        }
+      },
+
+      // Get current user from API
+      getCurrentUser: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const result = await authService.getCurrentUser();
+          
+          set({
+            user: result,
+            role: result.role,
+            permissions: result.permissions || [],
+            isLoading: false,
+          });
+
+          return result;
+        } catch (error) {
+          // If token is invalid, logout
+          authService.logout();
+          set({ 
+            user: null, 
+            token: null, 
+            error: 'Session expired', 
+            isLoading: false 
+          });
+          return null;
+        }
+      },
+
+      // Logout
       logout: () => {
+        authService.logout();
         set({
           user: null,
           token: null,
           role: null,
           permissions: [],
+          error: null,
         });
       },
 
+      // Utility setters
       setUser: (user) => set({ user }),
       setToken: (token) => set({ token }),
       setRole: (role) => set({ role }),
       setPermissions: (permissions) => set({ permissions }),
+      setError: (error) => set({ error }),
     }),
     {
       name: 'auth-store',

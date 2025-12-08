@@ -45,7 +45,11 @@ const Login = () => {
       const result = await login(formData.email, formData.password);
       if (result.success) {
         navigate('/dashboard');
+      } else {
+        setErrors({ submit: result.error || 'Login failed' });
       }
+    } catch (error) {
+      setErrors({ submit: error.message || 'Login failed. Please try again.' });
     } finally {
       setLoading(false);
     }
@@ -90,6 +94,13 @@ const Login = () => {
             <p className="text-slate-300 text-sm mb-8">Sign in to access your HRMS</p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Error Alert */}
+              {errors.submit && (
+                <div className="p-4 bg-red-500/20 border border-red-400/50 rounded-xl">
+                  <p className="text-red-300 text-sm font-medium">{errors.submit}</p>
+                </div>
+              )}
+
               {/* Email Input */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-slate-200">
