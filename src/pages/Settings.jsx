@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Settings as SettingsIcon,
   Bell,
@@ -13,15 +13,22 @@ import {
   ChevronDown,
   ChevronRight,
   Users,
+  AlertCircle,
 } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Modal } from '../components/UI';
+import positionService from '../services/positionService';
+import { useAuthStore } from '../store/authStore';
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('account');
   const [showPassword, setShowPassword] = useState(false);
   const [expandedPositions, setExpandedPositions] = useState(new Set());
   const [showPositionModal, setShowPositionModal] = useState(false);
+  const [positions, setPositions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { user } = useAuthStore();
 
   const [formData, setFormData] = useState({
     firstName: 'John',
@@ -48,73 +55,34 @@ const Settings = () => {
     loginAlerts: true,
   });
 
-  // Mock organizational hierarchy data
-  const [positions] = useState([
-    {
-      id: 1,
-      title: 'CEO',
-      department: 'Executive',
-      level: 'executive',
-      employees: 1,
-      reportsTo: null,
-      children: [
-        {
-          id: 2,
-          title: 'CTO',
-          department: 'Technology',
-          level: 'executive',
-          employees: 1,
-          reportsTo: 1,
-          children: [
-            {
-              id: 5,
-              title: 'Engineering Manager',
-              department: 'Technology',
-              level: 'senior',
-              employees: 5,
-              reportsTo: 2,
-              children: [],
-            },
-          ],
-        },
-        {
-          id: 3,
-          title: 'COO',
-          department: 'Operations',
-          level: 'executive',
-          employees: 1,
-          reportsTo: 1,
-          children: [
-            {
-              id: 6,
-              title: 'HR Manager',
-              department: 'Human Resources',
-              level: 'mid',
-              employees: 3,
-              reportsTo: 3,
-              children: [],
-            },
-          ],
-        },
-        {
-          id: 4,
-          title: 'CFO',
-          department: 'Finance',
-          level: 'executive',
-          employees: 1,
-          reportsTo: 1,
-          children: [],
-        },
-      ],
-    },
-  ]);
-
   const [newPosition, setNewPosition] = useState({
     title: '',
     department: '',
     reportsTo: null,
     level: 'mid',
   });
+
+  const [newPositionError, setNewPositionError] = useState(null);
+  const [submittingPosition, setSubmittingPosition] = useState(false);
+
+  // Load positions from API on mount
+  useEffect(() => {
+    fetchPositions();
+  }, []);
+
+  const fetchPositions = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await positionService.getHierarchy();
+      setPositions(Array.isArray(data) ? data : data.positions || []);
+    } catch (err) {
+      setError(err.message || 'Failed to load positions');
+      setPositions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -127,7 +95,47 @@ const Settings = () => {
 
   const handlePositionChange = (e) => {
     const { name, value } = e.target;
-    setNewPosition((prev) => ({ ...prev, [name]: value }));
+    setNewPosition((prev) => ({ ...prev, [name]: name === 'reportsTo' ? (value ? value : null) : value }));
+  };
+
+  const handleAddPosition = async (e) => {
+    e.preventDefault();
+    setNewPositionError(null);
+    setSubmittingPosition(true);
+
+    try {
+      if (!newPosition.title || !newPosition.department) {
+        setNewPositionError('Title and Department are required');
+        setSubmittingPosition(false);
+        return;
+      }
+
+      const result = await positionService.create({
+        title: newPosition.title,
+        department: newPosition.department,
+        level: newPosition.level,
+        reportsTo: newPosition.reportsTo || undefined,
+      });
+
+      await fetchPositions();
+      setShowPositionModal(false);
+      setNewPosition({ title: '', department: '', reportsTo: null, level: 'mid' });
+    } catch (err) {
+      setNewPositionError(err.message || 'Failed to create position');
+    } finally {
+      setSubmittingPosition(false);
+    }
+  };
+
+  const handleDeletePosition = async (posId) => {
+    if (window.confirm('Delete this position?')) {
+      try {
+        await positionService.delete(posId);
+        await fetchPositions();
+      } catch (err) {
+        alert('Failed to delete position: ' + err.message);
+      }
+    }
   };
 
   const toggleExpanded = (id) => {
@@ -141,11 +149,11 @@ const Settings = () => {
   };
 
   const renderPositionTree = (pos, level = 0) => (
-    <div key={pos.id} className="ml-4">
+    <div key={pos._id || pos.id} className="ml-4">
       <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg mb-2 hover:bg-white/10 transition-all">
         {pos.children && pos.children.length > 0 && (
-          <button onClick={() => toggleExpanded(pos.id)} className="text-cyan-400">
-            {expandedPositions.has(pos.id) ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+          <button onClick={() => toggleExpanded(pos._id || pos.id)} className="text-cyan-400">
+            {expandedPositions.has(pos._id || pos.id) ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           </button>
         )}
         {(!pos.children || pos.children.length === 0) && <div className="w-6" />}
@@ -156,7 +164,7 @@ const Settings = () => {
           <div className="flex items-center gap-2 mt-1">
             <Badge variant="blue">{pos.level}</Badge>
             <span className="text-xs text-slate-300 flex items-center gap-1">
-              <Users size={12} /> {pos.employees} employee{pos.employees !== 1 ? 's' : ''}
+              <Users size={12} /> {pos.employees || 0} employee{(pos.employees || 0) !== 1 ? 's' : ''}
             </span>
           </div>
         </div>
@@ -165,13 +173,13 @@ const Settings = () => {
           <button className="p-2 hover:bg-cyan-500/20 rounded-lg transition-all">
             <Edit2 size={16} className="text-cyan-400" />
           </button>
-          <button className="p-2 hover:bg-red-500/20 rounded-lg transition-all">
+          <button onClick={() => handleDeletePosition(pos._id || pos.id)} className="p-2 hover:bg-red-500/20 rounded-lg transition-all">
             <Trash2 size={16} className="text-red-400" />
           </button>
         </div>
       </div>
 
-      {expandedPositions.has(pos.id) && pos.children && pos.children.length > 0 && (
+      {expandedPositions.has(pos._id || pos.id) && pos.children && pos.children.length > 0 && (
         <div>{pos.children.map((child) => renderPositionTree(child, level + 1))}</div>
       )}
     </div>
@@ -415,11 +423,24 @@ const Settings = () => {
               </Button>
             </div>
 
+            {error && (
+              <div className="p-4 bg-red-500/20 border border-red-400/50 rounded-xl flex items-center gap-3">
+                <AlertCircle className="text-red-400" size={20} />
+                <p className="text-red-300">{error}</p>
+              </div>
+            )}
+
             <Card>
               <h3 className="font-semibold text-white mb-4">Reporting Structure</h3>
-              <div className="space-y-4">
-                {positions.map((pos) => renderPositionTree(pos))}
-              </div>
+              {loading ? (
+                <div className="p-8 text-center text-slate-400">Loading positions...</div>
+              ) : positions.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">No positions found. Create one to get started.</div>
+              ) : (
+                <div className="space-y-4">
+                  {positions.map((pos) => renderPositionTree(pos))}
+                </div>
+              )}
             </Card>
 
             {/* Position Distribution */}
@@ -428,15 +449,15 @@ const Settings = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
                   <p className="text-slate-300 text-sm">Total Positions</p>
-                  <p className="text-2xl font-black text-cyan-400 mt-2">12</p>
+                  <p className="text-2xl font-black text-cyan-400 mt-2">{positions.length}</p>
                 </div>
                 <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
                   <p className="text-slate-300 text-sm">Filled</p>
-                  <p className="text-2xl font-black text-emerald-400 mt-2">10</p>
+                  <p className="text-2xl font-black text-emerald-400 mt-2">{positions.filter(p => p.employees > 0).length}</p>
                 </div>
                 <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
                   <p className="text-slate-300 text-sm">Open</p>
-                  <p className="text-2xl font-black text-amber-400 mt-2">2</p>
+                  <p className="text-2xl font-black text-amber-400 mt-2">{positions.filter(p => p.employees === 0).length}</p>
                 </div>
               </div>
             </Card>
@@ -445,66 +466,78 @@ const Settings = () => {
       </div>
 
       {/* Position Modal */}
-      <Modal isOpen={showPositionModal} title="Add/Edit Position" onClose={() => setShowPositionModal(false)}>
+      <Modal isOpen={showPositionModal} title="Add Position" onClose={() => setShowPositionModal(false)}>
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Position Title</label>
-            <input
-              type="text"
-              name="title"
-              value={newPosition.title}
-              onChange={handlePositionChange}
-              placeholder="e.g., Senior Developer"
-              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Department</label>
-            <input
-              type="text"
-              name="department"
-              value={newPosition.department}
-              onChange={handlePositionChange}
-              placeholder="e.g., Engineering"
-              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Level</label>
-            <select
-              name="level"
-              value={newPosition.level}
-              onChange={handlePositionChange}
-              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
-            >
-              <option value="junior">Junior</option>
-              <option value="mid">Mid-Level</option>
-              <option value="senior">Senior</option>
-              <option value="executive">Executive</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Reports To</label>
-            <select
-              name="reportsTo"
-              value={newPosition.reportsTo || ''}
-              onChange={handlePositionChange}
-              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
-            >
-              <option value="">Select a position</option>
-              {positions.map((pos) => (
-                <option key={pos.id} value={pos.id}>
-                  {pos.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-2 pt-4">
-            <Button className="flex-1">Save Position</Button>
-            <Button variant="secondary" className="flex-1" onClick={() => setShowPositionModal(false)}>
-              Cancel
-            </Button>
-          </div>
+          {newPositionError && (
+            <div className="p-3 bg-red-500/20 border border-red-400/50 rounded-lg">
+              <p className="text-red-300 text-sm">{newPositionError}</p>
+            </div>
+          )}
+          
+          <form onSubmit={handleAddPosition} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Position Title</label>
+              <input
+                type="text"
+                name="title"
+                value={newPosition.title}
+                onChange={handlePositionChange}
+                placeholder="e.g., Senior Developer"
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Department</label>
+              <input
+                type="text"
+                name="department"
+                value={newPosition.department}
+                onChange={handlePositionChange}
+                placeholder="e.g., Engineering"
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Level</label>
+              <select
+                name="level"
+                value={newPosition.level}
+                onChange={handlePositionChange}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              >
+                <option value="junior">Junior</option>
+                <option value="mid">Mid-Level</option>
+                <option value="senior">Senior</option>
+                <option value="executive">Executive</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Reports To</label>
+              <select
+                name="reportsTo"
+                value={newPosition.reportsTo || ''}
+                onChange={handlePositionChange}
+                className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              >
+                <option value="">None (Top Level)</option>
+                {positions.map((pos) => (
+                  <option key={pos._id || pos.id} value={pos._id || pos.id}>
+                    {pos.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button type="submit" disabled={submittingPosition} className="flex-1">
+                {submittingPosition ? 'Creating...' : 'Save Position'}
+              </Button>
+              <Button variant="secondary" type="button" className="flex-1" onClick={() => setShowPositionModal(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
         </div>
       </Modal>
     </MainLayout>
