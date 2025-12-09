@@ -119,11 +119,15 @@ const Sidebar = () => {
         <div className="px-4 py-4 rounded-xl bg-gradient-to-r from-white/5 to-white/0 border border-white/10 m-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-              {user?.name?.charAt(0) || 'A'}
+              {user?.firstName?.[0] || user?.name?.charAt(0) || 'U'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{user?.name || 'Ayesha Khan'}</p>
-              <p className="text-xs text-slate-400 truncate">{user?.email || 'ayesha@pvara.com'}</p>
+              <p className="text-sm font-semibold text-white truncate">
+                {user?.firstName && user?.lastName 
+                  ? `${user.firstName} ${user.lastName}` 
+                  : user?.name || user?.email || 'User'}
+              </p>
+              <p className="text-xs text-slate-400 truncate">{user?.email || ''}</p>
             </div>
           </div>
           <button
