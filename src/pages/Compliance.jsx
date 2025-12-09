@@ -1,67 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, CheckCircle, AlertCircle, Clock, Plus, Download } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
+import toast from 'react-hot-toast';
 
 const Compliance = () => {
   const [activeTab, setActiveTab] = useState('policies');
+  const [policies, setPolicies] = useState([]);
+  const [audits, setAudits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [policies] = useState([
-    {
-      id: 1,
-      name: 'Data Privacy Policy',
-      category: 'Data Protection',
-      version: '2.0',
-      lastUpdated: '2025-11-20',
-      status: 'active',
-      acknowledgments: 87,
-    },
-    {
-      id: 2,
-      name: 'Code of Conduct',
-      category: 'Ethics',
-      version: '1.5',
-      lastUpdated: '2025-10-15',
-      status: 'active',
-      acknowledgments: 92,
-    },
-    {
-      id: 3,
-      name: 'Health & Safety Guidelines',
-      category: 'Safety',
-      version: '3.0',
-      lastUpdated: '2025-09-01',
-      status: 'under-review',
-      acknowledgments: 45,
-    },
-  ]);
+  useEffect(() => {
+    fetchComplianceData();
+  }, []);
 
-  const [audits] = useState([
-    {
-      id: 1,
-      title: 'Annual Compliance Audit',
-      department: 'Finance',
-      date: '2025-11-25',
-      status: 'completed',
-      findings: 3,
-    },
-    {
-      id: 2,
-      title: 'Data Privacy Audit',
-      department: 'IT',
-      date: '2025-12-10',
-      status: 'in-progress',
-      findings: 1,
-    },
-    {
-      id: 3,
-      title: 'HR Compliance Review',
-      department: 'HR',
-      date: '2025-12-15',
-      status: 'pending',
-      findings: 0,
-    },
-  ]);
+  const fetchComplianceData = async () => {
+    setLoading(true);
+    try {
+      console.log('📤 Fetching compliance data...');
+      const policiesResponse = await fetch('http://localhost:5000/api/compliance', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const auditsResponse = await fetch('http://localhost:5000/api/compliance/audits', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      const policiesData = await policiesResponse.json();
+      const auditsData = await auditsResponse.json();
+      
+      setPolicies(policiesData || []);
+      setAudits(auditsData || []);
+      console.log('✅ Compliance data loaded:', policiesData?.length || 0, 'policies,', auditsData?.length || 0, 'audits');
+    } catch (err) {
+      console.error('❌ Error fetching compliance data:', err);
+      setError(err.message || 'Failed to load compliance data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const policyColumns = [
     {
@@ -151,7 +128,7 @@ const Compliance = () => {
             </h1>
             <p className="text-slate-400 mt-2">Manage policies, audits, and compliance tracking</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button onClick={() => alert('Exporting policies...')} className="flex items-center gap-2">
             <Plus size={20} />
             New Policy
           </Button>

@@ -28,8 +28,8 @@ const Admin = () => {
             <p className="text-gray-600 max-w-2xl">Enterprise-grade RBAC, audit trails, and least-privilege defaults for safer scale.</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary" className="bg-white border border-gray-200">Download policy</Button>
-            <Button>New role</Button>
+            <Button variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Downloading policy...')}>Download policy</Button>
+            <Button onClick={() => alert('Creating new role...')}>New role</Button>
           </div>
         </div>
 
@@ -58,7 +58,7 @@ const Admin = () => {
               <h3 className="font-bold text-gray-900">Just-in-time access</h3>
             </div>
             <p className="text-sm text-gray-600 mb-3">Time-bound roles, approval chains, and session recording for sensitive actions.</p>
-            <Button size="sm">Configure JIT</Button>
+            <Button size="sm" onClick={() => alert('Configuring JIT...')}>Configure JIT</Button>
           </Card>
           <Card className="border border-gray-200">
             <div className="flex items-center gap-2 mb-2">
@@ -66,7 +66,7 @@ const Admin = () => {
               <h3 className="font-bold text-gray-900">SSO & MFA</h3>
             </div>
             <p className="text-sm text-gray-600 mb-3">Enforce SSO, WebAuthn, step-up auth for payroll/PII, and IP allowlists.</p>
-            <Button size="sm">Manage identity</Button>
+            <Button size="sm" onClick={() => alert('Managing identity...')}>Manage identity</Button>
           </Card>
         </div>
 

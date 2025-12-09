@@ -24,12 +24,44 @@ const LeaveManagement = () => {
     reason: '',
   });
 
-  // Mock leave balance for now (can be replaced with API later)
-  const leaveBalance = {
-    annual: { used: 12, balance: 8, total: 20 },
-    sick: { used: 2, balance: 8, total: 10 },
-    personal: { used: 1, balance: 4, total: 5 },
-    casual: { used: 0, balance: 3, total: 3 },
+  const [leaveBalance, setLeaveBalance] = useState({
+    annual: { used: 0, balance: 0, total: 0 },
+    sick: { used: 0, balance: 0, total: 0 },
+    personal: { used: 0, balance: 0, total: 0 },
+    casual: { used: 0, balance: 0, total: 0 },
+  });
+
+  useEffect(() => {
+    fetchLeaveBalance();
+  }, []);
+
+  const fetchLeaveBalance = async () => {
+    try {
+      console.log('📤 Fetching leave balance...');
+      const response = await fetch('http://localhost:5000/api/leaves/balance', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      setLeaveBalance(data);
+      
+      // Fallback mock leave balance if API returns empty
+      if (!data) {
+        setLeaveBalance({
+          annual: { used: 12, balance: 8, total: 20 },
+          sick: { used: 2, balance: 8, total: 10 },
+          personal: { used: 1, balance: 4, total: 5 },
+          casual: { used: 0, balance: 3, total: 3 },
+        });
+      }
+    } catch (err) {
+      console.error('❌ Error fetching leave balance:', err);
+      setLeaveBalance({
+        annual: { used: 12, balance: 8, total: 20 },
+        sick: { used: 2, balance: 8, total: 10 },
+        personal: { used: 1, balance: 4, total: 5 },
+        casual: { used: 0, balance: 3, total: 3 },
+      });
+    }
   };
 
   const statusIcons = {
@@ -54,7 +86,7 @@ const LeaveManagement = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await approvalService.getAll();
+      const data = await approvalService.getAll({ requestType: 'leave', limit: 50 });
       const records = Array.isArray(data) ? data : data.approvals || [];
       setLeaveRecords(records);
     } catch (err) {

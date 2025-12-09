@@ -20,13 +20,16 @@ const Header = () => {
     navigate('/login');
   };
 
+  const displayName = user?.name || [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || user?.email || 'User';
+  const displayInitial = displayName?.charAt(0)?.toUpperCase() || 'U';
+
   return (
     <header className="sticky top-0 z-30 backdrop-blur-xl bg-gradient-to-r from-slate-900/40 via-slate-900/40 to-slate-900/30 border-b border-white/10 shadow-lg">
       <div className="px-6 py-4 flex items-center justify-between">
         {/* Left - Welcome Message */}
         <div className="flex-1">
           <h2 className="text-lg font-black bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
-            Welcome back, {user?.name || 'Ayesha Khan'}
+            Welcome back, {displayName}
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">{new Date().toLocaleDateString()}</p>
         </div>
@@ -93,17 +96,17 @@ const Header = () => {
               className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-lg transition-all group"
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-lg">
-                {user?.name?.charAt(0) || 'A'}
+                {displayInitial}
               </div>
               <span className="text-sm font-semibold text-slate-200 hidden sm:block group-hover:text-white transition-colors">
-                {user?.name || 'Ayesha'}
+                {displayName}
               </span>
             </button>
 
             {showUserMenu && (
               <div className="absolute right-0 mt-2 w-56 backdrop-blur-2xl bg-slate-900/95 rounded-2xl shadow-2xl border border-white/20 overflow-hidden animate-blur-in">
                 <div className="p-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
-                  <p className="text-sm font-bold text-white">{user?.name}</p>
+                  <p className="text-sm font-bold text-white">{displayName}</p>
                   <p className="text-xs text-slate-400 mt-1">{user?.email}</p>
                   <p className="text-xs text-cyan-400 font-semibold mt-2">{user?.role || 'HR Manager'}</p>
                 </div>

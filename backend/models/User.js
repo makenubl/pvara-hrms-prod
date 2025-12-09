@@ -45,6 +45,11 @@ const userSchema = new mongoose.Schema(
       enum: ['active', 'inactive', 'on_leave', 'suspended'],
       default: 'active',
     },
+    salary: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     joiningDate: {
       type: Date,
     },

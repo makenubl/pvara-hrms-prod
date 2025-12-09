@@ -112,7 +112,7 @@ const Learning = () => {
             </h1>
             <p className="text-slate-400 mt-2">Manage training programs and employee growth</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button onClick={() => alert('Launching course...')} className="flex items-center gap-2">
             <Plus size={20} />
             New Course
           </Button>

@@ -1,25 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Users, Calendar, Download, Filter } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge } from '../components/UI';
+import employeeService from '../services/employeeService';
 
 const Analytics = () => {
   const [dateRange, setDateRange] = useState('month');
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const data = await employeeService.getAll();
+      console.log('✅ Analytics: Employees loaded:', data?.length || 0);
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('❌ Analytics: Error loading employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const metrics = [
-    { label: 'Total Employees', value: 1240, change: '+12%', icon: Users, color: 'cyan' },
-    { label: 'Avg Engagement Score', value: '8.2/10', change: '+2.1%', icon: TrendingUp, color: 'blue' },
-    { label: 'Attrition Rate', value: '3.2%', change: '-0.8%', icon: BarChart3, color: 'amber' },
-    { label: 'Active Projects', value: 45, change: '+5', icon: Calendar, color: 'emerald' },
+    { label: 'Total Employees', value: employees.length, change: '+12%', icon: Users, color: 'cyan' },
+    { label: 'Active Employees', value: employees.filter(e => e.status === 'active').length, change: '+8%', icon: TrendingUp, color: 'green' },
+    { label: 'On Leave', value: employees.filter(e => e.status === 'on_leave').length, change: '+2', icon: Calendar, color: 'amber' },
+    { label: 'Inactive', value: employees.filter(e => e.status === 'inactive').length, change: '-1', icon: BarChart3, color: 'red' },
   ];
 
-  const departmentData = [
-    { dept: 'Engineering', employees: 320, engagement: 8.5, attrition: 2.1 },
-    { dept: 'Sales', employees: 280, engagement: 7.8, attrition: 4.2 },
-    { dept: 'HR', employees: 45, engagement: 8.9, attrition: 1.1 },
-    { dept: 'Finance', employees: 65, engagement: 8.3, attrition: 2.8 },
-    { dept: 'Marketing', employees: 85, engagement: 8.1, attrition: 3.5 },
-  ];
+  const departmentData = Array.from(
+    new Set(employees.map(e => e.department))
+  ).map(dept => ({
+    dept,
+    employees: employees.filter(e => e.department === dept).length,
+    engagement: 8.2,
+    attrition: 2.5,
+  }));
 
   return (
     <MainLayout>
@@ -32,7 +52,7 @@ const Analytics = () => {
             </h1>
             <p className="text-slate-400 mt-2">HR metrics, insights, and trends</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button onClick={() => alert('Exporting analytics...')} className="flex items-center gap-2">
             <Download size={20} />
             Export Report
           </Button>

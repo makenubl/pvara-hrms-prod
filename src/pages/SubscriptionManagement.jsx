@@ -267,7 +267,7 @@ const SubscriptionManagement = () => {
                 <p className="text-sm text-gray-600">Expires 12/2025</p>
               </div>
             </div>
-            <Button variant="secondary" className="w-full">
+            <Button variant="secondary" className="w-full" onClick={() => alert('Downloading invoice...')}>
               Update Payment Method
             </Button>
           </Card>

@@ -8,11 +8,16 @@ const router = express.Router();
 // Get all employees for a company
 router.get('/', authenticate, async (req, res) => {
   try {
+      if (!req.user.company) {
+        return res.status(400).json({ message: 'Company not found in token' });
+      }
+    
     const employees = await User.find({ company: req.user.company })
       .populate('position', 'title department')
       .populate('reportsTo', 'firstName lastName');
     res.json(employees);
   } catch (error) {
+      console.error('❌ Error fetching employees:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -26,6 +31,7 @@ router.get('/:id', authenticate, async (req, res) => {
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
     res.json(employee);
   } catch (error) {
+      console.error('❌ Error fetching employee by ID:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -48,6 +54,10 @@ router.post('/', authenticate, authorize(['hr', 'admin']), async (req, res) => {
   } = req.body;
 
   try {
+      if (!req.user.company) {
+        return res.status(400).json({ message: 'Company not found in token. Please login again.' });
+      }
+
     // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -68,7 +78,7 @@ router.post('/', authenticate, authorize(['hr', 'admin']), async (req, res) => {
       reportsTo: reportsTo || null,
       role: role || 'employee',
       joiningDate,
-      salary,
+      salary: Number(salary) || 0,
       avatar,
       company: req.user.company,
     });
@@ -81,6 +91,7 @@ router.post('/', authenticate, authorize(['hr', 'admin']), async (req, res) => {
 
     res.status(201).json(populatedEmployee);
   } catch (error) {
+      console.error('❌ Error creating employee:', error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -90,6 +101,10 @@ router.put('/:id', authenticate, authorize(['hr', 'admin']), async (req, res) =>
   try {
     // Prevent password updates through this endpoint
     delete req.body.password;
+
+    if (req.body.salary !== undefined) {
+      req.body.salary = Number(req.body.salary) || 0;
+    }
 
     const employee = await User.findByIdAndUpdate(
       req.params.id,
@@ -124,7 +139,7 @@ router.get('/:id/reports', authenticate, async (req, res) => {
 });
 
 // Delete employee (soft delete - mark as inactive)
-router.delete('/:id', authenticate, authorize(['admin']), async (req, res) => {
+router.delete('/:id', authenticate, authorize(['admin', 'hr']), async (req, res) => {
   try {
     const employee = await User.findByIdAndUpdate(
       req.params.id,

@@ -1,44 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Target, TrendingUp, Plus, Filter } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table, Input, Stat } from '../components/UI';
 import { PERFORMANCE_RATING, APPRAISAL_STATUS } from '../utils/constants';
+import toast from 'react-hot-toast';
 
 const PerformanceManagement = () => {
   const [activeTab, setActiveTab] = useState('appraisals');
+  const [appraisals, setAppraisals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [appraisals] = useState([
-    {
-      id: 1,
-      employeeId: 'EMP001',
-      name: 'John Doe',
-      rating: 4.5,
-      status: 'completed',
-      evaluator: 'Sarah Williams',
-      completedDate: '2025-12-05',
-      comment: 'Excellent performance, strong leadership',
-    },
-    {
-      id: 2,
-      employeeId: 'EMP002',
-      name: 'Jane Smith',
-      rating: 4.2,
-      status: 'completed',
-      evaluator: 'Michael Brown',
-      completedDate: '2025-12-04',
-      comment: 'Good work on the recent project',
-    },
-    {
-      id: 3,
-      employeeId: 'EMP003',
-      name: 'Bob Johnson',
-      rating: 3.8,
-      status: 'pending',
-      evaluator: 'Sarah Williams',
-      completedDate: null,
-      comment: '',
-    },
-  ]);
+  useEffect(() => {
+    fetchPerformanceData();
+  }, []);
+
+  const fetchPerformanceData = async () => {
+    setLoading(true);
+    try {
+      console.log('📤 Fetching performance data...');
+      const response = await fetch('http://localhost:5000/api/performance/reviews', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      setAppraisals(data || []);
+      console.log('✅ Performance data loaded:', data?.length || 0);
+    } catch (err) {
+      console.error('❌ Error fetching performance data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const appraisalColumns = [
     {
@@ -90,7 +83,7 @@ const PerformanceManagement = () => {
             </h1>
             <p className="text-slate-400 mt-2">Track and evaluate employee performance</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button onClick={() => alert('Exporting reviews...')} className="flex items-center gap-2">
             <Plus size={20} />
             New Appraisal
           </Button>

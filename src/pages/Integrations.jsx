@@ -28,8 +28,8 @@ const Integrations = () => {
             <p className="text-gray-600 max-w-2xl">Enterprise-grade integrations, API keys, and event webhooks to embed PVARA into your stack.</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary" className="bg-white border border-gray-200">View docs</Button>
-            <Button>New API key</Button>
+            <Button variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Opening docs...')}>View docs</Button>
+            <Button onClick={() => alert('Creating new API key...')}>New API key</Button>
           </div>
         </div>
 
@@ -67,14 +67,14 @@ const Integrations = () => {
                   <p className="font-semibold">finance-svc</p>
                   <p className="text-gray-500">Created 3 days ago • Read/Write</p>
                 </div>
-                <Button size="sm" variant="secondary">Rotate</Button>
+                <Button size="sm" variant="secondary" onClick={() => alert('Rotating key...')}>Rotate</Button>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100">
                 <div>
                   <p className="font-semibold">analytics-ro</p>
                   <p className="text-gray-500">Created 1 day ago • Read</p>
                 </div>
-                <Button size="sm" variant="secondary">Rotate</Button>
+                <Button size="sm" variant="secondary" onClick={() => alert('Rotating key...')}>Rotate</Button>
               </div>
             </div>
           </Card>
@@ -96,7 +96,7 @@ const Integrations = () => {
                   <p className="text-gray-500 text-xs">Secret: {hook.secret}</p>
                 </div>
               ))}
-              <Button size="sm" className="w-full">Add webhook</Button>
+              <Button size="sm" className="w-full" onClick={() => alert('Adding webhook...')}>Add webhook</Button>
             </div>
           </Card>
         </div>

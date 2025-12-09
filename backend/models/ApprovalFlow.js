@@ -53,4 +53,7 @@ const approvalFlowSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+approvalFlowSchema.index({ company: 1, requestType: 1, status: 1, createdAt: -1 });
+approvalFlowSchema.index({ 'approvers.approver': 1, company: 1, status: 1 });
+
 export default mongoose.model('ApprovalFlow', approvalFlowSchema);

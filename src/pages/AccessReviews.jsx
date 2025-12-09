@@ -1,4 +1,5 @@
 import React from 'react';
+import toast from 'react-hot-toast';
 import MainLayout from '../layouts/MainLayout';
 import { Shield, UserCheck, UserX, Clock, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';
@@ -25,8 +26,8 @@ const AccessReviews = () => {
             <p className="text-gray-600 max-w-3xl">Attest or revoke access by role, region, and risk. Drive compliance with SoD guardrails and export controls.</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary" className="bg-white border border-gray-200">Upload evidence</Button>
-            <Button>Start review</Button>
+            <Button variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Uploading evidence...')}>Upload evidence</Button>
+            <Button onClick={() => alert('Starting review...')}>Start review</Button>
           </div>
         </div>
 
@@ -42,8 +43,8 @@ const AccessReviews = () => {
               </div>
               <p className="text-sm text-gray-600">{r.items} items • {r.due}</p>
               <div className="flex gap-2 mt-3">
-                <Button size="sm">Continue</Button>
-                <Button size="sm" variant="secondary" className="bg-white border border-gray-200">Export CSV</Button>
+                <Button size="sm" onClick={() => alert('Continuing review...')}>Continue</Button>
+                <Button size="sm" variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Exporting CSV...')}>Export CSV</Button>
               </div>
             </Card>
           ))}
@@ -91,8 +92,8 @@ const AccessReviews = () => {
                     <td className="py-3 px-3 text-gray-700">{item.age}</td>
                     <td className="py-3 px-3">
                       <div className="flex gap-2">
-                        <Button size="sm" variant="secondary" className="bg-white border border-gray-200">Keep</Button>
-                        <Button size="sm" variant="danger">Revoke</Button>
+                        <Button size="sm" variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Access decision recorded')}>Keep</Button>
+                        <Button size="sm" variant="danger" onClick={() => alert('Access revoked')}>Revoke</Button>
                       </div>
                     </td>
                   </tr>

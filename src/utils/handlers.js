@@ -1,8 +1,16 @@
 import toast from 'react-hot-toast';
+import employeeService from '../services/employeeService';
 
 // Common button handlers for HRMS features
-export const handleAddEmployee = () => {
-  toast.success('Add Employee feature - Coming soon with backend integration');
+export const handleAddEmployee = async (employeeData) => {
+  try {
+    const response = await employeeService.create(employeeData);
+    toast.success('Employee added successfully!');
+    return response;
+  } catch (error) {
+    toast.error(error.message || 'Failed to add employee');
+    throw error;
+  }
 };
 
 export const handleMarkAttendance = () => {

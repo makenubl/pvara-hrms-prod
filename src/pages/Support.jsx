@@ -53,8 +53,8 @@ const Support = () => {
             <p className="text-gray-600 max-w-2xl">Multi-channel support, dedicated CSMs, and enterprise SLAs to keep HR operations smooth at scale.</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary" className="bg-white border border-gray-200">View SLA</Button>
-            <Button>Contact Support</Button>
+            <Button variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Opening SLA...')}>View SLA</Button>
+            <Button onClick={() => alert('Contacting support...')}>Contact Support</Button>
           </div>
         </div>
 
@@ -92,7 +92,7 @@ const Support = () => {
               <h3 className="text-xl font-bold text-gray-900">Follow-the-sun support with 30-minute P1 response</h3>
               <p className="text-gray-600 text-sm">Dedicated incident comms, scheduled maintenance windows, and proactive status updates.</p>
             </div>
-            <Button className="whitespace-nowrap">Book a call</Button>
+            <Button onClick={() => alert('Booking call...')} className="whitespace-nowrap">Book a call</Button>
           </div>
         </Card>
       </div>

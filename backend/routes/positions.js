@@ -7,6 +7,10 @@ const router = express.Router();
 // Get all positions for a company
 router.get('/', authenticate, async (req, res) => {
   try {
+      if (!req.user.company) {
+        return res.status(400).json({ message: 'Company not found in token' });
+      }
+    
     const positions = await Position.find({ company: req.user.company })
       .populate('reportsTo', 'title department')
       .sort({ createdAt: -1 });
@@ -61,6 +65,10 @@ router.post('/', authenticate, authorize(['hr', 'admin']), async (req, res) => {
   const { title, department, description, reportsTo, level, salary_range_min, salary_range_max } = req.body;
 
   try {
+      if (!req.user.company) {
+        return res.status(400).json({ message: 'Company not found in token. Please login again.' });
+      }
+
     const position = new Position({
       title,
       department,

@@ -1,86 +1,80 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Search, Plus, Filter, Download, Edit2, Eye, Trash2, UserPlus } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
-import { handleAddEmployee } from '../utils/handlers';
+import AddEmployeeModal from '../components/AddEmployeeModal';
+import EditEmployeeModal from '../components/EditEmployeeModal';
 import { Card, Button, Badge, Table, Input, Modal } from '../components/UI';
 import { EMPLOYEE_STATUS, DEPARTMENTS } from '../utils/constants';
+import employeeService from '../services/employeeService';
 
 const Employees = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock employee data
-  const [employees] = useState([
-    {
-      id: 'EMP001',
-      name: 'John Doe',
-      email: 'john@example.com',
-      phone: '+1 (555) 123-4567',
-      department: 'Technology',
-      designation: 'Senior Software Engineer',
-      status: 'active',
-      joiningDate: '2021-03-15',
-      salary: 85000,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-    },
-    {
-      id: 'EMP002',
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      phone: '+1 (555) 234-5678',
-      department: 'Human Resources',
-      designation: 'HR Manager',
-      status: 'active',
-      joiningDate: '2020-06-20',
-      salary: 65000,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane',
-    },
-    {
-      id: 'EMP003',
-      name: 'Bob Johnson',
-      email: 'bob@example.com',
-      phone: '+1 (555) 345-6789',
-      department: 'Finance',
-      designation: 'Financial Analyst',
-      status: 'active',
-      joiningDate: '2022-01-10',
-      salary: 55000,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob',
-    },
-    {
-      id: 'EMP004',
-      name: 'Sarah Williams',
-      email: 'sarah@example.com',
-      phone: '+1 (555) 456-7890',
-      department: 'Marketing',
-      designation: 'Marketing Manager',
-      status: 'active',
-      joiningDate: '2021-09-05',
-      salary: 60000,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
-    },
-    {
-      id: 'EMP005',
-      name: 'Michael Brown',
-      email: 'michael@example.com',
-      phone: '+1 (555) 567-8901',
-      department: 'Technology',
-      designation: 'Full Stack Developer',
-      status: 'on_leave',
-      joiningDate: '2022-05-12',
-      salary: 75000,
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael',
-    },
-  ]);
+  // Fetch employees on mount
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    setLoading(true);
+    try {
+      const data = await employeeService.getAll();
+      console.log('✅ Employees fetched:', data);
+      setEmployees(data || []);
+    } catch (error) {
+      toast.error('Failed to fetch employees');
+      console.error('❌ Error fetching employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddSuccess = () => {
+    fetchEmployees();
+  };
+
+  const handleEditSuccess = () => {
+    fetchEmployees();
+    setSelectedEmployee(null);
+  };
+
+  const handleEditClick = (employee, e) => {
+    e.stopPropagation();
+    setSelectedEmployee(employee);
+    setShowEditModal(true);
+  };
+
+  const handleDeleteClick = async (employeeId, e) => {
+    e.stopPropagation();
+    if (!window.confirm('Are you sure you want to deactivate this employee?')) {
+      return;
+    }
+
+    try {
+      await employeeService.delete(employeeId);
+      toast.success('Employee deactivated successfully!');
+      fetchEmployees();
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete employee');
+      console.error('❌ Error deleting employee:', error);
+    }
+  };
 
   const filteredEmployees = employees.filter((emp) => {
+    const empName = `${emp.firstName || ''} ${emp.lastName || ''}`.toLowerCase();
     const matchSearch =
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      empName.includes(searchTerm.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.id.toLowerCase().includes(searchTerm.toLowerCase());
+      emp._id?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchDept = !filterDept || emp.department === filterDept;
     const matchStatus = !filterStatus || emp.status === filterStatus;
     return matchSearch && matchDept && matchStatus;
@@ -95,18 +89,22 @@ const Employees = () => {
 
   const columns = [
     {
-      key: 'id',
+      key: '_id',
       label: 'Employee ID',
-      render: (value, row) => (
-        <div className="flex items-center gap-2">
-          <img src={row.avatar} alt={row.name} className="w-8 h-8 rounded-full" />
-          <span>{value}</span>
-        </div>
-      ),
+      render: (value, row) => {
+        const avatar = row.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${row.firstName}`;
+        return (
+          <div className="flex items-center gap-2">
+            <img src={avatar} alt={`${row.firstName} ${row.lastName}`} className="w-8 h-8 rounded-full" />
+            <span>{value?.slice(0, 8) || 'N/A'}</span>
+          </div>
+        );
+      },
     },
     {
-      key: 'name',
+      key: 'firstName',
       label: 'Name',
+      render: (value, row) => `${value} ${row.lastName}`,
     },
     {
       key: 'email',
@@ -117,26 +115,38 @@ const Employees = () => {
       label: 'Department',
     },
     {
-      key: 'designation',
-      label: 'Designation',
-    },
-    {
       key: 'status',
       label: 'Status',
-      render: (value) => <Badge variant={statusColors[value]}>{value.replace('_', ' ')}</Badge>,
+      render: (value) => <Badge variant={statusColors[value] || 'gray'}>{value?.replace('_', ' ') || 'N/A'}</Badge>,
     },
     {
-      key: 'id',
+      key: '_id',
       label: 'Actions',
-      render: () => (
+      render: (value, row) => (
         <div className="flex gap-2">
-          <button className="p-2 hover:bg-blue-500/20 hover:border-blue-400/50 border border-transparent rounded-lg transition-all" title="View">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedEmployee(row);
+              setShowDetailModal(true);
+            }}
+            className="p-2 hover:bg-blue-500/20 hover:border-blue-400/50 border border-transparent rounded-lg transition-all" 
+            title="View"
+          >
             <Eye size={16} className="text-blue-400" />
           </button>
-          <button className="p-2 hover:bg-cyan-500/20 hover:border-cyan-400/50 border border-transparent rounded-lg transition-all" title="Edit">
+          <button 
+            onClick={(e) => handleEditClick(row, e)}
+            className="p-2 hover:bg-cyan-500/20 hover:border-cyan-400/50 border border-transparent rounded-lg transition-all" 
+            title="Edit"
+          >
             <Edit2 size={16} className="text-cyan-400" />
           </button>
-          <button className="p-2 hover:bg-red-500/20 hover:border-red-400/50 border border-transparent rounded-lg transition-all" title="Delete">
+          <button 
+            onClick={(e) => handleDeleteClick(value, e)}
+            className="p-2 hover:bg-red-500/20 hover:border-red-400/50 border border-transparent rounded-lg transition-all" 
+            title="Delete"
+          >
             <Trash2 size={16} className="text-red-400" />
           </button>
         </div>
@@ -156,7 +166,7 @@ const Employees = () => {
             <p className="text-slate-400 mt-2">Manage and view all employees</p>
           </div>
           <button
-            onClick={handleAddEmployee}
+            onClick={() => setShowAddModal(true)}
             className="group relative overflow-hidden rounded-xl py-3 px-6 text-sm font-semibold text-white bg-gradient-to-r from-cyan-500/30 to-blue-500/30 border border-cyan-400/50 hover:border-cyan-400 hover:from-cyan-500/50 hover:to-blue-500/50 transition-all flex items-center gap-2"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/40 to-blue-500/40 opacity-0 group-hover:opacity-100 blur-lg transition-opacity"></div>
@@ -239,7 +249,7 @@ const Employees = () => {
         <div className="backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl p-6 hover:border-white/30 transition-all shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-white text-lg">Employee List ({filteredEmployees.length})</h3>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-300 hover:text-purple-200 hover:border-purple-400/50 text-sm font-semibold transition-all">
+            <button onClick={() => toast.info('Export feature coming soon!')} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-300 hover:text-purple-200 hover:border-purple-400/50 text-sm font-semibold transition-all">
               <Download size={16} />
               Export
             </button>
@@ -250,7 +260,7 @@ const Employees = () => {
               data={filteredEmployees}
               onRowClick={(emp) => {
                 setSelectedEmployee(emp);
-                setShowModal(true);
+                setShowDetailModal(true);
               }}
             />
           </div>
@@ -258,30 +268,32 @@ const Employees = () => {
 
         {/* Employee Detail Modal */}
         <Modal
-          isOpen={showModal}
+          isOpen={showDetailModal}
           title="Employee Details"
-          onClose={() => setShowModal(false)}
+          onClose={() => setShowDetailModal(false)}
           size="lg"
         >
           {selectedEmployee && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <img
-                  src={selectedEmployee.avatar}
-                  alt={selectedEmployee.name}
+                  src={selectedEmployee.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedEmployee.firstName}`}
+                  alt={`${selectedEmployee.firstName} ${selectedEmployee.lastName}`}
                   className="w-16 h-16 rounded-lg"
                 />
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">{selectedEmployee.name}</h3>
-                  <p className="text-gray-600">{selectedEmployee.designation}</p>
-                  <Badge variant="green">{selectedEmployee.status}</Badge>
+                  <h3 className="text-lg font-bold text-gray-800">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>
+                  <p className="text-gray-600">{selectedEmployee.role || 'Employee'}</p>
+                  <Badge variant={statusColors[selectedEmployee.status] || 'gray'}>
+                    {selectedEmployee.status || 'N/A'}
+                  </Badge>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Employee ID</p>
-                  <p className="font-semibold text-gray-800">{selectedEmployee.id}</p>
+                  <p className="font-semibold text-gray-800">{selectedEmployee._id?.slice(0, 8) || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Email</p>
@@ -289,29 +301,56 @@ const Employees = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Phone</p>
-                  <p className="font-semibold text-gray-800">{selectedEmployee.phone}</p>
+                  <p className="font-semibold text-gray-800">{selectedEmployee.phone || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Department</p>
-                  <p className="font-semibold text-gray-800">{selectedEmployee.department}</p>
+                  <p className="font-semibold text-gray-800">{selectedEmployee.department || 'N/A'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Joining Date</p>
-                  <p className="font-semibold text-gray-800">{selectedEmployee.joiningDate}</p>
+                  <p className="font-semibold text-gray-800">
+                    {selectedEmployee.joiningDate ? new Date(selectedEmployee.joiningDate).toLocaleDateString() : 'N/A'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Salary</p>
-                  <p className="font-semibold text-gray-800">${selectedEmployee.salary.toLocaleString()}</p>
+                  <p className="font-semibold text-gray-800">
+                    ${selectedEmployee.salary ? selectedEmployee.salary.toLocaleString() : 'N/A'}
+                  </p>
                 </div>
               </div>
 
               <div className="flex gap-2 pt-4 border-t border-gray-200">
-                <Button className="flex-1">Edit</Button>
-                <Button variant="secondary" className="flex-1">View Full Profile</Button>
+                <Button 
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setShowEditModal(true);
+                  }}
+                  className="flex-1"
+                >
+                  Edit
+                </Button>
+                <Button onClick={() => toast.info('Full profile page coming soon!')} variant="secondary" className="flex-1">View Full Profile</Button>
               </div>
             </div>
           )}
         </Modal>
+
+        {/* Add Employee Modal */}
+        <AddEmployeeModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleAddSuccess}
+        />
+
+        {/* Edit Employee Modal */}
+        <EditEmployeeModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={handleEditSuccess}
+          employee={selectedEmployee}
+        />
       </div>
     </MainLayout>
   );

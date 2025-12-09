@@ -51,7 +51,7 @@ const LandingPage = () => {
     {
       icon: <DollarSign className="w-8 h-8" />,
       title: 'Payroll Processing',
-      description: 'Automate salary calculations, tax deductions, and generate payslips. Multi-currency support included.',
+      description: 'Automate salary calculations, tax deductions, and generate payslips in PKR. CSV upload for monthly payroll updates.',
       color: 'bg-yellow-500',
     },
     {

@@ -29,8 +29,8 @@ const RolesMatrix = () => {
             <p className="text-gray-600 max-w-3xl">Region-scoped RBAC with SoD guardrails and export controls for compliant global operations.</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary" className="bg-white border border-gray-200">Export matrix</Button>
-            <Button>New role</Button>
+            <Button variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Exporting matrix...')}>Export matrix</Button>
+            <Button onClick={() => alert('Creating new role...')}>New role</Button>
           </div>
         </div>
 
@@ -115,8 +115,8 @@ const RolesMatrix = () => {
             ))}
           </div>
           <div className="flex gap-2 mt-4">
-            <Button size="sm">Resolve conflicts</Button>
-            <Button size="sm" variant="secondary" className="bg-white border border-gray-200">Schedule review</Button>
+            <Button size="sm" onClick={() => alert('Resolving conflicts...')}>Resolve conflicts</Button>
+            <Button size="sm" variant="secondary" className="bg-white border border-gray-200" onClick={() => alert('Scheduling review...')}>Schedule review</Button>
           </div>
         </Card>
 

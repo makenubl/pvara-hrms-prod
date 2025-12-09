@@ -78,7 +78,7 @@ const Sidebar = () => {
               <h1 className="text-xl font-black bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
                 PVARA
               </h1>
-              <p className="text-xs text-slate-400">{user?.company || 'Enterprise'}</p>
+              <p className="text-xs text-slate-400">{typeof user?.company === 'object' ? user?.company?.name : user?.company || 'Enterprise'}</p>
             </div>
           </Link>
         </div>

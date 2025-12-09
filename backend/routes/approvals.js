@@ -34,15 +34,28 @@ router.post('/', authenticate, authorize(['hr', 'admin']), async (req, res) => {
   }
 });
 
-// Get all approval flows for a company
+// Get all approval flows for a company (with optional filters + pagination)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const flows = await ApprovalFlow.find({ company: req.user.company })
+    const { requestType, status } = req.query;
+
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+    const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
+
+    const query = { company: req.user.company };
+    if (requestType) query.requestType = requestType;
+    if (status) query.status = status;
+
+    const flows = await ApprovalFlow.find(query)
+      .select('requestType requestId requester approvers currentLevel status createdAt updatedAt company')
       .populate([
         { path: 'requester', select: 'firstName lastName' },
         { path: 'approvers.approver', select: 'firstName lastName' },
       ])
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
     res.json(flows);
   } catch (error) {
@@ -53,16 +66,23 @@ router.get('/', authenticate, async (req, res) => {
 // Get pending approvals for current user
 router.get('/pending/me', authenticate, async (req, res) => {
   try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
+    const skip = Math.max(parseInt(req.query.skip, 10) || 0, 0);
+
     const pendingFlows = await ApprovalFlow.find({
       'approvers.approver': req.user._id,
       'approvers.status': 'pending',
       company: req.user.company,
     })
+      .select('requestType requestId requester approvers currentLevel status createdAt updatedAt company')
       .populate([
         { path: 'requester', select: 'firstName lastName email' },
         { path: 'approvers.approver', select: 'firstName lastName' },
       ])
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
 
     res.json(pendingFlows);
   } catch (error) {

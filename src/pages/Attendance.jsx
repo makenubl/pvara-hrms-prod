@@ -1,65 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
 import { getMonthlyCalendar, formatDate } from '../utils/dateUtils';
+import toast from 'react-hot-toast';
 
 const Attendance = () => {
   const [viewMode, setViewMode] = useState('list');
   const [selectedMonth] = useState(new Date());
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [attendanceRecords] = useState([
-    {
-      id: 1,
-      employeeId: 'EMP001',
-      name: 'John Doe',
-      date: '2025-12-08',
-      status: 'present',
-      checkIn: '09:00 AM',
-      checkOut: '05:30 PM',
-      department: 'Technology',
-    },
-    {
-      id: 2,
-      employeeId: 'EMP002',
-      name: 'Jane Smith',
-      date: '2025-12-08',
-      status: 'present',
-      checkIn: '09:15 AM',
-      checkOut: '05:45 PM',
-      department: 'Human Resources',
-    },
-    {
-      id: 3,
-      employeeId: 'EMP003',
-      name: 'Bob Johnson',
-      date: '2025-12-08',
-      status: 'absent',
-      checkIn: null,
-      checkOut: null,
-      department: 'Finance',
-    },
-    {
-      id: 4,
-      employeeId: 'EMP004',
-      name: 'Sarah Williams',
-      date: '2025-12-08',
-      status: 'late',
-      checkIn: '10:30 AM',
-      checkOut: '05:15 PM',
-      department: 'Marketing',
-    },
-    {
-      id: 5,
-      employeeId: 'EMP005',
-      name: 'Michael Brown',
-      date: '2025-12-08',
-      status: 'work_from_home',
-      checkIn: '08:45 AM',
-      checkOut: '06:00 PM',
-      department: 'Technology',
-    },
-  ]);
+  useEffect(() => {
+    fetchAttendanceData();
+  }, []);
+
+  const fetchAttendanceData = async () => {
+    setLoading(true);
+    try {
+      console.log('📤 Fetching attendance data...');
+      const response = await fetch('http://localhost:5000/api/attendance/records', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      setAttendanceRecords(data);
+      
+      // Fallback mock data for development
+      setAttendanceRecords(data || []);
+      console.log('✅ Attendance data loaded:', data?.length || 0);
+    } catch (err) {
+      console.error('❌ Error fetching attendance data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const statusIcons = {
     present: <CheckCircle className="w-5 h-5 text-emerald-300" />,
@@ -132,7 +108,7 @@ const Attendance = () => {
             </h1>
             <p className="text-slate-400 mt-2">Track and manage employee attendance</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button onClick={() => alert('Attendance marked')} className="flex items-center gap-2">
             <Plus size={20} />
             Mark Attendance
           </Button>

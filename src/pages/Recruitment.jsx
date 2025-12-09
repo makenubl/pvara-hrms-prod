@@ -1,68 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Briefcase, MapPin, Users, Clock, Plus, Eye, Heart } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
 import { RECRUITMENT_STATUS, APPLICANT_STATUS } from '../utils/constants';
+import toast from 'react-hot-toast';
 
 const Recruitment = () => {
   const [activeTab, setActiveTab] = useState('jobs');
+  const [jobs, setJobs] = useState([]);
+  const [applicants, setApplicants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [jobs] = useState([
-    {
-      id: 1,
-      title: 'Senior React Developer',
-      department: 'Engineering',
-      location: 'Remote',
-      postedDate: '2025-11-20',
-      applicants: 24,
-      status: 'open',
-    },
-    {
-      id: 2,
-      title: 'UX/UI Designer',
-      department: 'Design',
-      location: 'New York',
-      postedDate: '2025-11-25',
-      applicants: 18,
-      status: 'open',
-    },
-    {
-      id: 3,
-      title: 'Product Manager',
-      department: 'Product',
-      location: 'San Francisco',
-      postedDate: '2025-10-15',
-      applicants: 32,
-      status: 'closed',
-    },
-  ]);
+  useEffect(() => {
+    fetchRecruitmentData();
+  }, []);
 
-  const [applicants] = useState([
-    {
-      id: 1,
-      name: 'Alice Johnson',
-      jobTitle: 'Senior React Developer',
-      appliedDate: '2025-12-01',
-      status: 'interview',
-      rating: 4.5,
-    },
-    {
-      id: 2,
-      name: 'Bob Smith',
-      jobTitle: 'UX/UI Designer',
-      appliedDate: '2025-12-02',
-      status: 'screening',
-      rating: 4.0,
-    },
-    {
-      id: 3,
-      name: 'Carol Davis',
-      jobTitle: 'Senior React Developer',
-      appliedDate: '2025-11-28',
-      status: 'rejected',
-      rating: 3.5,
-    },
-  ]);
+  const fetchRecruitmentData = async () => {
+    setLoading(true);
+    try {
+      console.log('📤 Fetching recruitment data...');
+      const jobsResponse = await fetch('http://localhost:5000/api/recruitment/jobs', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const applicantsResponse = await fetch('http://localhost:5000/api/recruitment/applicants', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const jobsData = await jobsResponse.json();
+      const applicantsData = await applicantsResponse.json();
+      setJobs(jobsData || []);
+      setApplicants(applicantsData || []);
+      console.log('✅ Recruitment data loaded:', jobsData?.length || 0, 'jobs,', applicantsData?.length || 0, 'applicants');
+    } catch (err) {
+      console.error('❌ Error fetching recruitment data:', err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const jobColumns = [
     {
@@ -107,7 +82,7 @@ const Recruitment = () => {
             </h1>
             <p className="text-slate-400 mt-2">Manage job openings and applicants</p>
           </div>
-          <Button className="flex items-center gap-2">
+          <Button onClick={() => alert('Exporting jobs...')} className="flex items-center gap-2">
             <Plus size={20} />
             New Job Opening
           </Button>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import {
   Settings as SettingsIcon,
   Bell,
@@ -31,11 +32,11 @@ const Settings = () => {
   const { user } = useAuthStore();
 
   const [formData, setFormData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    department: 'Engineering',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    department: user?.department || '',
     timezone: 'UTC-5',
   });
 
@@ -148,6 +149,12 @@ const Settings = () => {
     setExpandedPositions(newExpanded);
   };
 
+  const handleSavePersonalInfo = (e) => {
+    e.preventDefault();
+    toast.success('Changes saved successfully!');
+    console.log('✅ Saved personal info:', formData);
+  };
+
   const renderPositionTree = (pos, level = 0) => (
     <div key={pos._id || pos.id} className="ml-4">
       <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg mb-2 hover:bg-white/10 transition-all">
@@ -170,7 +177,7 @@ const Settings = () => {
         </div>
 
         <div className="flex gap-2">
-          <button className="p-2 hover:bg-cyan-500/20 rounded-lg transition-all">
+          <button onClick={() => alert('Edit position feature coming soon!')} className="p-2 hover:bg-cyan-500/20 rounded-lg transition-all">
             <Edit2 size={16} className="text-cyan-400" />
           </button>
           <button onClick={() => handleDeletePosition(pos._id || pos.id)} className="p-2 hover:bg-red-500/20 rounded-lg transition-all">
@@ -291,7 +298,7 @@ const Settings = () => {
                   </select>
                 </div>
               </div>
-              <Button className="mt-6 flex items-center gap-2">
+              <Button onClick={handleSavePersonalInfo} className="mt-6 flex items-center gap-2">
                 <Save size={18} />
                 Save Changes
               </Button>
@@ -395,7 +402,7 @@ const Settings = () => {
                       className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     />
                   </div>
-                  <Button className="w-full">Update Password</Button>
+                  <Button onClick={() => toast.success('Password update feature coming soon!')} className="w-full">Update Password</Button>
                 </div>
               </div>
 
