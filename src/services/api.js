@@ -4,13 +4,13 @@ import axios from 'axios';
 const API_BASE_URL = 
   typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:5000'
-    : `${window.location.origin}`;
+    : (import.meta.env.VITE_API_URL || `${window.location.origin}/api`);
 
-console.log('API Base URL:', API_BASE_URL);
+console.log('🌐 API Base URL:', API_BASE_URL);
 
 // Create axios instance
 const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: API_BASE_URL.includes('/api') ? API_BASE_URL : `${API_BASE_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
   },
