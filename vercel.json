@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm install --production=false && npm run build && cd backend && npm install",
+  "installCommand": "npm install",
   "builds": [
     {
       "src": "package.json",
@@ -9,14 +11,14 @@
       }
     },
     {
-      "src": "api/index.js",
+      "src": "backend/server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "dest": "/backend/server.js"
     },
     {
       "src": "/assets/(.*)",
@@ -33,10 +35,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 10
-    }
   }
 }
