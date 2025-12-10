@@ -1,4 +1,5 @@
 import axios from 'axios';
+import logger from '../utils/logger.js';
 
 // Get API base URL - use environment variable or fallback
 const API_BASE_URL = 
@@ -6,7 +7,7 @@ const API_BASE_URL =
     ? 'http://localhost:5000'
     : (import.meta.env.VITE_API_URL || `${window.location.origin}/api`);
 
-console.log('🌐 API Base URL:', API_BASE_URL);
+logger.info('🌐 API Base URL configured', { url: API_BASE_URL });
 
 // Create axios instance
 const apiClient = axios.create({
@@ -23,22 +24,38 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    logger.logApiRequest(config.method.toUpperCase(), config.url, config.data);
     return config;
   },
   (error) => {
+    logger.error('API Request Error', error);
     return Promise.reject(error);
   }
 );
 
 // Add response interceptor for error handling
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    logger.logApiResponse(
+      response.config.method.toUpperCase(),
+      response.config.url,
+      response.status,
+      response.data
+    );
+    return response;
+  },
   (error) => {
+    const method = error.config?.method?.toUpperCase() || 'UNKNOWN';
+    const url = error.config?.url || 'UNKNOWN';
+    
     if (error.response?.status === 401) {
+      logger.warn('Authentication failed - redirecting to login', { url });
       // Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
+    } else {
+      logger.logApiError(method, url, error);
     }
     return Promise.reject(error);
   }
