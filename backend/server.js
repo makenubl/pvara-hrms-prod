@@ -26,6 +26,7 @@ const allowedOrigins = [
   'https://pvara.team',
   'https://www.pvara.team',
   'https://pvara-hrms-prod.vercel.app',
+  'https://pvara-hrms-prod-frontend.vercel.app',
   'https://pvara-hrms-prod-git-main-makenubls-projects.vercel.app',
   process.env.FRONTEND_URL
 ].filter(Boolean);
@@ -39,9 +40,10 @@ app.use(cors({
     if (allowedOrigins.includes(origin) || 
         origin.endsWith('vercel.app') || 
         origin.endsWith('pvara.team')) {
+      logger.info(`✅ CORS allowed for origin: ${origin}`);
       callback(null, true);
     } else {
-      logger.warn(`CORS blocked origin: ${origin}`);
+      logger.warn(`❌ CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },

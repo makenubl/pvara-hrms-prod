@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 const API_BASE_URL = 
   typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:5000'
-    : (import.meta.env.VITE_API_URL || `${window.location.origin}/api`);
+    : (import.meta.env.VITE_API_URL || 'https://pvara-hrms-prod-backend.vercel.app');
 
 logger.info('🌐 API Base URL configured', { url: API_BASE_URL });
 
