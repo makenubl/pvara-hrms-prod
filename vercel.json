@@ -1,11 +1,14 @@
 {
   "version": 2,
-  "buildCommand": "cd backend && npm install",
-  "installCommand": "cd backend && npm install",
+  "buildCommand": "npm install",
+  "installCommand": "npm install",
   "builds": [
     {
       "src": "backend/server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "zeroConfig": true
+      }
     }
   ],
   "routes": [
