@@ -1,23 +1,28 @@
 {
   "version": 2,
-  "buildCommand": "npm install",
+  "buildCommand": "npm install --production=false && npm run build",
   "installCommand": "npm install",
   "builds": [
     {
-      "src": "backend/server.js",
-      "use": "@vercel/node",
+      "src": "package.json",
+      "use": "@vercel/static-build",
       "config": {
-        "zeroConfig": true
+        "distDir": "dist"
       }
     }
   ],
   "routes": [
     {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|svg|ico|json))",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/backend/server.js"
+      "dest": "/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
