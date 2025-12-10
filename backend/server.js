@@ -23,6 +23,8 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+  'https://pvara.team',
+  'https://www.pvara.team',
   'https://pvara-hrms-prod.vercel.app',
   'https://pvara-hrms-prod-git-main-makenubls-projects.vercel.app',
   process.env.FRONTEND_URL
@@ -33,8 +35,10 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    // Check if origin is in allowed list or ends with vercel.app
-    if (allowedOrigins.includes(origin) || origin.endsWith('vercel.app')) {
+    // Check if origin is in allowed list or ends with vercel.app or pvara.team
+    if (allowedOrigins.includes(origin) || 
+        origin.endsWith('vercel.app') || 
+        origin.endsWith('pvara.team')) {
       callback(null, true);
     } else {
       logger.warn(`CORS blocked origin: ${origin}`);
