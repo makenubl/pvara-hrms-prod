@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Phone, Users, Briefcase } from 'lucide-react';
+import { X, Mail, Phone, Users, Briefcase, UserCog } from 'lucide-react';
 import { DEPARTMENTS } from '../utils/constants';
 import employeeService from '../services/employeeService';
 import positionService from '../services/positionService';
+import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
 const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
@@ -14,6 +15,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
     phone: '',
     department: '',
     position: '',
+    reportsTo: '', // Will be set to admin by default
     role: 'employee',
     joiningDate: new Date().toISOString().split('T')[0],
     salary: '',
@@ -22,11 +24,15 @@ const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
   const [errors, setErrors] = useState({});
   const [positions, setPositions] = useState([]);
   const [loadingPositions, setLoadingPositions] = useState(false);
+  const [supervisors, setSupervisors] = useState([]);
+  const [loadingSupervisors, setLoadingSupervisors] = useState(false);
+  const { user } = useAuthStore();
 
-  // Fetch positions on mount
+  // Fetch positions and supervisors on mount
   useEffect(() => {
     if (isOpen) {
       fetchPositions();
+      fetchSupervisors();
     }
   }, [isOpen]);
 
@@ -40,6 +46,28 @@ const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
       console.error('❌ Failed to fetch positions:', error);
     } finally {
       setLoadingPositions(false);
+    }
+  };
+
+  const fetchSupervisors = async () => {
+    setLoadingSupervisors(true);
+    try {
+      const data = await employeeService.getAll();
+      // Filter to show only admins and managers as potential supervisors
+      const potentialSupervisors = data.filter(emp => 
+        emp.role === 'admin' || emp.role === 'manager' || emp.role === 'hr'
+      );
+      setSupervisors(potentialSupervisors || []);
+      
+      // Set default reportsTo to admin
+      const adminUser = potentialSupervisors.find(emp => emp.role === 'admin');
+      if (adminUser && !formData.reportsTo) {
+        setFormData(prev => ({ ...prev, reportsTo: adminUser._id }));
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch supervisors:', error);
+    } finally {
+      setLoadingSupervisors(false);
     }
   };
 
@@ -93,6 +121,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
       console.log('✅ Employee created successfully:', response);
       
       toast.success('Employee added successfully!');
+      const adminUser = supervisors.find(emp => emp.role === 'admin');
       setFormData({
         firstName: '',
         lastName: '',
@@ -101,6 +130,7 @@ const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
         phone: '',
         department: '',
         position: '',
+        reportsTo: adminUser?._id || '',
         role: 'employee',
         joiningDate: new Date().toISOString().split('T')[0],
         salary: '',
@@ -292,6 +322,33 @@ const AddEmployeeModal = ({ isOpen, onClose, onSuccess }) => {
               {errors.position && <p className="text-red-400 text-xs mt-1">{errors.position}</p>}
             </div>
           </div>
+
+          {/* Reports To - Only for Admin/HR/Manager */}
+          {(user?.role === 'admin' || user?.role === 'hr' || user?.role === 'manager') && (
+            <div>
+              <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+                <UserCog size={16} className="text-cyan-400" />
+                Reports To (Supervisor)
+              </label>
+              <select
+                name="reportsTo"
+                value={formData.reportsTo}
+                onChange={handleChange}
+                disabled={loadingSupervisors}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400/50 transition-all disabled:opacity-50"
+              >
+                <option value="" className="bg-slate-900">No Supervisor (Top Level)</option>
+                {supervisors.map((supervisor) => (
+                  <option key={supervisor._id} value={supervisor._id} className="bg-slate-900">
+                    {supervisor.firstName} {supervisor.lastName} ({supervisor.role})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-400 mt-1">
+                {formData.reportsTo ? 'Employee will report to selected supervisor' : 'Employee will be at top level (admin equivalent)'}
+              </p>
+            </div>
+          )}
 
           {/* Role, Date & Salary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

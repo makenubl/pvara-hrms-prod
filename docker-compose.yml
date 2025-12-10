@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: pvara-hrms-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: pvara-hrms
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - pvara-network
+
+  backend:
+    build: ./backend
+    container_name: pvara-hrms-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/pvara-hrms?authSource=admin
+      - JWT_SECRET=pvara-hrms-secret-key-2025
+      - PORT=5000
+      - NODE_ENV=development
+    depends_on:
+      - mongodb
+    networks:
+      - pvara-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+volumes:
+  mongodb_data:
+
+networks:
+  pvara-network:
+    driver: bridge

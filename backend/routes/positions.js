@@ -25,19 +25,35 @@ router.get('/hierarchy', authenticate, async (req, res) => {
   try {
     const positions = await Position.find({ company: req.user.company }).populate('reportsTo');
     
+    // Get all users to count employees per position
+    const User = (await import('../models/User.js')).default;
+    const users = await User.find({ company: req.user.company, status: 'active' });
+    
+    // Count employees per position
+    const employeeCountByPosition = {};
+    users.forEach(user => {
+      if (user.position) {
+        const posId = user.position.toString();
+        employeeCountByPosition[posId] = (employeeCountByPosition[posId] || 0) + 1;
+      }
+    });
+    
     // Build hierarchy
     const hierarchy = {};
     positions.forEach((pos) => {
-      hierarchy[pos._id] = {
+      const posId = pos._id.toString();
+      hierarchy[posId] = {
         ...pos.toObject(),
         subordinates: [],
+        employees: employeeCountByPosition[posId] || 0
       };
     });
 
     positions.forEach((pos) => {
       if (pos.reportsTo) {
-        if (hierarchy[pos.reportsTo._id]) {
-          hierarchy[pos.reportsTo._id].subordinates.push(pos._id);
+        const reportsToId = pos.reportsTo._id.toString();
+        if (hierarchy[reportsToId]) {
+          hierarchy[reportsToId].subordinates.push(pos._id.toString());
         }
       }
     });

@@ -91,18 +91,22 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    console.log('Login attempt for:', email);
     const user = await User.findOne({ email }).populate('company');
     if (!user) {
+      console.log('User not found:', email);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.log('Invalid password for:', email);
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const token = generateToken(user);
 
+    console.log('Login successful for:', email);
     res.json({
       message: 'Login successful',
       token,
@@ -116,6 +120,7 @@ router.post('/login', async (req, res) => {
       },
     });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ message: error.message });
   }
 });

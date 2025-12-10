@@ -155,42 +155,58 @@ const Settings = () => {
     console.log('✅ Saved personal info:', formData);
   };
 
-  const renderPositionTree = (pos, level = 0) => (
-    <div key={pos._id || pos.id} className="ml-4">
-      <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg mb-2 hover:bg-white/10 transition-all">
-        {pos.children && pos.children.length > 0 && (
-          <button onClick={() => toggleExpanded(pos._id || pos.id)} className="text-cyan-400">
-            {expandedPositions.has(pos._id || pos.id) ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          </button>
-        )}
-        {(!pos.children || pos.children.length === 0) && <div className="w-6" />}
+  const renderPositionTree = (pos, level = 0) => {
+    const hasSubordinates = pos.subordinates && pos.subordinates.length > 0;
+    const isExpanded = expandedPositions.has(pos._id || pos.id);
+    
+    return (
+      <div key={pos._id || pos.id} style={{ marginLeft: `${level * 20}px` }} className="mb-2">
+        <div className="flex items-center gap-3 p-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-all">
+          {hasSubordinates ? (
+            <button onClick={() => toggleExpanded(pos._id || pos.id)} className="text-cyan-400">
+              {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+            </button>
+          ) : (
+            <div className="w-6" />
+          )}
 
-        <div className="flex-1">
-          <p className="font-semibold text-white">{pos.title}</p>
-          <p className="text-xs text-slate-400">{pos.department}</p>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="blue">{pos.level}</Badge>
-            <span className="text-xs text-slate-300 flex items-center gap-1">
-              <Users size={12} /> {pos.employees || 0} employee{(pos.employees || 0) !== 1 ? 's' : ''}
-            </span>
+          <div className="flex-1">
+            <p className="font-semibold text-white">{pos.title}</p>
+            <p className="text-xs text-slate-400">{pos.department}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="blue">{pos.level || 'mid'}</Badge>
+              <span className="text-xs text-slate-300 flex items-center gap-1">
+                <Users size={12} /> {pos.employees || 0} employee{(pos.employees || 0) !== 1 ? 's' : ''}
+              </span>
+              {hasSubordinates && (
+                <span className="text-xs text-cyan-400">
+                  {pos.subordinates.length} subordinate{pos.subordinates.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={() => alert('Edit position feature coming soon!')} className="p-2 hover:bg-cyan-500/20 rounded-lg transition-all">
+              <Edit2 size={16} className="text-cyan-400" />
+            </button>
+            <button onClick={() => handleDeletePosition(pos._id || pos.id)} className="p-2 hover:bg-red-500/20 rounded-lg transition-all">
+              <Trash2 size={16} className="text-red-400" />
+            </button>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button onClick={() => alert('Edit position feature coming soon!')} className="p-2 hover:bg-cyan-500/20 rounded-lg transition-all">
-            <Edit2 size={16} className="text-cyan-400" />
-          </button>
-          <button onClick={() => handleDeletePosition(pos._id || pos.id)} className="p-2 hover:bg-red-500/20 rounded-lg transition-all">
-            <Trash2 size={16} className="text-red-400" />
-          </button>
-        </div>
+        {isExpanded && hasSubordinates && (
+          <div className="mt-1">
+            {pos.subordinates.map((subId) => {
+              const subordinate = positions.find(p => (p._id || p.id) === subId);
+              return subordinate ? renderPositionTree(subordinate, level + 1) : null;
+            })}
+          </div>
+        )}
       </div>
-
-      {expandedPositions.has(pos._id || pos.id) && pos.children && pos.children.length > 0 && (
-        <div>{pos.children.map((child) => renderPositionTree(child, level + 1))}</div>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <MainLayout>
@@ -444,8 +460,11 @@ const Settings = () => {
               ) : positions.length === 0 ? (
                 <div className="p-8 text-center text-slate-400">No positions found. Create one to get started.</div>
               ) : (
-                <div className="space-y-4">
-                  {positions.map((pos) => renderPositionTree(pos))}
+                <div className="space-y-2">
+                  {/* Show only root positions (those with no reportsTo) */}
+                  {positions
+                    .filter(pos => !pos.reportsTo)
+                    .map((pos) => renderPositionTree(pos, 0))}
                 </div>
               )}
             </Card>

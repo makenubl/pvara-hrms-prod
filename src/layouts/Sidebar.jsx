@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   LogOut,
+  UserCircle,
+  Building2,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
@@ -26,19 +28,28 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const menuItems = [
-    { icon: Home, label: 'Dashboard', path: '/dashboard' },
-    { icon: Users, label: 'Employees', path: '/employees' },
-    { icon: Calendar, label: 'Attendance', path: '/attendance' },
-    { icon: Calendar, label: 'Leave Management', path: '/leaves' },
-    { icon: DollarSign, label: 'Payroll', path: '/payroll' },
-    { icon: Award, label: 'Performance', path: '/performance' },
-    { icon: Briefcase, label: 'Recruitment', path: '/recruitment' },
-    { icon: BookOpen, label: 'Learning & Development', path: '/learning' },
-    { icon: Shield, label: 'Compliance', path: '/compliance' },
-    { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-    { icon: Settings, label: 'Settings', path: '/settings' },
+  // Role-based menu configuration
+  const allMenuItems = [
+    { icon: Home, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager'] },
+    { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: Calendar, label: 'Attendance', path: '/attendance', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: Calendar, label: 'Leave Management', path: '/leaves', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: DollarSign, label: 'Payroll', path: '/payroll', roles: ['admin', 'hr'] },
+    { icon: Award, label: 'Performance', path: '/performance', roles: ['admin', 'hr'] },
+    { icon: Award, label: 'Team Performance', path: '/team-performance', roles: ['manager'] },
+    { icon: Award, label: 'My Performance', path: '/my-performance', roles: ['employee'] },
+    { icon: Briefcase, label: 'Recruitment', path: '/recruitment', roles: ['admin', 'hr'] },
+    { icon: BookOpen, label: 'Learning & Development', path: '/learning', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: Shield, label: 'Compliance', path: '/compliance', roles: ['admin', 'hr'] },
+    { icon: BarChart3, label: 'Analytics', path: '/analytics', roles: ['admin', 'hr', 'manager'] },
+    { icon: UserCircle, label: 'My Profile', path: '/profile', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: Settings, label: 'Settings', path: '/settings', roles: ['admin', 'hr', 'manager', 'employee'] },
   ];
+
+  // Filter menu items based on user role
+  const userRole = user?.role || 'employee';
+  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
   const isActive = (path) => location.pathname.startsWith(path);
 
@@ -123,11 +134,9 @@ const Sidebar = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">
-                {user?.firstName && user?.lastName 
-                  ? `${user.firstName} ${user.lastName}` 
-                  : user?.name || user?.email || 'User'}
+                {`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.name || 'User'}
               </p>
-              <p className="text-xs text-slate-400 truncate">{user?.email || ''}</p>
+              <p className="text-xs text-slate-400 truncate capitalize">{user?.role || 'Employee'}</p>
             </div>
           </div>
           <button

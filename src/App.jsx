@@ -7,6 +7,10 @@ import { useCompanyStore } from './store/companyStore';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import EmployeeDashboard from './pages/EmployeeDashboard';
+import EmployeeProfile from './pages/EmployeeProfile';
+import EmployeePerformance from './pages/EmployeePerformance';
+import SupervisorPerformance from './pages/SupervisorPerformance';
 import Employees from './pages/Employees';
 import Attendance from './pages/Attendance';
 import LeaveManagement from './pages/LeaveManagement';
@@ -17,13 +21,31 @@ import Learning from './pages/Learning';
 import Compliance from './pages/Compliance';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import OrganizationChart from './pages/OrganizationChart';
+
+// Role-based Dashboard Router
+const DashboardRouter = () => {
+  const { user } = useAuthStore();
+  
+  // Show employee dashboard for 'employee' role, admin dashboard for others
+  if (user?.role === 'employee') {
+    return <EmployeeDashboard />;
+  }
+  
+  return <Dashboard />;
+};
 
 // Protected Route Wrapper
-const ProtectedRoute = ({ children }) => {
-  const { token } = useAuthStore();
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { token, user } = useAuthStore();
   
   if (!token) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If allowedRoles is specified, check if user has permission
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -61,11 +83,11 @@ function App() {
         {/* Protected HRMS Routes */}
         <Route
           path="/dashboard"
-          element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+          element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>}
         />
         <Route
           path="/employees"
-          element={<ProtectedRoute><Employees /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin', 'hr', 'manager']}><Employees /></ProtectedRoute>}
         />
         <Route
           path="/attendance"
@@ -98,6 +120,22 @@ function App() {
         <Route
           path="/analytics"
           element={<ProtectedRoute><Analytics /></ProtectedRoute>}
+        />
+        <Route
+          path="/profile"
+          element={<ProtectedRoute><EmployeeProfile /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-performance"
+          element={<ProtectedRoute allowedRoles={['employee']}><EmployeePerformance /></ProtectedRoute>}
+        />
+        <Route
+          path="/team-performance"
+          element={<ProtectedRoute allowedRoles={['manager', 'admin', 'hr']}><SupervisorPerformance /></ProtectedRoute>}
+        />
+        <Route
+          path="/organization"
+          element={<ProtectedRoute><OrganizationChart /></ProtectedRoute>}
         />
         <Route
           path="/settings"
