@@ -17,13 +17,47 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
-app.use(cors());
+// CORS configuration for production
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://pvara-hrms-prod.vercel.app',
+  'https://pvara-hrms-prod-git-main-makenubls-projects.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list or ends with vercel.app
+    if (allowedOrigins.includes(origin) || origin.endsWith('vercel.app')) {
+      callback(null, true);
+    } else {
+      console.log('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use('/uploads', express.static('uploads')); // Serve uploaded files
 
 // Connect to database
 connectDB();
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'PVARA HRMS API',
+    status: 'running',
+    version: '1.0.0'
+  });
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
