@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "vercel-build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "backend:install": "cd backend && npm install",
