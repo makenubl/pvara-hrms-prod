@@ -23,21 +23,33 @@ connectDB();
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  process.env.FRONTEND_URL || 'https://pvara-hrms-prod.vercel.app'
-];
+  'https://pvara.team',
+  'https://www.pvara.team',
+  'https://pvara-hrms-prod.vercel.app',
+  'https://pvara-hrms-prod-frontend.vercel.app',
+  'https://pvara-hrms-prod-git-main-makenubls-projects.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
 
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('vercel.app')) {
+    // Check if origin is in allowed list or ends with vercel.app or pvara.team
+    if (allowedOrigins.includes(origin) || 
+        origin.endsWith('vercel.app') || 
+        origin.endsWith('pvara.team')) {
+      console.log(`✅ CORS allowed for origin: ${origin}`);
       callback(null, true);
     } else {
+      console.warn(`❌ CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
