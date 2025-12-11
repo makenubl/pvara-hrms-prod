@@ -1,18 +1,19 @@
 // Vercel serverless entry point
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const { connectDB } = require('../config/db');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import morgan from 'morgan';
+import connectDB from '../config/db.js';
 
 dotenv.config();
 
-const authRoutes = require('../routes/auth');
-const employeeRoutes = require('../routes/employees');
-const positionRoutes = require('../routes/positions');
-const approvalRoutes = require('../routes/approvals');
-const payrollRoutes = require('../routes/payrolls');
-const kpiRoutes = require('../routes/kpi');
-const profileRoutes = require('../routes/profile');
+import authRoutes from '../routes/auth.js';
+import employeeRoutes from '../routes/employees.js';
+import positionRoutes from '../routes/positions.js';
+import approvalRoutes from '../routes/approvals.js';
+import payrollRoutes from '../routes/payrolls.js';
+import kpiRoutes from '../routes/kpi.js';
+import profileRoutes from '../routes/profile.js';
 
 const app = express();
 
@@ -52,6 +53,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// HTTP request logging
+app.use(morgan('combined'));
+
 app.use(express.json());
 
 // Routes
@@ -62,6 +66,15 @@ app.use('/api/approvals', approvalRoutes);
 app.use('/api/payrolls', payrollRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/profile', profileRoutes);
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'PVARA HRMS API',
+    status: 'running',
+    version: '1.0.0'
+  });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -81,4 +94,4 @@ app.use((err, req, res, next) => {
   });
 });
 
-module.exports = app;
+export default app;
