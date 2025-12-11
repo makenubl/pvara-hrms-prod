@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import connectDB from '../config/db.js';
 
 dotenv.config();
@@ -17,8 +18,18 @@ import profileRoutes from '../routes/profile.js';
 
 const app = express();
 
-// Connect to DB
-connectDB();
+// Ensure DB connection before handling requests
+const dbMiddleware = async (req, res, next) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      await connectDB();
+    }
+    next();
+  } catch (error) {
+    console.error('Database connection failed:', error);
+    res.status(503).json({ message: 'Database connection failed', error: error.message });
+  }
+};
 
 // CORS configuration for production
 const allowedOrigins = [
@@ -58,6 +69,9 @@ app.use(morgan('combined'));
 
 app.use(express.json());
 
+// Apply database middleware to API routes
+app.use('/api', dbMiddleware);
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
@@ -78,10 +92,12 @@ app.get('/', (req, res) => {
 
 // Health check
 app.get('/api/health', (req, res) => {
+  const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   res.json({ 
     status: 'ok',
     timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV || 'development'
+    env: process.env.NODE_ENV || 'development',
+    database: dbStatus
   });
 });
 
