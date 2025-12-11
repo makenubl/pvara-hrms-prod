@@ -1,11 +1,11 @@
 import axios from 'axios';
 import logger from '../utils/logger.js';
 
-// Get API base URL - use environment variable or fallback
+// Get API base URL - use environment variable or fallback to backend URL
 const API_BASE_URL = 
   typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:5000'
-    : (import.meta.env.VITE_API_URL || 'https://pvara-hrms-prod-backend.vercel.app');
+    : (import.meta.env.VITE_API_URL || 'https://pvara-hrms-prod.vercel.app');
 
 logger.info('🌐 API Base URL configured', { url: API_BASE_URL });
 
