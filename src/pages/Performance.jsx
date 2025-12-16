@@ -3,6 +3,7 @@ import { Star, Target, TrendingUp, Plus, Filter } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table, Input, Stat } from '../components/UI';
 import { PERFORMANCE_RATING, APPRAISAL_STATUS } from '../utils/constants';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const PerformanceManagement = () => {
@@ -19,12 +20,9 @@ const PerformanceManagement = () => {
     setLoading(true);
     try {
       console.log('📤 Fetching performance data...');
-      const response = await fetch('http://localhost:5000/api/performance/reviews', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      setAppraisals(data || []);
-      console.log('✅ Performance data loaded:', data?.length || 0);
+      const response = await api.get('/performance/reviews').catch(() => ({ data: [] }));
+      setAppraisals(response.data || []);
+      console.log('✅ Performance data loaded:', response.data?.length || 0);
     } catch (err) {
       console.error('❌ Error fetching performance data:', err);
       setError(err.message);

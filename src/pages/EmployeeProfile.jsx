@@ -285,7 +285,10 @@ const EmployeeProfile = () => {
 
   const handleDownloadDocument = async (documentId) => {
     try {
-      window.open(`http://localhost:5000/api/profile/documents/${documentId}/download`, '_blank');
+      const baseUrl = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5001' 
+        : 'https://pvara-hrms-prod.vercel.app';
+      window.open(`${baseUrl}/api/profile/documents/${documentId}/download`, '_blank');
     } catch (error) {
       console.error('Failed to download document:', error);
       toast.error('Failed to download document');

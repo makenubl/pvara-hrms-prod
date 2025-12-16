@@ -3,6 +3,7 @@ import { Briefcase, MapPin, Users, Clock, Plus, Eye, Heart } from 'lucide-react'
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
 import { RECRUITMENT_STATUS, APPLICANT_STATUS } from '../utils/constants';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const Recruitment = () => {
@@ -20,17 +21,13 @@ const Recruitment = () => {
     setLoading(true);
     try {
       console.log('📤 Fetching recruitment data...');
-      const jobsResponse = await fetch('http://localhost:5000/api/recruitment/jobs', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const applicantsResponse = await fetch('http://localhost:5000/api/recruitment/applicants', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const jobsData = await jobsResponse.json();
-      const applicantsData = await applicantsResponse.json();
-      setJobs(jobsData || []);
-      setApplicants(applicantsData || []);
-      console.log('✅ Recruitment data loaded:', jobsData?.length || 0, 'jobs,', applicantsData?.length || 0, 'applicants');
+      const [jobsResponse, applicantsResponse] = await Promise.all([
+        api.get('/recruitment/jobs').catch(() => ({ data: [] })),
+        api.get('/recruitment/applicants').catch(() => ({ data: [] }))
+      ]);
+      setJobs(jobsResponse.data || []);
+      setApplicants(applicantsResponse.data || []);
+      console.log('✅ Recruitment data loaded:', jobsResponse.data?.length || 0, 'jobs,', applicantsResponse.data?.length || 0, 'applicants');
     } catch (err) {
       console.error('❌ Error fetching recruitment data:', err);
       setError(err.message);

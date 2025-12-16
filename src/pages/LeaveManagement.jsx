@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table, Modal, Input } from '../components/UI';
 import { LEAVE_TYPES } from '../utils/constants';
 import approvalService from '../services/approvalService';
+import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 
 const LeaveManagement = () => {
@@ -38,14 +39,13 @@ const LeaveManagement = () => {
   const fetchLeaveBalance = async () => {
     try {
       console.log('📤 Fetching leave balance...');
-      const response = await fetch('http://localhost:5000/api/leaves/balance', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      setLeaveBalance(data);
+      const response = await api.get('/leaves/balance');
+      const data = response.data;
       
       // Fallback mock leave balance if API returns empty
-      if (!data) {
+      if (data && Object.keys(data).length > 0) {
+        setLeaveBalance(data);
+      } else {
         setLeaveBalance({
           annual: { used: 12, balance: 8, total: 20 },
           sick: { used: 2, balance: 8, total: 10 },

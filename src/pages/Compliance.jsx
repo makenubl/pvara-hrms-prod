@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Shield, CheckCircle, AlertCircle, Clock, Plus, Download } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const Compliance = () => {
@@ -19,19 +20,14 @@ const Compliance = () => {
     setLoading(true);
     try {
       console.log('📤 Fetching compliance data...');
-      const policiesResponse = await fetch('http://localhost:5000/api/compliance', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const auditsResponse = await fetch('http://localhost:5000/api/compliance/audits', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
+      const [policiesResponse, auditsResponse] = await Promise.all([
+        api.get('/compliance').catch(() => ({ data: [] })),
+        api.get('/compliance/audits').catch(() => ({ data: [] }))
+      ]);
       
-      const policiesData = await policiesResponse.json();
-      const auditsData = await auditsResponse.json();
-      
-      setPolicies(policiesData || []);
-      setAudits(auditsData || []);
-      console.log('✅ Compliance data loaded:', policiesData?.length || 0, 'policies,', auditsData?.length || 0, 'audits');
+      setPolicies(policiesResponse.data || []);
+      setAudits(auditsResponse.data || []);
+      console.log('✅ Compliance data loaded:', policiesResponse.data?.length || 0, 'policies,', auditsResponse.data?.length || 0, 'audits');
     } catch (err) {
       console.error('❌ Error fetching compliance data:', err);
       setError(err.message || 'Failed to load compliance data');

@@ -3,6 +3,7 @@ import { Calendar, Clock, CheckCircle, XCircle, AlertCircle, Plus } from 'lucide
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
 import { getMonthlyCalendar, formatDate } from '../utils/dateUtils';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const Attendance = () => {
@@ -20,18 +21,13 @@ const Attendance = () => {
     setLoading(true);
     try {
       console.log('📤 Fetching attendance data...');
-      const response = await fetch('http://localhost:5000/api/attendance/records', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      const data = await response.json();
-      setAttendanceRecords(data);
-      
-      // Fallback mock data for development
-      setAttendanceRecords(data || []);
-      console.log('✅ Attendance data loaded:', data?.length || 0);
+      const response = await api.get('/attendance/records');
+      setAttendanceRecords(response.data || []);
+      console.log('✅ Attendance data loaded:', response.data?.length || 0);
     } catch (err) {
       console.error('❌ Error fetching attendance data:', err);
       setError(err.message);
+      setAttendanceRecords([]);
     } finally {
       setLoading(false);
     }
