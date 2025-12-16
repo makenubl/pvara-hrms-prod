@@ -1,4 +1,4 @@
 // Vercel Serverless Function Entry Point
-const app = require('../backend/api/index');
+import app from '../backend/api/index.js';
 
-module.exports = app;
+export default app;
