@@ -15,6 +15,7 @@ import approvalRoutes from '../routes/approvals.js';
 import payrollRoutes from '../routes/payrolls.js';
 import kpiRoutes from '../routes/kpi.js';
 import profileRoutes from '../routes/profile.js';
+import departmentRoutes from '../routes/departments.js';
 
 const app = express();
 
@@ -80,6 +81,7 @@ app.use('/api/approvals', approvalRoutes);
 app.use('/api/payrolls', payrollRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/departments', departmentRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
