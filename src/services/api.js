@@ -1,12 +1,22 @@
 import axios from 'axios';
 import logger from '../utils/logger.js';
 
-// Get API base URL - prefer env, fallback to localhost, else current origin
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== 'undefined' && window.location.hostname === 'localhost'
-    ? 'http://localhost:5001'
-    : window.location.origin);
+// Get API base URL - prefer env, fallback to localhost, else main Vercel deployment
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost') {
+      return 'http://localhost:5001';
+    }
+    // For any production domain (pvara.team, vercel.app), use the main API
+    return 'https://pvara-hrms-prod.vercel.app';
+  }
+  return 'https://pvara-hrms-prod.vercel.app';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 logger.info('🌐 API Base URL configured', { url: API_BASE_URL });
 
