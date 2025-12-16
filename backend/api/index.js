@@ -34,35 +34,46 @@ const dbMiddleware = async (req, res, next) => {
   }
 };
 
-// CORS configuration for production - handle all pvara.team variants
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    // Define allowed patterns
-    const isAllowed = 
-      origin === 'https://pvara.team' ||
-      origin === 'https://www.pvara.team' ||
-      origin === 'http://localhost:5173' ||
-      origin === 'http://localhost:5174' ||
-      origin === 'http://localhost:5175' ||
-      origin === 'http://localhost:3000' ||
-      origin.endsWith('.vercel.app') ||
-      origin.endsWith('.pvara.team');
-    
-    if (isAllowed) {
-      // Return the exact origin that made the request
-      callback(null, origin);
-    } else {
-      console.warn(`❌ CORS blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Helper to check if origin is allowed
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  return (
+    origin === 'https://pvara.team' ||
+    origin === 'https://www.pvara.team' ||
+    origin === 'http://localhost:5173' ||
+    origin === 'http://localhost:5174' ||
+    origin === 'http://localhost:5175' ||
+    origin === 'http://localhost:3000' ||
+    origin.endsWith('.vercel.app') ||
+    origin.endsWith('.pvara.team')
+  );
+};
+
+// Handle preflight OPTIONS requests explicitly BEFORE other middleware
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (isOriginAllowed(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.status(204).send();
+  } else {
+    res.status(403).send('CORS not allowed');
+  }
+});
+
+// CORS middleware for all requests
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (isOriginAllowed(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  next();
+});
 
 // HTTP request logging
 app.use(morgan('combined'));
