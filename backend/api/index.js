@@ -34,31 +34,26 @@ const dbMiddleware = async (req, res, next) => {
   }
 };
 
-// CORS configuration for production
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:3000',
-  'https://pvara.team',
-  'https://www.pvara.team',
-  'https://pvara-hrms-prod.vercel.app',
-  'https://pvara-hrms-prod-frontend.vercel.app',
-  'https://pvara-hrms-prod-git-main-makenubls-projects.vercel.app',
-  process.env.FRONTEND_URL
-].filter(Boolean);
-
+// CORS configuration for production - handle all pvara.team variants
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
     
-    // Check if origin is in allowed list or ends with vercel.app or pvara.team
-    if (allowedOrigins.includes(origin) || 
-        origin.endsWith('.vercel.app') || 
-        origin.endsWith('.pvara.team') ||
-        origin === 'https://pvara.team' ||
-        origin === 'https://www.pvara.team') {
-      callback(null, origin); // Return the actual origin
+    // Define allowed patterns
+    const isAllowed = 
+      origin === 'https://pvara.team' ||
+      origin === 'https://www.pvara.team' ||
+      origin === 'http://localhost:5173' ||
+      origin === 'http://localhost:5174' ||
+      origin === 'http://localhost:5175' ||
+      origin === 'http://localhost:3000' ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.pvara.team');
+    
+    if (isAllowed) {
+      // Return the exact origin that made the request
+      callback(null, origin);
     } else {
       console.warn(`❌ CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
