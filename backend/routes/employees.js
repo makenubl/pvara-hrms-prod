@@ -74,8 +74,8 @@ router.post('/', authenticate, authorize(['hr', 'admin']), async (req, res) => {
       password: hashedPassword,
       phone,
       department,
-      position,
-      reportsTo: reportsTo || null,
+      position: position || null,
+      reportsTo: reportsTo && reportsTo.trim() !== '' ? reportsTo : null,
       role: role || 'employee',
       joiningDate,
       salary: Number(salary) || 0,
@@ -104,6 +104,14 @@ router.put('/:id', authenticate, authorize(['hr', 'admin']), async (req, res) =>
 
     if (req.body.salary !== undefined) {
       req.body.salary = Number(req.body.salary) || 0;
+    }
+
+    // Handle empty strings for ObjectId fields
+    if (req.body.reportsTo === '' || req.body.reportsTo === undefined) {
+      req.body.reportsTo = null;
+    }
+    if (req.body.position === '' || req.body.position === undefined) {
+      req.body.position = null;
     }
 
     const employee = await User.findByIdAndUpdate(
