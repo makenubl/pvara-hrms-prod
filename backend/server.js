@@ -41,10 +41,11 @@ app.use(cors({
     
     // Check if origin is in allowed list or ends with vercel.app or pvara.team
     if (allowedOrigins.includes(origin) || 
-        origin.endsWith('vercel.app') || 
-        origin.endsWith('pvara.team')) {
-      logger.info(`✅ CORS allowed for origin: ${origin}`);
-      callback(null, true);
+        origin.endsWith('.vercel.app') || 
+        origin.endsWith('.pvara.team') ||
+        origin === 'https://pvara.team' ||
+        origin === 'https://www.pvara.team') {
+      callback(null, origin); // Return the actual origin
     } else {
       logger.warn(`❌ CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));

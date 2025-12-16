@@ -35,6 +35,7 @@ const dbMiddleware = async (req, res, next) => {
 // CORS configuration for production
 const allowedOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'http://localhost:3000',
   'https://pvara.team',
   'https://www.pvara.team',
@@ -51,10 +52,11 @@ app.use(cors({
     
     // Check if origin is in allowed list or ends with vercel.app or pvara.team
     if (allowedOrigins.includes(origin) || 
-        origin.endsWith('vercel.app') || 
-        origin.endsWith('pvara.team')) {
-      console.log(`✅ CORS allowed for origin: ${origin}`);
-      callback(null, true);
+        origin.endsWith('.vercel.app') || 
+        origin.endsWith('.pvara.team') ||
+        origin === 'https://pvara.team' ||
+        origin === 'https://www.pvara.team') {
+      callback(null, origin); // Return the actual origin
     } else {
       console.warn(`❌ CORS blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
