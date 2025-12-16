@@ -104,10 +104,10 @@ const Employees = () => {
       key: '_id',
       label: 'Employee ID',
       render: (value, row) => {
-        const avatar = row.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${row.firstName}`;
+        const avatar = row.profileImage || row.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${row.firstName}`;
         return (
           <div className="flex items-center gap-2">
-            <img src={avatar} alt={`${row.firstName} ${row.lastName}`} className="w-8 h-8 rounded-full" />
+            <img src={avatar} alt={`${row.firstName} ${row.lastName}`} className="w-8 h-8 rounded-full object-cover" />
             <span>{value?.slice(0, 8) || 'N/A'}</span>
           </div>
         );
@@ -289,9 +289,9 @@ const Employees = () => {
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <img
-                  src={selectedEmployee.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedEmployee.firstName}`}
+                  src={selectedEmployee.profileImage || selectedEmployee.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedEmployee.firstName}`}
                   alt={`${selectedEmployee.firstName} ${selectedEmployee.lastName}`}
-                  className="w-16 h-16 rounded-lg"
+                  className="w-16 h-16 rounded-lg object-cover"
                 />
                 <div>
                   <h3 className="text-lg font-bold text-gray-800">{selectedEmployee.firstName} {selectedEmployee.lastName}</h3>

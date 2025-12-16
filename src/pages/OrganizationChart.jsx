@@ -98,9 +98,9 @@ const OrganizationChart = () => {
 
           {/* Employee Avatar */}
           <img
-            src={employee.avatar || `https://ui-avatars.com/api/?name=${employee.firstName}+${employee.lastName}&background=0D8ABC&color=fff`}
+            src={employee.profileImage || employee.avatar || `https://ui-avatars.com/api/?name=${employee.firstName}+${employee.lastName}&background=0D8ABC&color=fff`}
             alt={`${employee.firstName} ${employee.lastName}`}
-            className="w-12 h-12 rounded-full border-2 border-white/20"
+            className="w-12 h-12 rounded-full border-2 border-white/20 object-cover"
           />
 
           {/* Employee Info */}

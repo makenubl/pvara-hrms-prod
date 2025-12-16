@@ -202,7 +202,8 @@ const EmployeeProfile = () => {
         },
       });
       
-      setProfileImage(`http://localhost:5000${response.data.photoUrl}`);
+      // Photo is returned as Base64 data URL, use directly
+      setProfileImage(response.data.photoUrl);
       toast.success('Profile picture updated!');
       
       // Reload profile

@@ -11,25 +11,11 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Configure multer for profile photo uploads
-const photoStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/photos');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'photo-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
+// Configure multer for profile photo uploads (memory storage for serverless)
 const photoUpload = multer({
-  storage: photoStorage,
+  storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit for photos
+    fileSize: 2 * 1024 * 1024, // 2MB limit for photos (Base64 doubles size)
   },
   fileFilter: function (req, file, cb) {
     const allowedTypes = /jpeg|jpg|png/;
@@ -237,24 +223,17 @@ router.post('/photo', authenticate, photoUpload.single('photo'), async (req, res
       return res.status(400).json({ message: 'Please upload a file' });
     }
     
-    const photoUrl = `/uploads/photos/${req.file.filename}`;
+    // Convert buffer to Base64 data URL for serverless compatibility
+    const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
     
-    // Delete old photo if exists
+    // Update user with new photo (Base64 stored directly in DB)
     const user = await User.findById(req.user._id);
-    if (user.profileImage) {
-      const oldPhotoPath = path.join(__dirname, '..', user.profileImage);
-      if (fs.existsSync(oldPhotoPath)) {
-        fs.unlinkSync(oldPhotoPath);
-      }
-    }
-    
-    // Update user with new photo
-    user.profileImage = photoUrl;
+    user.profileImage = base64Image;
     await user.save();
     
     res.json({ 
       message: 'Profile photo uploaded successfully', 
-      photoUrl 
+      photoUrl: base64Image 
     });
   } catch (error) {
     console.error('Upload photo error:', error);
