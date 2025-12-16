@@ -5,8 +5,9 @@ import MainLayout from '../layouts/MainLayout';
 import AddEmployeeModal from '../components/AddEmployeeModal';
 import EditEmployeeModal from '../components/EditEmployeeModal';
 import { Card, Button, Badge, Table, Input, Modal } from '../components/UI';
-import { EMPLOYEE_STATUS, DEPARTMENTS } from '../utils/constants';
+import { EMPLOYEE_STATUS } from '../utils/constants';
 import employeeService from '../services/employeeService';
+import departmentService from '../services/departmentService';
 
 const Employees = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,11 +19,22 @@ const Employees = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [departments, setDepartments] = useState([]);
 
-  // Fetch employees on mount
+  // Fetch employees and departments on mount
   useEffect(() => {
     fetchEmployees();
+    fetchDepartments();
   }, []);
+
+  const fetchDepartments = async () => {
+    try {
+      const data = await departmentService.getAll();
+      setDepartments(data || []);
+    } catch (error) {
+      console.error('Failed to fetch departments:', error);
+    }
+  };
 
   const fetchEmployees = async () => {
     setLoading(true);
@@ -198,9 +210,9 @@ const Employees = () => {
               className="px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-400 text-white transition-all"
             >
               <option value="" className="bg-slate-900">All Departments</option>
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept} className="bg-slate-900">
-                  {dept}
+              {departments.map((dept) => (
+                <option key={dept._id} value={dept.name} className="bg-slate-900">
+                  {dept.name}
                 </option>
               ))}
             </select>

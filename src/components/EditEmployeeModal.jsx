@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Phone, Users, Briefcase, UserCog } from 'lucide-react';
-import { DEPARTMENTS } from '../utils/constants';
 import employeeService from '../services/employeeService';
 import positionService from '../services/positionService';
+import departmentService from '../services/departmentService';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
@@ -25,15 +25,31 @@ const EditEmployeeModal = ({ isOpen, onClose, onSuccess, employee }) => {
   const [loadingPositions, setLoadingPositions] = useState(false);
   const [supervisors, setSupervisors] = useState([]);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
+  const [departments, setDepartments] = useState([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const { user } = useAuthStore();
 
-  // Fetch positions and supervisors on mount
+  // Fetch positions, supervisors, and departments on mount
   useEffect(() => {
     if (isOpen) {
       fetchPositions();
       fetchSupervisors();
+      fetchDepartments();
     }
   }, [isOpen]);
+
+  const fetchDepartments = async () => {
+    setLoadingDepartments(true);
+    try {
+      const data = await departmentService.getAll();
+      console.log('✅ Departments fetched for edit:', data);
+      setDepartments(data || []);
+    } catch (error) {
+      console.error('❌ Failed to fetch departments:', error);
+    } finally {
+      setLoadingDepartments(false);
+    }
+  };
 
   const fetchPositions = async () => {
     setLoadingPositions(true);
@@ -257,16 +273,19 @@ const EditEmployeeModal = ({ isOpen, onClose, onSuccess, employee }) => {
                 name="department"
                 value={formData.department}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 bg-white/5 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all ${
+                disabled={loadingDepartments}
+                className={`w-full px-4 py-3 bg-white/5 border rounded-lg text-white focus:outline-none focus:ring-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   errors.department
                     ? 'border-red-500/50 focus:ring-red-400'
                     : 'border-white/10 focus:ring-cyan-400 focus:border-cyan-400/50'
                 }`}
               >
-                <option value="" className="bg-slate-900">Select Department</option>
-                {DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept} className="bg-slate-900">
-                    {dept}
+                <option value="" className="bg-slate-900">
+                  {loadingDepartments ? 'Loading departments...' : 'Select Department'}
+                </option>
+                {departments.map((dept) => (
+                  <option key={dept._id} value={dept.name} className="bg-slate-900">
+                    {dept.name}
                   </option>
                 ))}
               </select>
