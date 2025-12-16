@@ -72,19 +72,8 @@ export const DESIGNATION_LEVELS = {
   EXECUTIVE: 'executive',
 };
 
-// Department
-export const DEPARTMENTS = [
-  'Human Resources',
-  'Finance',
-  'Operations',
-  'Marketing',
-  'Sales',
-  'Technology',
-  'Product',
-  'Customer Support',
-  'Legal',
-  'Compliance',
-];
+// NOTE: Departments are now fetched dynamically from the database via departmentService.getAll()
+// See src/services/departmentService.js
 
 // Payroll Frequency
 export const PAYROLL_FREQUENCY = {
