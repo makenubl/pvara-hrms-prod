@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PVARA HRMS - Product Overview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .card-gradient {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(59, 130, 246, 0.1));
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white">
+    <!-- Print Button -->
+    <div class="no-print fixed top-4 right-4 z-50 flex gap-2">
+        <button onclick="window.print()" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-lg font-semibold transition-all">
+            📄 Export as PDF
+        </button>
+        <a href="https://pvara.team" target="_blank" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 rounded-lg font-semibold transition-all">
+            🚀 Open Portal
+        </a>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="min-h-screen flex items-center justify-center p-8 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+        <div class="text-center max-w-4xl">
+            <div class="mb-8">
+                <div class="inline-flex items-center gap-3 bg-slate-800/50 px-6 py-3 rounded-full border border-cyan-500/30 mb-6">
+                    <span class="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></span>
+                    <span class="text-cyan-400 font-medium">Live at pvara.team</span>
+                </div>
+            </div>
+            
+            <h1 class="text-6xl md:text-7xl font-black mb-6">
+                <span class="gradient-text">PVARA HRMS</span>
+            </h1>
+            
+            <p class="text-2xl text-slate-300 mb-4">
+                Pakistan Virtual Assets Regulatory Authority
+            </p>
+            
+            <p class="text-xl text-slate-400 mb-12 max-w-2xl mx-auto">
+                A comprehensive Human Resource Management System designed for modern government organizations
+            </p>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+                <div class="stat-card rounded-2xl p-6 text-center">
+                    <p class="text-4xl font-black text-cyan-400">23</p>
+                    <p class="text-slate-400 text-sm mt-1">Active Users</p>
+                </div>
+                <div class="stat-card rounded-2xl p-6 text-center">
+                    <p class="text-4xl font-black text-emerald-400">15</p>
+                    <p class="text-slate-400 text-sm mt-1">Departments</p>
+                </div>
+                <div class="stat-card rounded-2xl p-6 text-center">
+                    <p class="text-4xl font-black text-purple-400">20</p>
+                    <p class="text-slate-400 text-sm mt-1">Positions</p>
+                </div>
+                <div class="stat-card rounded-2xl p-6 text-center">
+                    <p class="text-4xl font-black text-amber-400">12+</p>
+                    <p class="text-slate-400 text-sm mt-1">Modules</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Page Break for PDF -->
+    <div class="page-break"></div>
+
+    <!-- Features Grid -->
+    <section class="py-16 px-8 bg-slate-900">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4">
+                <span class="gradient-text">Core Features</span>
+            </h2>
+            <p class="text-slate-400 text-center mb-12 max-w-2xl mx-auto">
+                Everything you need to manage your organization's human resources efficiently
+            </p>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Feature 1 -->
+                <div class="card-gradient rounded-2xl p-6 border border-cyan-500/20">
+                    <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">👥</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Employee Management</h3>
+                    <p class="text-slate-400 text-sm">Complete employee directory with profiles, documents, and organizational hierarchy visualization.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="card-gradient rounded-2xl p-6 border border-emerald-500/20">
+                    <div class="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">📊</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Executive Dashboard</h3>
+                    <p class="text-slate-400 text-sm">Real-time overview of projects, tasks, department health, and organization-wide KPIs for leadership.</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="card-gradient rounded-2xl p-6 border border-purple-500/20">
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">📋</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Task & Project Tracking</h3>
+                    <p class="text-slate-400 text-sm">Create projects, assign tasks to employees, track progress with deadlines and status updates.</p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="card-gradient rounded-2xl p-6 border border-amber-500/20">
+                    <div class="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">🏢</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Department Management</h3>
+                    <p class="text-slate-400 text-sm">Create and manage departments, assign employees, track department-wise performance.</p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="card-gradient rounded-2xl p-6 border border-rose-500/20">
+                    <div class="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">📅</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Leave Management</h3>
+                    <p class="text-slate-400 text-sm">Apply for leaves, track balances, approval workflows, and leave history management.</p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="card-gradient rounded-2xl p-6 border border-blue-500/20">
+                    <div class="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">⏰</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Attendance Tracking</h3>
+                    <p class="text-slate-400 text-sm">Daily attendance records, work hours tracking, and attendance reports.</p>
+                </div>
+
+                <!-- Feature 7 -->
+                <div class="card-gradient rounded-2xl p-6 border border-teal-500/20">
+                    <div class="w-12 h-12 bg-teal-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">💰</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Payroll System</h3>
+                    <p class="text-slate-400 text-sm">Salary management, payslip generation, and financial reporting capabilities.</p>
+                </div>
+
+                <!-- Feature 8 -->
+                <div class="card-gradient rounded-2xl p-6 border border-indigo-500/20">
+                    <div class="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">📈</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Performance Reviews</h3>
+                    <p class="text-slate-400 text-sm">KPI tracking, goal setting, performance evaluations, and feedback management.</p>
+                </div>
+
+                <!-- Feature 9 -->
+                <div class="card-gradient rounded-2xl p-6 border border-pink-500/20">
+                    <div class="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">🔐</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Role-Based Access</h3>
+                    <p class="text-slate-400 text-sm">Admin, Manager, and Employee roles with customized permissions and views.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Page Break for PDF -->
+    <div class="page-break"></div>
+
+    <!-- Departments Section -->
+    <section class="py-16 px-8 bg-slate-950">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4">
+                <span class="gradient-text">PVARA Departments</span>
+            </h2>
+            <p class="text-slate-400 text-center mb-12">15 departments configured in the system</p>
+
+            <div class="grid md:grid-cols-3 gap-4">
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                            <span>👔</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">Chairman Secretariat</p>
+                            <p class="text-slate-400 text-xs">Executive Office</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                            <span>⚖️</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">Team Law, Rules & Coordination</p>
+                            <p class="text-slate-400 text-xs">Legal & Regulatory</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                            <span>📜</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">Team Licensing & Regulation</p>
+                            <p class="text-slate-400 text-xs">Compliance</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-amber-500/20 rounded-lg flex items-center justify-center">
+                            <span>👁️</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">Enforcement & Vigilance</p>
+                            <p class="text-slate-400 text-xs">Monitoring</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-rose-500/20 rounded-lg flex items-center justify-center">
+                            <span>💵</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">Procurement & Accounts</p>
+                            <p class="text-slate-400 text-xs">Finance</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                            <span>👥</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">Admin & HR</p>
+                            <p class="text-slate-400 text-xs">Human Resources</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-teal-500/20 rounded-lg flex items-center justify-center">
+                            <span>💻</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">IT & Software Functions</p>
+                            <p class="text-slate-400 text-xs">Technology</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center">
+                            <span>📊</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">Strategy & Planning</p>
+                            <p class="text-slate-400 text-xs">Strategic</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-pink-500/20 rounded-lg flex items-center justify-center">
+                            <span>🤝</span>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white">International Coordination</p>
+                            <p class="text-slate-400 text-xs">External Affairs</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Page Break for PDF -->
+    <div class="page-break"></div>
+
+    <!-- Users Section -->
+    <section class="py-16 px-8 bg-slate-900">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4">
+                <span class="gradient-text">System Users</span>
+            </h2>
+            <p class="text-slate-400 text-center mb-12">23 PVARA team members with access to the portal</p>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Admin Users -->
+                <div class="bg-gradient-to-br from-amber-500/20 to-orange-500/20 rounded-xl p-5 border border-amber-500/30">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-amber-500/30 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👑</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Bilal Saqib</p>
+                            <p class="text-amber-300 text-xs">Chairperson</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-300 text-sm">bilal.saqib@pvara.gov.pk</p>
+                    <span class="inline-block mt-2 px-2 py-1 bg-amber-500/20 text-amber-300 text-xs rounded-full">Admin</span>
+                </div>
+
+                <div class="bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl p-5 border border-cyan-500/30">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-cyan-500/30 rounded-full flex items-center justify-center">
+                            <span class="text-xl">⚙️</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Ahmad Raza</p>
+                            <p class="text-cyan-300 text-xs">System Admin</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-300 text-sm">ahmad.raza@pvara.gov.pk</p>
+                    <span class="inline-block mt-2 px-2 py-1 bg-cyan-500/20 text-cyan-300 text-xs rounded-full">Admin</span>
+                </div>
+
+                <!-- Team Members -->
+                <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Adnan Nazir</p>
+                            <p class="text-slate-400 text-xs">Joint Secretary</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm">adnan.nazir@pvara.gov.pk</p>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Sadaqat Ali</p>
+                            <p class="text-slate-400 text-xs">Director to Chairperson</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm">sadaqat.ali@pvara.gov.pk</p>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Sumera Azam</p>
+                            <p class="text-slate-400 text-xs">SSP, Director FIA</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm">sumera.azam@pvara.gov.pk</p>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Faisal Idrees</p>
+                            <p class="text-slate-400 text-xs">Deputy Secretary</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm">faisal.idrees@pvara.gov.pk</p>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Salman Yousafi</p>
+                            <p class="text-slate-400 text-xs">Deputy Secretary</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm">salman.yousafi@pvara.gov.pk</p>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Najia Obaid</p>
+                            <p class="text-slate-400 text-xs">Additional Director SECP</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm">najia.obaid@pvara.gov.pk</p>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 bg-slate-700 rounded-full flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">Khurram Bashir</p>
+                            <p class="text-slate-400 text-xs">Software Engineer, NITB</p>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-sm">khurram.bashir@pvara.gov.pk</p>
+                </div>
+            </div>
+
+            <div class="mt-8 text-center">
+                <p class="text-slate-400">+ 14 more team members</p>
+                <p class="text-slate-500 text-sm mt-2">All users login with password: <code class="bg-slate-800 px-2 py-1 rounded">123</code></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Page Break for PDF -->
+    <div class="page-break"></div>
+
+    <!-- How to Use Section -->
+    <section class="py-16 px-8 bg-slate-950">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4">
+                <span class="gradient-text">How to Use</span>
+            </h2>
+            <p class="text-slate-400 text-center mb-12">Step-by-step guide to get started</p>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Step 1 -->
+                <div class="flex gap-4">
+                    <div class="flex-shrink-0 w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center font-bold text-xl">1</div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Access the Portal</h3>
+                        <p class="text-slate-400">Visit <span class="text-cyan-400">pvara.team</span> in your browser</p>
+                        <div class="mt-3 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                            <p class="text-slate-300 text-sm">Alternative: pvara-hrms-prod.vercel.app</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="flex gap-4">
+                    <div class="flex-shrink-0 w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center font-bold text-xl">2</div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Login</h3>
+                        <p class="text-slate-400 mb-3">Enter your PVARA email and password</p>
+                        <div class="p-4 bg-slate-800/50 rounded-lg border border-slate-700 space-y-2">
+                            <p class="text-slate-300 text-sm"><span class="text-slate-500">Email:</span> your.name@pvara.gov.pk</p>
+                            <p class="text-slate-300 text-sm"><span class="text-slate-500">Password:</span> 123</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="flex gap-4">
+                    <div class="flex-shrink-0 w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center font-bold text-xl">3</div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Explore Dashboard</h3>
+                        <p class="text-slate-400">After login, you'll see your personalized dashboard with:</p>
+                        <ul class="mt-3 space-y-2 text-slate-300 text-sm">
+                            <li>• Your profile and tasks</li>
+                            <li>• Leave balance and requests</li>
+                            <li>• Announcements and updates</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="flex gap-4">
+                    <div class="flex-shrink-0 w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center font-bold text-xl">4</div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-2">Navigate Modules</h3>
+                        <p class="text-slate-400">Use the sidebar to access different modules:</p>
+                        <ul class="mt-3 space-y-2 text-slate-300 text-sm">
+                            <li>• <span class="text-cyan-400">Employees</span> - View directory</li>
+                            <li>• <span class="text-cyan-400">My Tasks</span> - Manage assignments</li>
+                            <li>• <span class="text-cyan-400">Leave</span> - Apply for leave</li>
+                            <li>• <span class="text-cyan-400">Profile</span> - Update your info</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Admin Guide -->
+    <section class="py-16 px-8 bg-slate-900">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4">
+                <span class="gradient-text">Admin Guide</span>
+            </h2>
+            <p class="text-slate-400 text-center mb-12">Special features available to administrators</p>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="bg-slate-800/50 rounded-xl p-6 border border-amber-500/30">
+                    <div class="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">👑</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Executive Dashboard</h3>
+                    <p class="text-slate-400 text-sm mb-3">Access the Chairman's overview at <span class="text-amber-400">/chairman</span></p>
+                    <ul class="space-y-1 text-slate-300 text-xs">
+                        <li>• View all projects & tasks</li>
+                        <li>• Create new projects</li>
+                        <li>• Monitor department health</li>
+                        <li>• Track organization KPIs</li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-6 border border-cyan-500/30">
+                    <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">⚙️</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Settings & Organization</h3>
+                    <p class="text-slate-400 text-sm mb-3">Manage via <span class="text-cyan-400">Settings → Organization</span></p>
+                    <ul class="space-y-1 text-slate-300 text-xs">
+                        <li>• Add/Edit departments</li>
+                        <li>• Create positions</li>
+                        <li>• Set up reporting hierarchy</li>
+                        <li>• Configure approval flows</li>
+                    </ul>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-6 border border-emerald-500/30">
+                    <div class="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <span class="text-2xl">➕</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Employee Management</h3>
+                    <p class="text-slate-400 text-sm mb-3">Full CRUD via <span class="text-emerald-400">Employees</span> page</p>
+                    <ul class="space-y-1 text-slate-300 text-xs">
+                        <li>• Add new employees</li>
+                        <li>• Edit employee details</li>
+                        <li>• Assign departments & roles</li>
+                        <li>• View organization chart</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Page Break for PDF -->
+    <div class="page-break"></div>
+
+    <!-- Tech Stack -->
+    <section class="py-16 px-8 bg-slate-950">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-4">
+                <span class="gradient-text">Technology Stack</span>
+            </h2>
+            <p class="text-slate-400 text-center mb-12">Built with modern, scalable technologies</p>
+
+            <div class="grid md:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-cyan-500/30">
+                        <span class="text-3xl">⚛️</span>
+                    </div>
+                    <h3 class="font-bold text-white">React 19</h3>
+                    <p class="text-slate-400 text-sm">Frontend Framework</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-emerald-500/30">
+                        <span class="text-3xl">🟢</span>
+                    </div>
+                    <h3 class="font-bold text-white">Node.js</h3>
+                    <p class="text-slate-400 text-sm">Backend Runtime</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-green-500/30">
+                        <span class="text-3xl">🍃</span>
+                    </div>
+                    <h3 class="font-bold text-white">MongoDB</h3>
+                    <p class="text-slate-400 text-sm">Database</p>
+                </div>
+
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto bg-slate-800 rounded-2xl flex items-center justify-center mb-4 border border-purple-500/30">
+                        <span class="text-3xl">▲</span>
+                    </div>
+                    <h3 class="font-bold text-white">Vercel</h3>
+                    <p class="text-slate-400 text-sm">Hosting & Deployment</p>
+                </div>
+            </div>
+
+            <div class="mt-12 grid md:grid-cols-2 gap-6">
+                <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
+                    <h3 class="font-bold text-white mb-3">Frontend Technologies</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-cyan-500/20 text-cyan-300 rounded-full text-sm">React 19.2</span>
+                        <span class="px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-sm">Vite 7.2</span>
+                        <span class="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-sm">TailwindCSS</span>
+                        <span class="px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-sm">Zustand</span>
+                        <span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-sm">React Router</span>
+                        <span class="px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full text-sm">Axios</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800/50 rounded-xl p-6 border border-slate-700">
+                    <h3 class="font-bold text-white mb-3">Backend Technologies</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-sm">Express.js</span>
+                        <span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-sm">MongoDB Atlas</span>
+                        <span class="px-3 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-sm">JWT Auth</span>
+                        <span class="px-3 py-1 bg-orange-500/20 text-orange-300 rounded-full text-sm">Mongoose</span>
+                        <span class="px-3 py-1 bg-pink-500/20 text-pink-300 rounded-full text-sm">Multer</span>
+                        <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-sm">bcrypt</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact & Support -->
+    <section class="py-16 px-8 bg-gradient-to-br from-cyan-500/10 to-purple-500/10">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-4xl font-bold mb-4">
+                <span class="gradient-text">Ready to Get Started?</span>
+            </h2>
+            <p class="text-slate-400 mb-8 text-lg">Access the PVARA HRMS portal now</p>
+
+            <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
+                <a href="https://pvara.team" target="_blank" class="px-8 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-xl font-bold text-lg transition-all transform hover:scale-105">
+                    🚀 Open PVARA HRMS
+                </a>
+                <a href="https://pvara.team/login" target="_blank" class="px-8 py-4 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl font-bold text-lg transition-all">
+                    🔐 Login Now
+                </a>
+            </div>
+
+            <div class="mt-12 p-6 bg-slate-800/50 rounded-2xl border border-slate-700 inline-block">
+                <p class="text-slate-400 text-sm mb-2">For technical support, contact:</p>
+                <p class="text-cyan-400 font-medium">ahmad.raza@pvara.gov.pk</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-8 px-8 bg-slate-950 border-t border-slate-800">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <p class="text-slate-400 text-sm">© 2025 PVARA HRMS. All rights reserved.</p>
+                <p class="text-slate-500 text-xs mt-1">Pakistan Virtual Assets Regulatory Authority</p>
+            </div>
+            <div class="text-slate-500 text-sm">
+                Document generated: December 17, 2025
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
