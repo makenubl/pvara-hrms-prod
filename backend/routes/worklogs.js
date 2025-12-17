@@ -1,7 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import Worklog from '../models/Worklog.js';
-import auth from '../middleware/auth.js';
+import { authenticate as auth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -193,7 +193,7 @@ router.get('/summary/:userId', auth, async (req, res) => {
     const summary = await Worklog.aggregate([
       {
         $match: {
-          user: mongoose.Types.ObjectId(req.params.userId),
+          user: new mongoose.Types.ObjectId(req.params.userId),
           date: { $gte: start, $lte: end }
         }
       },
