@@ -5,7 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import employeeService from '../services/employeeService';
 import projectService from '../services/projectService';
 import taskService from '../services/taskService';
-import { format } from 'date-fns';
+import api from '../services/api';
+import { format, startOfWeek, endOfWeek, isWithinInterval, differenceInDays } from 'date-fns';
 import {
   Building2,
   Users,
@@ -16,6 +17,21 @@ import {
   TrendingUp,
   Plus,
   X,
+  Target,
+  AlertCircle,
+  Calendar,
+  Flag,
+  ChevronRight,
+  Star,
+  Zap,
+  Shield,
+  ArrowRight,
+  Edit2,
+  Trash2,
+  Eye,
+  MessageSquare,
+  Award,
+  Activity,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -25,13 +41,15 @@ const ChairmanOverview = () => {
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [highlights, setHighlights] = useState([]);
   const [date, setDate] = useState(new Date());
-  const [projectFilter, setProjectFilter] = useState('all');
-  const [projectSort, setProjectSort] = useState('progress');
-  const [selectedProject, setSelectedProject] = useState(null);
-  const [taskFilter, setTaskFilter] = useState('all');
-  const [taskSort, setTaskSort] = useState('deadline');
+  
+  // Modal states
   const [showAddProject, setShowAddProject] = useState(false);
+  const [showAddHighlight, setShowAddHighlight] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [activeTab, setActiveTab] = useState('projects');
+  
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
@@ -39,7 +57,18 @@ const ChairmanOverview = () => {
     startDate: '',
     endDate: '',
     priority: 'medium',
-    budget: { allocated: 0, spent: 0, currency: 'PKR' }
+    status: 'planning',
+    budget: { allocated: 0, spent: 0, currency: 'PKR' },
+    milestones: []
+  });
+
+  const [newHighlight, setNewHighlight] = useState({
+    type: 'achievement',
+    title: '',
+    description: '',
+    department: '',
+    priority: 'medium',
+    dueDate: '',
   });
 
   useEffect(() => {
@@ -62,6 +91,42 @@ const ChairmanOverview = () => {
       setEmployees(emps || []);
       setProjects(projs || []);
       setTasks(tsks || []);
+      
+      // Load highlights from API or use mock data
+      try {
+        const highlightsRes = await api.get('/api/highlights');
+        setHighlights(highlightsRes.data || []);
+      } catch {
+        // Mock highlights for demo
+        setHighlights([
+          {
+            _id: '1',
+            type: 'achievement',
+            title: 'VASP Licensing Framework Approved',
+            description: 'Successfully completed the regulatory framework for Virtual Asset Service Providers licensing',
+            department: 'Team Licensing & Regulation',
+            date: new Date().toISOString(),
+          },
+          {
+            _id: '2',
+            type: 'showstopper',
+            title: 'Budget Approval Pending for IT Infrastructure',
+            description: 'Requires Chairperson approval for PKR 15M IT infrastructure upgrade',
+            department: 'IT & Software Functions',
+            priority: 'critical',
+            date: new Date().toISOString(),
+          },
+          {
+            _id: '3',
+            type: 'milestone',
+            title: 'International Coordination Meeting - Dec 25',
+            description: 'FATF compliance review meeting scheduled with international partners',
+            department: 'International Coordination',
+            dueDate: '2025-12-25',
+            date: new Date().toISOString(),
+          },
+        ]);
+      }
     } catch (err) {
       console.error('ChairmanOverview: data load error', err);
     } finally {
@@ -69,6 +134,89 @@ const ChairmanOverview = () => {
     }
   };
 
+  // ===== WEEK CALCULATIONS =====
+  const weekStart = startOfWeek(new Date());
+  const weekEnd = endOfWeek(new Date());
+
+  const weekAchievements = highlights.filter(h => 
+    h.type === 'achievement' && 
+    isWithinInterval(new Date(h.date), { start: weekStart, end: weekEnd })
+  );
+
+  const upcomingMilestones = projects
+    .flatMap(p => (p.milestones || []).map(m => ({ ...m, projectName: p.name, projectId: p._id })))
+    .filter(m => !m.completed && new Date(m.dueDate) > new Date())
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+    .slice(0, 5);
+
+  // Add milestone type highlights
+  const milestoneHighlights = highlights.filter(h => h.type === 'milestone' && h.dueDate);
+  const allMilestones = [
+    ...upcomingMilestones,
+    ...milestoneHighlights.map(h => ({ name: h.title, dueDate: h.dueDate, projectName: h.department }))
+  ].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)).slice(0, 5);
+
+  const showstoppers = highlights.filter(h => h.type === 'showstopper' || h.priority === 'critical');
+  const supportNeeded = highlights.filter(h => h.type === 'support-needed');
+
+  // ===== DEPARTMENT CALCULATIONS =====
+  const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
+  
+  const deptData = departments.map(dept => {
+    const deptEmps = employees.filter(e => e.department === dept);
+    const deptProjects = projects.filter(p => p.department === dept);
+    const deptTasks = tasks.filter(t => deptEmps.some(e => e._id === t.assignedTo));
+    const deptHighlights = highlights.filter(h => h.department === dept);
+    
+    const completedTasks = deptTasks.filter(t => t.status === 'completed').length;
+    const totalTasks = deptTasks.length;
+    const productivity = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
+    const blockedTasks = deptTasks.filter(t => t.status === 'blocked').length;
+    const overdueTasks = deptTasks.filter(t => 
+      new Date(t.deadline) < new Date() && t.status !== 'completed'
+    ).length;
+    
+    const needsSupport = deptHighlights.filter(h => 
+      h.type === 'showstopper' || h.type === 'support-needed'
+    );
+    
+    return {
+      name: dept,
+      employees: deptEmps.length,
+      projects: deptProjects.length,
+      tasks: totalTasks,
+      completedTasks,
+      productivity,
+      blockedTasks,
+      overdueTasks,
+      needsSupport,
+      status: blockedTasks > 0 || overdueTasks > 2 ? 'needs-attention' : 
+              productivity < 50 ? 'warning' : 'healthy',
+    };
+  }).sort((a, b) => b.needsSupport.length - a.needsSupport.length || b.employees - a.employees);
+
+  // Filter departments that need support
+  const deptsNeedingSupport = deptData.filter(d => d.needsSupport.length > 0 || d.status === 'needs-attention');
+
+  // ===== PROJECT CALCULATIONS =====
+  const projectStats = {
+    total: projects.length,
+    onTrack: projects.filter(p => p.status === 'on-track').length,
+    atRisk: projects.filter(p => p.status === 'at-risk' || p.status === 'delayed').length,
+    completed: projects.filter(p => p.status === 'completed').length,
+  };
+
+  // ===== TASK CALCULATIONS =====
+  const taskStats = {
+    total: tasks.length,
+    completed: tasks.filter(t => t.status === 'completed').length,
+    inProgress: tasks.filter(t => t.status === 'in-progress').length,
+    blocked: tasks.filter(t => t.status === 'blocked').length,
+    overdue: tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'completed').length,
+  };
+
+  // ===== HANDLERS =====
   const handleCreateProject = async (e) => {
     e.preventDefault();
     try {
@@ -76,13 +224,9 @@ const ChairmanOverview = () => {
       toast.success('Project created successfully!');
       setShowAddProject(false);
       setNewProject({
-        name: '',
-        description: '',
-        department: '',
-        startDate: '',
-        endDate: '',
-        priority: 'medium',
-        budget: { allocated: 0, spent: 0, currency: 'PKR' }
+        name: '', description: '', department: '', startDate: '', endDate: '',
+        priority: 'medium', status: 'planning',
+        budget: { allocated: 0, spent: 0, currency: 'PKR' }, milestones: []
       });
       loadData();
     } catch (error) {
@@ -90,100 +234,34 @@ const ChairmanOverview = () => {
     }
   };
 
-  // ===== CALCULATIONS =====
-  const projectHealth = {
-    total: projects.length,
-    onTrack: projects.filter(p => p.status === 'on-track').length,
-    atRisk: projects.filter(p => p.status === 'at-risk' || p.status === 'delayed').length,
-    completed: projects.filter(p => p.status === 'completed').length,
-    planning: projects.filter(p => p.status === 'planning').length,
-  };
-  
-  const avgProgress = projects.length > 0 
-    ? Math.round(projects.reduce((sum, p) => sum + (p.progress || 0), 0) / projects.length)
-    : 0;
-  
-  const totalBudgetAllocated = projects.reduce((sum, p) => sum + (p.budget?.allocated || 0), 0);
-  const totalBudgetSpent = projects.reduce((sum, p) => sum + (p.budget?.spent || 0), 0);
-  const budgetUtilization = totalBudgetAllocated > 0 
-    ? Math.round((totalBudgetSpent / totalBudgetAllocated) * 100)
-    : 0;
-
-  // Task calculations
-  const taskStats = {
-    total: tasks.length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    inProgress: tasks.filter(t => t.status === 'in-progress').length,
-    completed: tasks.filter(t => t.status === 'completed').length,
-    blocked: tasks.filter(t => t.status === 'blocked').length,
-    overdue: tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'completed').length,
+  const handleCreateHighlight = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/api/highlights', newHighlight);
+      toast.success('Highlight added!');
+      setShowAddHighlight(false);
+      setNewHighlight({ type: 'achievement', title: '', description: '', department: '', priority: 'medium', dueDate: '' });
+      loadData();
+    } catch {
+      // Add to local state as fallback
+      setHighlights([...highlights, { ...newHighlight, _id: Date.now().toString(), date: new Date().toISOString() }]);
+      toast.success('Highlight added!');
+      setShowAddHighlight(false);
+      setNewHighlight({ type: 'achievement', title: '', description: '', department: '', priority: 'medium', dueDate: '' });
+    }
   };
 
-  // ===== FILTER & SORT =====
-  const filteredProjects = projects.filter(p => {
-    if (projectFilter === 'all') return true;
-    if (projectFilter === 'on-track') return p.status === 'on-track';
-    if (projectFilter === 'at-risk') return p.status === 'at-risk' || p.status === 'delayed';
-    if (projectFilter === 'completed') return p.status === 'completed';
-    return true;
-  });
-
-  const sortedProjects = [...filteredProjects].sort((a, b) => {
-    if (projectSort === 'progress') return (b.progress || 0) - (a.progress || 0);
-    if (projectSort === 'deadline') return new Date(a.endDate) - new Date(b.endDate);
-    return 0;
-  });
-
-  const filteredTasks = tasks.filter(t => {
-    if (taskFilter === 'all') return true;
-    return t.status === taskFilter;
-  });
-
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    if (taskSort === 'deadline') return new Date(a.deadline) - new Date(b.deadline);
-    if (taskSort === 'priority') {
-      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-      return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
-    }
-    return 0;
-  });
-
-  // ===== EMPLOYEE-LEVEL DATA =====
-  const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
-  const deptSummary = departments.map(dept => {
-    const deptEmps = employees.filter(e => e.department === dept);
-    const active = deptEmps.filter(e => e.status === 'active').length;
-    const onLeave = deptEmps.filter(e => e.status === 'on_leave').length;
-    const suspended = deptEmps.filter(e => e.status === 'suspended').length;
-    const healthScore = deptEmps.length > 0 ? Math.round((active / deptEmps.length) * 100) : 0;
-    return {
-      dept,
-      employees: deptEmps.length,
-      active,
-      onLeave,
-      suspended,
-      healthScore,
-      healthStatus: healthScore >= 90 ? 'excellent' : healthScore >= 70 ? 'good' : 'warning',
-    };
-  }).sort((a, b) => b.employees - a.employees);
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'on-track': return 'success';
-      case 'at-risk': case 'delayed': return 'warning';
-      case 'completed': return 'default';
-      case 'blocked': return 'danger';
-      default: return 'default';
-    }
+  const deleteHighlight = (id) => {
+    setHighlights(highlights.filter(h => h._id !== id));
+    toast.success('Highlight removed');
   };
 
   const getPriorityColor = (priority) => {
     switch(priority) {
-      case 'critical': return 'danger';
-      case 'high': return 'warning';
-      case 'medium': return 'default';
-      case 'low': return 'success';
-      default: return 'default';
+      case 'critical': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'high': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      case 'medium': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
     }
   };
 
@@ -200,509 +278,533 @@ const ChairmanOverview = () => {
   return (
     <MainLayout>
       <div className="space-y-8 pb-6">
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-fade-in">
+        {/* ===== HEADER ===== */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Executive Dashboard
+              Chairman's Dashboard
             </h1>
             <p className="text-slate-400 mt-2">{format(date, 'EEEE, MMMM d, yyyy • h:mm:ss a')}</p>
           </div>
-          <Button 
-            onClick={() => setShowAddProject(true)}
-            className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
-          >
-            <Plus className="mr-2" size={18} />
-            New Project
-          </Button>
+          <div className="flex gap-3">
+            <Button 
+              onClick={() => setShowAddHighlight(true)}
+              variant="outline"
+              className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
+            >
+              <Star className="mr-2" size={18} />
+              Add Highlight
+            </Button>
+            <Button 
+              onClick={() => setShowAddProject(true)}
+              className="bg-gradient-to-r from-cyan-500 to-blue-600"
+            >
+              <Plus className="mr-2" size={18} />
+              New Project
+            </Button>
+          </div>
         </div>
 
-        {/* ===== LEVEL 1: PROJECTS & MILESTONES ===== */}
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            <Rocket size={28} className="text-cyan-400" /> Projects & Milestones
+        {/* ===== LEVEL 1: EXECUTIVE SUMMARY (Top Priority) ===== */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Zap className="text-amber-400" size={24} />
+            Executive Summary - This Week
           </h2>
 
-          {/* Project Health KPIs */}
-          <Card className="backdrop-blur-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border-cyan-500/30 mb-6">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div>
-                <p className="text-slate-400 text-sm">Total Projects</p>
-                <p className="text-3xl font-black text-cyan-300 mt-1">{projectHealth.total}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">On Track</p>
-                <p className="text-3xl font-bold text-emerald-300 mt-1">{projectHealth.onTrack}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">At Risk</p>
-                <p className="text-3xl font-bold text-amber-300 mt-1">{projectHealth.atRisk}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Avg Progress</p>
-                <p className="text-3xl font-bold text-blue-300 mt-1">{avgProgress}%</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Budget Utilization</p>
-                <p className="text-3xl font-bold text-purple-300 mt-1">{budgetUtilization}%</p>
-              </div>
-            </div>
-          </Card>
-
-          {projects.length === 0 ? (
-            <Card className="backdrop-blur-xl bg-slate-900/50 border-white/10 p-8 text-center">
-              <Rocket size={48} className="text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-slate-400 mb-2">No Projects Yet</h3>
-              <p className="text-slate-500 mb-4">Create your first project to start tracking progress</p>
-              <Button onClick={() => setShowAddProject(true)}>
-                <Plus className="mr-2" size={18} />
-                Create Project
-              </Button>
-            </Card>
-          ) : (
-            <>
-              {/* Project Filters */}
-              <div className="flex flex-col md:flex-row gap-3 mb-6 items-start md:items-center justify-between">
-                <div className="flex gap-2 flex-wrap">
-                  <button
-                    onClick={() => setProjectFilter('all')}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      projectFilter === 'all'
-                        ? 'bg-cyan-500 text-white'
-                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-                    }`}
-                  >
-                    All ({projects.length})
-                  </button>
-                  <button
-                    onClick={() => setProjectFilter('on-track')}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      projectFilter === 'on-track'
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-                    }`}
-                  >
-                    On Track ({projectHealth.onTrack})
-                  </button>
-                  <button
-                    onClick={() => setProjectFilter('at-risk')}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                      projectFilter === 'at-risk'
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-                    }`}
-                  >
-                    At Risk ({projectHealth.atRisk})
-                  </button>
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Achievements This Week */}
+            <Card className="bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border-emerald-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-emerald-500/30 rounded-xl flex items-center justify-center">
+                  <CheckCircle2 className="text-emerald-400" size={22} />
                 </div>
-                <select
-                  value={projectSort}
-                  onChange={(e) => setProjectSort(e.target.value)}
-                  className="px-3 py-2 rounded-lg bg-slate-700/50 text-slate-300 text-sm border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                >
-                  <option value="progress">Sort by Progress</option>
-                  <option value="deadline">Sort by Deadline</option>
-                </select>
+                <div>
+                  <h3 className="font-bold text-white">Achievements</h3>
+                  <p className="text-emerald-400 text-sm">This Week</p>
+                </div>
+                <span className="ml-auto bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 py-1 rounded-full">
+                  {weekAchievements.length}
+                </span>
               </div>
-
-              {/* Project Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-                {sortedProjects.map((p) => (
-                  <Card
-                    key={p._id}
-                    className={`backdrop-blur-xl border cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] ${
-                      p.status === 'on-track'
-                        ? 'bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40'
-                        : p.status === 'completed'
-                        ? 'bg-blue-500/10 border-blue-500/20 hover:border-blue-500/40'
-                        : 'bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40'
-                    }`}
-                    onClick={() => setSelectedProject(p)}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="text-white font-bold text-lg">{p.name}</h3>
-                        <p className="text-slate-400 text-xs mt-1">{p.department || 'No Department'}</p>
-                        <p className="text-slate-500 text-sm mt-2 line-clamp-2">{p.description || 'No description'}</p>
-                      </div>
-                      <Badge variant={getStatusColor(p.status)}>
-                        {p.status === 'on-track' ? '✓ On Track' : p.status === 'completed' ? '✓ Done' : '⚠ ' + p.status}
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 mb-3 text-center text-xs">
-                      <div>
-                        <p className="text-slate-400">Progress</p>
-                        <p className="text-cyan-300 font-bold">{p.progress || 0}%</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Team</p>
-                        <p className="text-blue-300 font-bold">{p.team?.length || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Budget</p>
-                        <p className="text-purple-300 font-bold">
-                          {p.budget?.allocated > 0 ? Math.round((p.budget.spent / p.budget.allocated) * 100) : 0}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-slate-400">Blockers</p>
-                        <p className={`font-bold ${(p.blockers || 0) > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
-                          {p.blockers || 0}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden mb-2">
-                      <div
-                        className={`h-full transition-all ${
-                          p.status === 'on-track' || p.status === 'completed'
-                            ? 'bg-gradient-to-r from-emerald-400 to-cyan-400'
-                            : 'bg-gradient-to-r from-amber-400 to-orange-400'
-                        }`}
-                        style={{ width: `${p.progress || 0}%` }}
-                      />
-                    </div>
-                    <p className="text-slate-400 text-xs">
-                      📅 {p.startDate ? format(new Date(p.startDate), 'MMM dd') : 'TBD'} → {p.endDate ? format(new Date(p.endDate), 'MMM dd, yyyy') : 'TBD'}
-                    </p>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* ===== TASKS SECTION ===== */}
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            <CheckCircle2 size={28} className="text-emerald-400" /> Team Tasks
-          </h2>
-
-          {/* Task Stats */}
-          <Card className="backdrop-blur-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border-emerald-500/30 mb-6">
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-              <div>
-                <p className="text-slate-400 text-sm">Total Tasks</p>
-                <p className="text-3xl font-bold text-cyan-300 mt-1">{taskStats.total}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Pending</p>
-                <p className="text-3xl font-bold text-slate-300 mt-1">{taskStats.pending}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">In Progress</p>
-                <p className="text-3xl font-bold text-blue-300 mt-1">{taskStats.inProgress}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Completed</p>
-                <p className="text-3xl font-bold text-emerald-300 mt-1">{taskStats.completed}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Blocked</p>
-                <p className="text-3xl font-bold text-red-300 mt-1">{taskStats.blocked}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Overdue</p>
-                <p className="text-3xl font-bold text-amber-300 mt-1">{taskStats.overdue}</p>
-              </div>
-            </div>
-          </Card>
-
-          {tasks.length === 0 ? (
-            <Card className="backdrop-blur-xl bg-slate-900/50 border-white/10 p-8 text-center">
-              <Clock size={48} className="text-slate-600 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-slate-400 mb-2">No Tasks Assigned</h3>
-              <p className="text-slate-500">Tasks will appear here when assigned to team members</p>
-            </Card>
-          ) : (
-            <>
-              {/* Task Filters */}
-              <div className="flex flex-col md:flex-row gap-3 mb-4 items-start md:items-center justify-between">
-                <div className="flex gap-2 flex-wrap">
-                  {['all', 'pending', 'in-progress', 'completed', 'blocked'].map(status => (
-                    <button
-                      key={status}
-                      onClick={() => setTaskFilter(status)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        taskFilter === status
-                          ? 'bg-cyan-500 text-white'
-                          : 'bg-slate-700/50 text-slate-300 hover:bg-slate-600/50'
-                      }`}
+              <div className="space-y-3 max-h-52 overflow-y-auto">
+                {weekAchievements.length > 0 ? weekAchievements.map((a, i) => (
+                  <div key={i} className="p-3 bg-slate-900/50 rounded-lg border border-emerald-500/20 group relative">
+                    <button 
+                      onClick={() => deleteHighlight(a._id)}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
                     >
-                      {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
+                      <X size={14} className="text-red-400" />
                     </button>
-                  ))}
-                </div>
-                <select
-                  value={taskSort}
-                  onChange={(e) => setTaskSort(e.target.value)}
-                  className="px-3 py-2 rounded-lg bg-slate-700/50 text-slate-300 text-sm border border-slate-600/50"
-                >
-                  <option value="deadline">Sort by Deadline</option>
-                  <option value="priority">Sort by Priority</option>
-                </select>
+                    <p className="text-white font-medium text-sm pr-6">{a.title}</p>
+                    <p className="text-slate-400 text-xs mt-1">{a.department}</p>
+                  </div>
+                )) : (
+                  <div className="p-4 text-center">
+                    <p className="text-slate-500 text-sm mb-2">No achievements logged this week</p>
+                    <button 
+                      onClick={() => { setNewHighlight({ ...newHighlight, type: 'achievement' }); setShowAddHighlight(true); }}
+                      className="text-emerald-400 text-xs hover:underline"
+                    >
+                      + Add Achievement
+                    </button>
+                  </div>
+                )}
               </div>
-
-              {/* Task List */}
-              <div className="space-y-3">
-                {sortedTasks.slice(0, 10).map((t) => (
-                  <Card
-                    key={t._id}
-                    className={`backdrop-blur-xl border ${
-                      t.status === 'completed'
-                        ? 'bg-emerald-500/10 border-emerald-500/20'
-                        : t.status === 'blocked'
-                        ? 'bg-red-500/10 border-red-500/20'
-                        : 'bg-blue-500/10 border-blue-500/20'
-                    }`}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <p className="text-white font-bold">{t.title}</p>
-                          <Badge variant={getPriorityColor(t.priority)}>
-                            {(t.priority || 'medium').toUpperCase()}
-                          </Badge>
-                          <Badge variant={getStatusColor(t.status)}>
-                            {t.status === 'in-progress' ? '⏳ In Progress' : 
-                             t.status === 'blocked' ? '🚫 Blocked' : 
-                             t.status === 'completed' ? '✅ Completed' : '📋 Pending'}
-                          </Badge>
-                        </div>
-                        <p className="text-slate-400 text-sm mb-2">
-                          Assigned to: {t.assignedTo?.firstName} {t.assignedTo?.lastName} • {t.assignedTo?.department || 'No Dept'}
-                        </p>
-                        <div className="flex gap-4 text-xs text-slate-400">
-                          <span>📅 Due: {t.deadline ? format(new Date(t.deadline), 'MMM dd, yyyy') : 'No deadline'}</span>
-                          <span>📊 Progress: {t.progress || 0}%</span>
-                        </div>
-                      </div>
-                      <div className="w-24">
-                        <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                          <div 
-                            className={`h-full ${t.status === 'completed' ? 'bg-emerald-400' : 'bg-blue-400'}`}
-                            style={{ width: `${t.progress || 0}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* ===== DEPARTMENT PERFORMANCE ===== */}
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            <Building2 size={28} className="text-blue-400" /> Department Performance
-          </h2>
-          {deptSummary.length === 0 ? (
-            <Card className="backdrop-blur-xl bg-slate-900/50 border-white/10 p-8 text-center">
-              <Building2 size={48} className="text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400">No departments found</p>
             </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {deptSummary.map((d, idx) => (
-                <Card key={idx} className="backdrop-blur-xl bg-slate-900/50 border-white/10">
+
+            {/* Upcoming Milestones */}
+            <Card className="bg-gradient-to-br from-blue-500/20 to-indigo-500/10 border-blue-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-500/30 rounded-xl flex items-center justify-center">
+                  <Target className="text-blue-400" size={22} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Next Milestones</h3>
+                  <p className="text-blue-400 text-sm">Upcoming Deadlines</p>
+                </div>
+              </div>
+              <div className="space-y-3 max-h-52 overflow-y-auto">
+                {allMilestones.length > 0 ? allMilestones.map((m, i) => (
+                  <div key={i} className="p-3 bg-slate-900/50 rounded-lg border border-blue-500/20">
+                    <div className="flex justify-between items-start">
+                      <p className="text-white font-medium text-sm">{m.name}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        differenceInDays(new Date(m.dueDate), new Date()) <= 3 
+                          ? 'bg-red-500/20 text-red-400' 
+                          : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {differenceInDays(new Date(m.dueDate), new Date())}d
+                      </span>
+                    </div>
+                    <p className="text-slate-400 text-xs mt-1">{m.projectName}</p>
+                    <p className="text-slate-500 text-xs">{format(new Date(m.dueDate), 'MMM d, yyyy')}</p>
+                  </div>
+                )) : (
+                  <div className="p-4 text-center">
+                    <p className="text-slate-500 text-sm mb-2">No upcoming milestones</p>
+                    <button 
+                      onClick={() => { setNewHighlight({ ...newHighlight, type: 'milestone' }); setShowAddHighlight(true); }}
+                      className="text-blue-400 text-xs hover:underline"
+                    >
+                      + Add Milestone
+                    </button>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Showstoppers - Need Chairperson Support */}
+            <Card className="bg-gradient-to-br from-red-500/20 to-rose-500/10 border-red-500/30">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-10 h-10 bg-red-500/30 rounded-xl flex items-center justify-center ${showstoppers.length > 0 ? 'animate-pulse' : ''}`}>
+                  <AlertTriangle className="text-red-400" size={22} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">Showstoppers</h3>
+                  <p className="text-red-400 text-sm">Needs Your Support</p>
+                </div>
+                {showstoppers.length > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                    {showstoppers.length}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-3 max-h-52 overflow-y-auto">
+                {showstoppers.length > 0 ? showstoppers.map((s, i) => (
+                  <div key={i} className="p-3 bg-slate-900/50 rounded-lg border border-red-500/30 group relative">
+                    <button 
+                      onClick={() => deleteHighlight(s._id)}
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded transition-all"
+                    >
+                      <X size={14} className="text-red-400" />
+                    </button>
+                    <p className="text-white font-medium text-sm pr-6">{s.title}</p>
+                    <p className="text-slate-400 text-xs mt-1 line-clamp-2">{s.description}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-red-400 text-xs">{s.department}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded border ${getPriorityColor(s.priority)}`}>
+                        {s.priority || 'high'}
+                      </span>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="p-4 text-center">
+                    <CheckCircle2 className="mx-auto text-emerald-500 mb-2" size={32} />
+                    <p className="text-emerald-400 text-sm">All clear! No showstoppers</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* ===== LEVEL 2: DEPARTMENT-WISE SUPPORT REQUIRED ===== */}
+        <section>
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Building2 className="text-cyan-400" size={24} />
+            Department-wise Support Required
+          </h2>
+
+          {deptsNeedingSupport.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              {deptsNeedingSupport.map((dept, idx) => (
+                <Card 
+                  key={idx}
+                  className="bg-gradient-to-br from-amber-500/10 to-slate-900/50 border-amber-500/30"
+                >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-white font-bold">{d.dept || 'Unassigned'}</h3>
-                      <p className="text-slate-400 text-sm">{d.employees} employees</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center">
+                        <Shield className="text-amber-400" size={20} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-sm">{dept.name}</h3>
+                        <p className="text-slate-400 text-xs">{dept.employees} employees</p>
+                      </div>
                     </div>
-                    <Badge variant={d.healthStatus === 'excellent' ? 'success' : d.healthStatus === 'good' ? 'default' : 'warning'}>
-                      {d.healthScore}%
-                    </Badge>
+                    {dept.status === 'needs-attention' && (
+                      <span className="bg-red-500/20 text-red-400 text-[10px] px-2 py-1 rounded border border-red-500/30">
+                        Urgent
+                      </span>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 mb-3 text-center text-xs">
-                    <div>
-                      <p className="text-slate-400">Active</p>
-                      <p className="text-emerald-300 font-bold">{d.active}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400">On Leave</p>
-                      <p className="text-amber-300 font-bold">{d.onLeave}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400">Suspended</p>
-                      <p className="text-red-300 font-bold">{d.suspended}</p>
-                    </div>
-                  </div>
-
-                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full transition-all ${
-                        d.healthStatus === 'excellent'
-                          ? 'bg-gradient-to-r from-emerald-400 to-cyan-400'
-                          : d.healthStatus === 'good'
-                          ? 'bg-gradient-to-r from-blue-400 to-cyan-400'
-                          : 'bg-gradient-to-r from-amber-400 to-orange-400'
-                      }`}
-                      style={{ width: `${d.healthScore}%` }}
-                    />
+                  {/* Support items */}
+                  <div className="space-y-2">
+                    {dept.needsSupport.map((item, i) => (
+                      <div key={i} className="p-2 bg-slate-900/50 rounded-lg border border-amber-500/20">
+                        <p className="text-white text-xs font-medium">{item.title}</p>
+                        <p className="text-slate-500 text-[10px] mt-0.5 line-clamp-1">{item.description}</p>
+                      </div>
+                    ))}
+                    {dept.blockedTasks > 0 && (
+                      <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+                        <p className="text-red-400 text-xs">⚠️ {dept.blockedTasks} blocked task(s)</p>
+                      </div>
+                    )}
+                    {dept.overdueTasks > 0 && (
+                      <div className="p-2 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                        <p className="text-amber-400 text-xs">⏰ {dept.overdueTasks} overdue task(s)</p>
+                      </div>
+                    )}
                   </div>
                 </Card>
               ))}
             </div>
-          )}
-        </div>
-
-        {/* PROJECT DETAIL MODAL */}
-        {selectedProject && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-950 border-cyan-500/30">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h2 className="text-2xl font-bold text-white">{selectedProject.name}</h2>
-                  <p className="text-slate-400 text-sm mt-1">{selectedProject.department}</p>
-                </div>
-                <button
-                  onClick={() => setSelectedProject(null)}
-                  className="text-slate-400 hover:text-white p-1"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              <p className="text-slate-300 mb-4">{selectedProject.description || 'No description'}</p>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b border-white/10">
-                <div>
-                  <p className="text-slate-400 text-xs">Progress</p>
-                  <p className="text-2xl font-bold text-cyan-300">{selectedProject.progress || 0}%</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs">Team Size</p>
-                  <p className="text-2xl font-bold text-blue-300">{selectedProject.team?.length || 0}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs">Budget Used</p>
-                  <p className="text-2xl font-bold text-purple-300">
-                    {selectedProject.budget?.allocated > 0 
-                      ? Math.round((selectedProject.budget.spent / selectedProject.budget.allocated) * 100)
-                      : 0}%
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs">Blockers</p>
-                  <p className={`text-2xl font-bold ${(selectedProject.blockers || 0) > 0 ? 'text-red-300' : 'text-emerald-300'}`}>
-                    {selectedProject.blockers || 0}
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Timeline</p>
-                  <p className="text-white">
-                    {selectedProject.startDate ? format(new Date(selectedProject.startDate), 'MMM dd, yyyy') : 'TBD'} → 
-                    {selectedProject.endDate ? format(new Date(selectedProject.endDate), 'MMM dd, yyyy') : 'TBD'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Budget</p>
-                  <p className="text-white">
-                    {selectedProject.budget?.currency || 'PKR'} {((selectedProject.budget?.spent || 0) / 1000).toFixed(0)}K of {((selectedProject.budget?.allocated || 0) / 1000).toFixed(0)}K
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-xs mb-1">Status</p>
-                  <Badge variant={getStatusColor(selectedProject.status)}>
-                    {selectedProject.status || 'planning'}
-                  </Badge>
-                </div>
-              </div>
-
-              <Button onClick={() => setSelectedProject(null)} variant="secondary" className="w-full">
-                Close
-              </Button>
+          ) : (
+            <Card className="bg-slate-900/30 border-slate-700/50 p-6 text-center mb-6">
+              <CheckCircle2 className="mx-auto text-emerald-500 mb-2" size={40} />
+              <p className="text-emerald-400 font-medium">All Departments Operating Smoothly</p>
+              <p className="text-slate-500 text-sm mt-1">No departments currently require support</p>
             </Card>
-          </div>
-        )}
+          )}
 
-        {/* ADD PROJECT MODAL */}
-        {showAddProject && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <Card className="w-full max-w-lg bg-slate-950 border-cyan-500/30">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-white">Create New Project</h2>
-                <button onClick={() => setShowAddProject(false)} className="text-slate-400 hover:text-white">
-                  <X size={24} />
-                </button>
+          {/* All Departments Overview */}
+          <h3 className="text-lg font-semibold text-slate-300 mb-3">All Departments Status</h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {deptData.map((dept, idx) => (
+              <Card 
+                key={idx}
+                className={`transition-all hover:scale-[1.02] ${
+                  dept.status === 'needs-attention' 
+                    ? 'bg-red-500/5 border-red-500/20' 
+                    : dept.status === 'warning'
+                    ? 'bg-amber-500/5 border-amber-500/20'
+                    : 'bg-slate-900/30 border-slate-700/30'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium text-white text-sm truncate">{dept.name}</h4>
+                  <span className={`w-2 h-2 rounded-full ${
+                    dept.status === 'healthy' ? 'bg-emerald-500' :
+                    dept.status === 'warning' ? 'bg-amber-500' : 'bg-red-500'
+                  }`} />
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400">{dept.employees} staff</span>
+                  <span className="text-slate-400">{dept.projects} projects</span>
+                  <span className={`font-medium ${
+                    dept.productivity >= 70 ? 'text-emerald-400' :
+                    dept.productivity >= 50 ? 'text-amber-400' : 'text-red-400'
+                  }`}>{dept.productivity}%</span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* ===== LEVEL 3: DETAILED VIEW (Projects, Tasks, Team) ===== */}
+        <section>
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-4 mb-4 border-b border-slate-700/50">
+            <button
+              onClick={() => setActiveTab('projects')}
+              className={`pb-3 px-1 text-sm font-medium transition-all border-b-2 ${
+                activeTab === 'projects'
+                  ? 'text-cyan-400 border-cyan-400'
+                  : 'text-slate-400 border-transparent hover:text-white'
+              }`}
+            >
+              <Rocket className="inline mr-2" size={16} />
+              Projects ({projects.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('tasks')}
+              className={`pb-3 px-1 text-sm font-medium transition-all border-b-2 ${
+                activeTab === 'tasks'
+                  ? 'text-cyan-400 border-cyan-400'
+                  : 'text-slate-400 border-transparent hover:text-white'
+              }`}
+            >
+              <CheckCircle2 className="inline mr-2" size={16} />
+              All Tasks ({tasks.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('team')}
+              className={`pb-3 px-1 text-sm font-medium transition-all border-b-2 ${
+                activeTab === 'team'
+                  ? 'text-cyan-400 border-cyan-400'
+                  : 'text-slate-400 border-transparent hover:text-white'
+              }`}
+            >
+              <Users className="inline mr-2" size={16} />
+              Team ({employees.length})
+            </button>
+          </div>
+
+          {/* Projects Tab */}
+          {activeTab === 'projects' && (
+            <div className="space-y-4">
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-3xl font-black text-cyan-400">{projectStats.total}</p>
+                  <p className="text-slate-400 text-sm">Total Projects</p>
+                </Card>
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-3xl font-black text-emerald-400">{projectStats.onTrack}</p>
+                  <p className="text-slate-400 text-sm">On Track</p>
+                </Card>
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-3xl font-black text-amber-400">{projectStats.atRisk}</p>
+                  <p className="text-slate-400 text-sm">At Risk</p>
+                </Card>
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-3xl font-black text-purple-400">{projectStats.completed}</p>
+                  <p className="text-slate-400 text-sm">Completed</p>
+                </Card>
               </div>
 
-              <form onSubmit={handleCreateProject} className="space-y-4">
+              {/* Project List */}
+              <div className="bg-slate-900/30 rounded-xl border border-slate-700/50 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-slate-800/50">
+                      <tr className="text-left text-xs text-slate-400 uppercase">
+                        <th className="px-4 py-3">Project</th>
+                        <th className="px-4 py-3">Department</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Progress</th>
+                        <th className="px-4 py-3">Deadline</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700/50">
+                      {projects.map((project) => (
+                        <tr key={project._id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="text-white font-medium">{project.name}</p>
+                            <p className="text-slate-500 text-xs">{project.description?.substring(0, 40)}...</p>
+                          </td>
+                          <td className="px-4 py-3 text-slate-300 text-sm">{project.department}</td>
+                          <td className="px-4 py-3">
+                            <Badge variant={
+                              project.status === 'on-track' ? 'success' :
+                              project.status === 'at-risk' || project.status === 'delayed' ? 'warning' :
+                              project.status === 'completed' ? 'default' : 'default'
+                            }>
+                              {project.status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-cyan-500 rounded-full"
+                                  style={{ width: `${project.progress || 0}%` }}
+                                />
+                              </div>
+                              <span className="text-slate-400 text-xs">{project.progress || 0}%</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-slate-400 text-sm">
+                            {project.endDate ? format(new Date(project.endDate), 'MMM d, yyyy') : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {projects.length === 0 && (
+                  <div className="p-8 text-center text-slate-500">
+                    No projects yet. Click "New Project" to create one.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Tasks Tab */}
+          {activeTab === 'tasks' && (
+            <div className="space-y-4">
+              {/* Task Stats */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-2xl font-black text-cyan-400">{taskStats.total}</p>
+                  <p className="text-slate-400 text-sm">Total</p>
+                </Card>
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-2xl font-black text-emerald-400">{taskStats.completed}</p>
+                  <p className="text-slate-400 text-sm">Completed</p>
+                </Card>
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-2xl font-black text-blue-400">{taskStats.inProgress}</p>
+                  <p className="text-slate-400 text-sm">In Progress</p>
+                </Card>
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-2xl font-black text-red-400">{taskStats.blocked}</p>
+                  <p className="text-slate-400 text-sm">Blocked</p>
+                </Card>
+                <Card className="bg-slate-900/50 border-slate-700/50 p-4">
+                  <p className="text-2xl font-black text-amber-400">{taskStats.overdue}</p>
+                  <p className="text-slate-400 text-sm">Overdue</p>
+                </Card>
+              </div>
+
+              {/* Task List */}
+              <div className="bg-slate-900/30 rounded-xl border border-slate-700/50 divide-y divide-slate-700/50 max-h-[500px] overflow-y-auto">
+                {tasks.slice(0, 20).map((task) => {
+                  const assignee = employees.find(e => e._id === task.assignedTo);
+                  const isOverdue = new Date(task.deadline) < new Date() && task.status !== 'completed';
+                  return (
+                    <div key={task._id} className={`p-4 hover:bg-slate-800/30 transition-colors ${isOverdue ? 'bg-red-500/5' : ''}`}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-medium">{task.title}</p>
+                            {isOverdue && <span className="text-red-400 text-xs">⏰ Overdue</span>}
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                            <span>{assignee ? `${assignee.firstName} ${assignee.lastName}` : 'Unassigned'}</span>
+                            <span>•</span>
+                            <span>{task.deadline ? format(new Date(task.deadline), 'MMM d') : 'No deadline'}</span>
+                          </div>
+                        </div>
+                        <Badge variant={
+                          task.status === 'completed' ? 'success' :
+                          task.status === 'in-progress' ? 'default' :
+                          task.status === 'blocked' ? 'danger' : 'warning'
+                        }>
+                          {task.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+                {tasks.length === 0 && (
+                  <div className="p-8 text-center text-slate-500">
+                    No tasks found.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Team Tab */}
+          {activeTab === 'team' && (
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {employees.slice(0, 16).map((emp) => {
+                  const empTasks = tasks.filter(t => t.assignedTo === emp._id);
+                  const completed = empTasks.filter(t => t.status === 'completed').length;
+                  const blocked = empTasks.filter(t => t.status === 'blocked').length;
+                  return (
+                    <Card key={emp._id} className={`bg-slate-900/50 border-slate-700/50 ${blocked > 0 ? 'border-red-500/30' : ''}`}>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                          {emp.firstName?.[0]}{emp.lastName?.[0]}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium text-sm truncate">{emp.firstName} {emp.lastName}</p>
+                          <p className="text-slate-400 text-xs truncate">{emp.department}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between text-xs">
+                        <span className="text-slate-400">{empTasks.length} tasks</span>
+                        <span className="text-emerald-400">{completed} done</span>
+                        {blocked > 0 && <span className="text-red-400">{blocked} blocked</span>}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ===== ADD PROJECT MODAL ===== */}
+        {showAddProject && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-900">
+                <h2 className="text-xl font-bold text-white">Create New Project</h2>
+                <button onClick={() => setShowAddProject(false)} className="p-2 hover:bg-slate-800 rounded-lg">
+                  <X size={20} className="text-slate-400" />
+                </button>
+              </div>
+              <form onSubmit={handleCreateProject} className="p-6 space-y-4">
                 <div>
-                  <label className="text-slate-400 text-sm block mb-1">Project Name *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Project Name *</label>
                   <input
                     type="text"
                     value={newProject.name}
-                    onChange={(e) => setNewProject({...newProject, name: e.target.value})}
+                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="e.g., VASP Licensing Portal"
                     required
-                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    placeholder="Enter project name"
                   />
                 </div>
-
                 <div>
-                  <label className="text-slate-400 text-sm block mb-1">Description</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
                   <textarea
                     value={newProject.description}
-                    onChange={(e) => setNewProject({...newProject, description: e.target.value})}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white resize-none focus:ring-2 focus:ring-cyan-500"
                     rows={3}
-                    placeholder="Project description"
+                    placeholder="Brief description of the project objectives..."
                   />
                 </div>
-
-                <div>
-                  <label className="text-slate-400 text-sm block mb-1">Department</label>
-                  <select
-                    value={newProject.department}
-                    onChange={(e) => setNewProject({...newProject, department: e.target.value})}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  >
-                    <option value="">Select Department</option>
-                    {departments.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-slate-400 text-sm block mb-1">Start Date *</label>
-                    <input
-                      type="date"
-                      value={newProject.startDate}
-                      onChange={(e) => setNewProject({...newProject, startDate: e.target.value})}
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Department *</label>
+                    <select
+                      value={newProject.department}
+                      onChange={(e) => setNewProject({ ...newProject, department: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
                       required
-                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map((d, i) => (
+                        <option key={i} value={d}>{d}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="text-slate-400 text-sm block mb-1">End Date *</label>
-                    <input
-                      type="date"
-                      value={newProject.endDate}
-                      onChange={(e) => setNewProject({...newProject, endDate: e.target.value})}
-                      required
-                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-slate-400 text-sm block mb-1">Priority</label>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Priority</label>
                     <select
                       value={newProject.priority}
-                      onChange={(e) => setNewProject({...newProject, priority: e.target.value})}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      onChange={(e) => setNewProject({ ...newProject, priority: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
                     >
                       <option value="low">Low</option>
                       <option value="medium">Medium</option>
@@ -710,29 +812,139 @@ const ChairmanOverview = () => {
                       <option value="critical">Critical</option>
                     </select>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-slate-400 text-sm block mb-1">Budget (PKR)</label>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Start Date</label>
                     <input
-                      type="number"
-                      value={newProject.budget.allocated}
-                      onChange={(e) => setNewProject({
-                        ...newProject, 
-                        budget: {...newProject.budget, allocated: parseInt(e.target.value) || 0}
-                      })}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      placeholder="0"
+                      type="date"
+                      value={newProject.startDate}
+                      onChange={(e) => setNewProject({ ...newProject, startDate: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={newProject.endDate}
+                      onChange={(e) => setNewProject({ ...newProject, endDate: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
                     />
                   </div>
                 </div>
-
                 <div className="flex gap-3 pt-4">
-                  <Button type="submit" className="flex-1">Create Project</Button>
-                  <Button type="button" variant="secondary" onClick={() => setShowAddProject(false)} className="flex-1">
+                  <Button type="button" variant="outline" onClick={() => setShowAddProject(false)} className="flex-1">
                     Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600">
+                    Create Project
                   </Button>
                 </div>
               </form>
-            </Card>
+            </div>
+          </div>
+        )}
+
+        {/* ===== ADD HIGHLIGHT MODAL ===== */}
+        {showAddHighlight && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-lg">
+              <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white">Add Highlight for Chairman</h2>
+                <button onClick={() => setShowAddHighlight(false)} className="p-2 hover:bg-slate-800 rounded-lg">
+                  <X size={20} className="text-slate-400" />
+                </button>
+              </div>
+              <form onSubmit={handleCreateHighlight} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Highlight Type</label>
+                  <select
+                    value={newHighlight.type}
+                    onChange={(e) => setNewHighlight({ ...newHighlight, type: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                  >
+                    <option value="achievement">✅ Achievement (What we accomplished)</option>
+                    <option value="milestone">🎯 Upcoming Milestone (Key deadline)</option>
+                    <option value="showstopper">🚨 Showstopper (Needs Chairman's support)</option>
+                    <option value="support-needed">🛡️ Support Needed (Department request)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Title *</label>
+                  <input
+                    type="text"
+                    value={newHighlight.title}
+                    onChange={(e) => setNewHighlight({ ...newHighlight, title: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    placeholder={
+                      newHighlight.type === 'achievement' ? 'e.g., VASP Framework Completed' :
+                      newHighlight.type === 'milestone' ? 'e.g., FATF Review Meeting' :
+                      newHighlight.type === 'showstopper' ? 'e.g., Budget Approval Pending' :
+                      'e.g., Additional Manpower Required'
+                    }
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+                  <textarea
+                    value={newHighlight.description}
+                    onChange={(e) => setNewHighlight({ ...newHighlight, description: e.target.value })}
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white resize-none"
+                    rows={3}
+                    placeholder="Provide more details..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Department</label>
+                    <select
+                      value={newHighlight.department}
+                      onChange={(e) => setNewHighlight({ ...newHighlight, department: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map((d, i) => (
+                        <option key={i} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Priority</label>
+                    <select
+                      value={newHighlight.priority}
+                      onChange={(e) => setNewHighlight({ ...newHighlight, priority: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical - Urgent</option>
+                    </select>
+                  </div>
+                </div>
+                {(newHighlight.type === 'milestone') && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Due Date</label>
+                    <input
+                      type="date"
+                      value={newHighlight.dueDate}
+                      onChange={(e) => setNewHighlight({ ...newHighlight, dueDate: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white"
+                    />
+                  </div>
+                )}
+                <div className="flex gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setShowAddHighlight(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1 bg-gradient-to-r from-amber-500 to-orange-600">
+                    Add Highlight
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>
