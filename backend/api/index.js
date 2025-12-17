@@ -18,6 +18,7 @@ import profileRoutes from '../routes/profile.js';
 import departmentRoutes from '../routes/departments.js';
 import taskRoutes from '../routes/tasks.js';
 import projectRoutes from '../routes/projects.js';
+import worklogRoutes from '../routes/worklogs.js';
 
 const app = express();
 
@@ -94,6 +95,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/projects', projectRoutes);
+app.use('/api/worklogs', worklogRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

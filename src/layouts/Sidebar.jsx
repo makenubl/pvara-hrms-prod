@@ -17,6 +17,7 @@ import {
   UserCircle,
   Building2,
   CheckSquare,
+  Clock,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
@@ -34,6 +35,7 @@ const Sidebar = () => {
     { icon: Home, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'hr', 'manager', 'employee'] },
     { icon: BarChart3, label: 'Chairman Overview', path: '/chairman', roles: ['admin'] },
     { icon: CheckSquare, label: 'My Tasks', path: '/my-tasks', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: Clock, label: 'Work Log', path: '/worklog', roles: ['admin', 'hr', 'manager', 'employee'] },
     { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager'] },
     { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee'] },
     { icon: Calendar, label: 'Attendance', path: '/attendance', roles: ['admin', 'hr', 'manager', 'employee'] },

@@ -25,6 +25,7 @@ import OrganizationChart from './pages/OrganizationChart';
 import ChairmanOverview from './pages/ChairmanOverview';
 import ChangePassword from './pages/ChangePassword';
 import MyTasks from './pages/MyTasks';
+import Worklog from './pages/Worklog';
 
 // Role-based Dashboard Router
 const DashboardRouter = () => {
@@ -131,6 +132,10 @@ function App() {
         <Route
           path="/my-tasks"
           element={<ProtectedRoute><MyTasks /></ProtectedRoute>}
+        />
+        <Route
+          path="/worklog"
+          element={<ProtectedRoute><Worklog /></ProtectedRoute>}
         />
         <Route
           path="/change-password"
