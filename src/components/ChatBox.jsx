@@ -16,7 +16,7 @@ import {
 const EXECUTIVE_ROLES = ['chairman', 'executive', 'director', 'admin'];
 
 const ChatBox = () => {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -31,9 +31,11 @@ const ChatBox = () => {
   const inputRef = useRef(null);
   const pollInterval = useRef(null);
 
+  const isAuthenticated = !!token && !!user;
+
   // Load messages and unread count on mount
   useEffect(() => {
-    if (isAuthenticated && user) {
+    if (isAuthenticated) {
       loadUnreadCount();
       loadUsers();
       
@@ -185,7 +187,7 @@ const ChatBox = () => {
     setIsMinimized(false);
   };
 
-  if (!isAuthenticated || !user) return null;
+  if (!isAuthenticated) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
