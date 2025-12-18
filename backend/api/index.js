@@ -20,6 +20,7 @@ import taskRoutes from '../routes/tasks.js';
 import projectRoutes from '../routes/projects.js';
 import worklogRoutes from '../routes/worklogs.js';
 import highlightRoutes from '../routes/highlights.js';
+import chatRoutes from '../routes/chat.js';
 
 const app = express();
 
@@ -98,6 +99,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/worklogs', worklogRoutes);
 app.use('/api/highlights', highlightRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
