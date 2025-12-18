@@ -278,4 +278,80 @@ router.get('/stats/summary', authenticate, async (req, res) => {
   }
 });
 
+// Temporary seed endpoint - creates demo tasks if none exist
+router.post('/seed-demo', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    
+    const existingTasks = await Task.countDocuments({ company: req.user.company });
+    if (existingTasks > 0) {
+      return res.json({ message: 'Tasks already exist', count: existingTasks });
+    }
+    
+    const employees = await User.find({ company: req.user.company, role: { $ne: 'admin' } }).limit(4);
+    
+    const demoTasks = [
+      {
+        title: 'Complete Q4 Financial Report',
+        description: 'Prepare and finalize the quarterly financial report for board review.',
+        assignedTo: employees[0]?._id,
+        assignedBy: req.user._id,
+        project: 'TASK-2025-0002',
+        department: employees[0]?.department || 'Finance',
+        priority: 'high',
+        status: 'in-progress',
+        progress: 65,
+        deadline: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+        company: req.user.company,
+      },
+      {
+        title: 'Employee Training Program Setup',
+        description: 'Design the new employee onboarding training program.',
+        assignedTo: employees[1]?._id,
+        assignedBy: req.user._id,
+        project: 'TASK-2025-0003',
+        department: employees[1]?.department || 'HR',
+        priority: 'medium',
+        status: 'pending',
+        progress: 0,
+        deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        company: req.user.company,
+      },
+      {
+        title: 'Security Audit - Infrastructure Review',
+        description: 'Conduct comprehensive security audit of IT infrastructure.',
+        assignedTo: employees[2]?._id,
+        assignedBy: req.user._id,
+        project: 'TASK-2025-0004',
+        department: employees[2]?.department || 'IT',
+        priority: 'high',
+        status: 'in-progress',
+        progress: 40,
+        deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        company: req.user.company,
+      },
+      {
+        title: 'Client Proposal - Project Alpha',
+        description: 'Prepare detailed proposal for Project Alpha.',
+        assignedTo: employees[3]?._id || employees[0]?._id,
+        assignedBy: req.user._id,
+        project: 'TASK-2025-0005',
+        department: 'Operations',
+        priority: 'urgent',
+        status: 'in-progress',
+        progress: 80,
+        deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        company: req.user.company,
+      }
+    ];
+    
+    await Task.insertMany(demoTasks);
+    res.json({ message: 'Created demo tasks', count: demoTasks.length });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
