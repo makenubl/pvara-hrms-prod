@@ -31,7 +31,7 @@ const MyTasks = () => {
   const loadTasks = async () => {
     setLoading(true);
     try {
-      const filters = {};
+      const filters = { myTasks: true };
       if (filter !== 'all') filters.status = filter;
       
       const data = await taskService.getAll(filters);

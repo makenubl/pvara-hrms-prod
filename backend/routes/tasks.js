@@ -14,18 +14,22 @@ const isManager = (role) => MANAGER_ROLES.includes(role);
 // Get all tasks (with filters)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { status, assignedTo, project, priority, all } = req.query;
+    const { status, assignedTo, project, priority, all, myTasks } = req.query;
     const filter = { company: req.user.company };
 
+    // If myTasks=true, always filter by current user's ID (for "My Tasks" page)
+    if (myTasks === 'true') {
+      filter.assignedTo = req.user._id;
+    }
     // Manager roles can see all tasks, regular employees only their own
-    if (!isManager(req.user.role)) {
+    else if (!isManager(req.user.role)) {
       filter.assignedTo = req.user._id;
     } else if (assignedTo) {
       filter.assignedTo = assignedTo;
     }
 
     // If 'all' query param is set and user is manager, show all company tasks
-    if (all === 'true' && isManager(req.user.role)) {
+    if (all === 'true' && isManager(req.user.role) && myTasks !== 'true') {
       delete filter.assignedTo;
     }
 
