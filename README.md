@@ -67,3 +67,4 @@ npm run backend:dev      # Backend: http://localhost:5000
 ---
 
 **Made with ❤️ for efficient HR management**
+
