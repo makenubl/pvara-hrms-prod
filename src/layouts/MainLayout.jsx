@@ -1,6 +1,7 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import ChatBox from '../components/ChatBox';
 import { useAppStore } from '../store/appStore';
 
 const MainLayout = ({ children }) => {
@@ -32,6 +33,9 @@ const MainLayout = ({ children }) => {
           <div className="p-6">{children}</div>
         </main>
       </div>
+
+      {/* Floating Chat Box */}
+      <ChatBox />
     </div>
   );
 };

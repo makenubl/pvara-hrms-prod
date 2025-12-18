@@ -19,6 +19,7 @@ import departmentRoutes from './routes/departments.js';
 import projectRoutes from './routes/projects.js';
 import worklogRoutes from './routes/worklogs.js';
 import highlightRoutes from './routes/highlights.js';
+import chatRoutes from './routes/chat.js';
 
 dotenv.config();
 
@@ -91,6 +92,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/worklogs', worklogRoutes);
 app.use('/api/highlights', highlightRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Debug endpoint (remove in production)
 import { authenticate } from './middleware/auth.js';
