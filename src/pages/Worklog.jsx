@@ -53,7 +53,7 @@ const Worklog = () => {
   const fetchWorklogs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/worklogs', {
+      const response = await api.get('/worklogs', {
         params: { date: selectedDate, view: viewMode }
       });
       setWorklogs(response.data.worklogs || []);
@@ -135,10 +135,10 @@ const Worklog = () => {
     e.preventDefault();
     try {
       if (editingLog) {
-        await api.put(`/api/worklogs/${editingLog._id}`, formData);
+        await api.put(`/worklogs/${editingLog._id}`, formData);
         toast.success('Worklog updated successfully');
       } else {
-        await api.post('/api/worklogs', formData);
+        await api.post('/worklogs', formData);
         toast.success('Worklog added successfully');
       }
       setShowAddModal(false);
@@ -154,7 +154,7 @@ const Worklog = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this worklog entry?')) return;
     try {
-      await api.delete(`/api/worklogs/${id}`);
+      await api.delete(`/worklogs/${id}`);
       toast.success('Worklog deleted');
       fetchWorklogs();
     } catch (error) {

@@ -26,6 +26,7 @@ import ChairmanOverview from './pages/ChairmanOverview';
 import ChangePassword from './pages/ChangePassword';
 import MyTasks from './pages/MyTasks';
 import Worklog from './pages/Worklog';
+import TaskManagement from './pages/TaskManagement';
 
 // Role-based Dashboard Router
 const DashboardRouter = () => {
@@ -128,6 +129,10 @@ function App() {
         <Route
           path="/chairman"
           element={<ProtectedRoute allowedRoles={['admin']}><ChairmanOverview /></ProtectedRoute>}
+        />
+        <Route
+          path="/task-management"
+          element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TaskManagement /></ProtectedRoute>}
         />
         <Route
           path="/my-tasks"

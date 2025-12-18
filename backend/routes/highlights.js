@@ -64,10 +64,14 @@ router.post('/', auth, async (req, res) => {
   try {
     const { type, title, description, department, priority, dueDate } = req.body;
     
-    // Only admins and managers can create highlights
-    if (!['admin', 'manager', 'hr'].includes(req.user.role)) {
-      return res.status(403).json({ message: 'Not authorized to create highlights' });
+    // Admins, managers, HR, and executives can create highlights
+    const allowedRoles = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod'];
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: `Not authorized. Your role: ${req.user.role}. Allowed: ${allowedRoles.join(', ')}` });
     }
+    
+    // Get user ID (could be id or _id depending on JWT structure)
+    const userId = req.user.id || req.user._id || req.user.userId;
     
     const highlight = new Highlight({
       type,
@@ -76,7 +80,7 @@ router.post('/', auth, async (req, res) => {
       department,
       priority: priority || 'medium',
       dueDate: dueDate ? new Date(dueDate) : undefined,
-      createdBy: req.user.id
+      createdBy: userId
     });
     
     await highlight.save();
@@ -98,8 +102,9 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Highlight not found' });
     }
     
-    // Only admins can update
-    if (!['admin', 'manager', 'hr'].includes(req.user.role)) {
+    // Roles that can update highlights
+    const allowedRoles = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod'];
+    if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ message: 'Not authorized' });
     }
     

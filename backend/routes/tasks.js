@@ -5,17 +5,28 @@ import { authenticate, authorizeAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Roles that can manage tasks (view all, create, assign)
+const MANAGER_ROLES = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod', 'teamlead'];
+
+// Check if user has manager-level access
+const isManager = (role) => MANAGER_ROLES.includes(role);
+
 // Get all tasks (with filters)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { status, assignedTo, project, priority } = req.query;
+    const { status, assignedTo, project, priority, all } = req.query;
     const filter = { company: req.user.company };
 
-    // Non-admin users can only see their own tasks
-    if (req.user.role !== 'admin') {
+    // Manager roles can see all tasks, regular employees only their own
+    if (!isManager(req.user.role)) {
       filter.assignedTo = req.user._id;
     } else if (assignedTo) {
       filter.assignedTo = assignedTo;
+    }
+
+    // If 'all' query param is set and user is manager, show all company tasks
+    if (all === 'true' && isManager(req.user.role)) {
+      delete filter.assignedTo;
     }
 
     if (status) filter.status = status;
@@ -46,8 +57,9 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check if user has access to this task
-    if (req.user.role !== 'admin' && task.assignedTo._id.toString() !== req.user._id.toString()) {
+    // Check if user has access to this task (managers can view all, employees only their own)
+    const assignedToId = task.assignedTo?._id?.toString() || task.assignedTo?.toString();
+    if (!isManager(req.user.role) && assignedToId !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -57,9 +69,14 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Create new task (admin only)
-router.post('/', authenticate, authorizeAdmin, async (req, res) => {
+// Create new task (managers can assign tasks)
+router.post('/', authenticate, async (req, res) => {
   try {
+    // Check if user has manager-level permissions
+    if (!isManager(req.user.role)) {
+      return res.status(403).json({ message: 'Only managers can create tasks' });
+    }
+
     const {
       title,
       description,
@@ -78,12 +95,17 @@ router.post('/', authenticate, authorizeAdmin, async (req, res) => {
       return res.status(404).json({ message: 'Assigned user not found' });
     }
 
+    // Generate a task ID (e.g., TASK-2024-001)
+    const taskCount = await Task.countDocuments({ company: req.user.company });
+    const year = new Date().getFullYear();
+    const taskId = `TASK-${year}-${String(taskCount + 1).padStart(4, '0')}`;
+
     const task = new Task({
       title,
       description,
       assignedTo,
       assignedBy: req.user._id,
-      project,
+      project: project || taskId,
       department: department || assignedUser.department,
       priority: priority || 'medium',
       status: status || 'pending',
@@ -113,9 +135,9 @@ router.put('/:id', authenticate, async (req, res) => {
 
     // Check permissions
     const isAssignee = task.assignedTo.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
+    const hasManagerAccess = isManager(req.user.role);
 
-    if (!isAssignee && !isAdmin) {
+    if (!isAssignee && !hasManagerAccess) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -133,8 +155,8 @@ router.put('/:id', authenticate, async (req, res) => {
       blocker,
     } = req.body;
 
-    // Admin can update all fields
-    if (isAdmin) {
+    // Managers can update all fields
+    if (hasManagerAccess) {
       if (title !== undefined) task.title = title;
       if (description !== undefined) task.description = description;
       if (assignedTo !== undefined) task.assignedTo = assignedTo;
@@ -145,7 +167,7 @@ router.put('/:id', authenticate, async (req, res) => {
       if (capacity !== undefined) task.capacity = capacity;
     }
 
-    // Both admin and assignee can update status, progress, and blocker
+    // Both managers and assignee can update status, progress, and blocker
     if (status !== undefined) task.status = status;
     if (progress !== undefined) task.progress = progress;
     if (blocker !== undefined) task.blocker = blocker;
@@ -174,9 +196,9 @@ router.post('/:id/updates', authenticate, async (req, res) => {
 
     // Check permissions
     const isAssignee = task.assignedTo.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
+    const hasManagerAccess = isManager(req.user.role);
 
-    if (!isAssignee && !isAdmin) {
+    if (!isAssignee && !hasManagerAccess) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -204,9 +226,13 @@ router.post('/:id/updates', authenticate, async (req, res) => {
   }
 });
 
-// Delete task (admin only)
-router.delete('/:id', authenticate, authorizeAdmin, async (req, res) => {
+// Delete task (managers only)
+router.delete('/:id', authenticate, async (req, res) => {
   try {
+    if (!isManager(req.user.role)) {
+      return res.status(403).json({ message: 'Only managers can delete tasks' });
+    }
+    
     const task = await Task.findByIdAndDelete(req.params.id);
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -218,8 +244,12 @@ router.delete('/:id', authenticate, authorizeAdmin, async (req, res) => {
 });
 
 // Get tasks statistics
-router.get('/stats/summary', authenticate, authorizeAdmin, async (req, res) => {
+router.get('/stats/summary', authenticate, async (req, res) => {
   try {
+    if (!isManager(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
     const stats = await Task.aggregate([
       { $match: { company: req.user.company } },
       {

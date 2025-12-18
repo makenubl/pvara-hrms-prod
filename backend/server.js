@@ -16,6 +16,9 @@ import profileRoutes from './routes/profile.js';
 import kpiRoutes from './routes/kpi.js';
 import taskRoutes from './routes/tasks.js';
 import departmentRoutes from './routes/departments.js';
+import projectRoutes from './routes/projects.js';
+import worklogRoutes from './routes/worklogs.js';
+import highlightRoutes from './routes/highlights.js';
 
 dotenv.config();
 
@@ -85,7 +88,9 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/kpi', kpiRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/departments', departmentRoutes);
-app.use('/api/tasks', taskRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/worklogs', worklogRoutes);
+app.use('/api/highlights', highlightRoutes);
 
 // Debug endpoint (remove in production)
 import { authenticate } from './middleware/auth.js';

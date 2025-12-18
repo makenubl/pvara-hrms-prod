@@ -111,12 +111,21 @@ const Header = () => {
                   <p className="text-xs text-cyan-400 font-semibold mt-2">{user?.role || 'HR Manager'}</p>
                 </div>
                 <div className="p-2 space-y-1">
-                  <button className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition-all group/item">
+                  <button 
+                    onClick={() => {
+                      navigate('/profile');
+                      setShowUserMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition-all group/item"
+                  >
                     <User size={16} className="group-hover/item:text-cyan-400 transition-colors" />
                     My Profile
                   </button>
                   <button
-                    onClick={() => navigate('/settings')}
+                    onClick={() => {
+                      navigate('/settings');
+                      setShowUserMenu(false);
+                    }}
                     className="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition-all group/item"
                   >
                     <Settings size={16} className="group-hover/item:text-cyan-400 transition-colors" />
