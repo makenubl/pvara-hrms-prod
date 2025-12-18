@@ -265,7 +265,7 @@ const ChatBox = () => {
                         isOwnMessage
                           ? 'bg-blue-600 text-white'
                           : senderIsExecutive
-                          ? 'bg-gradient-to-r from-amber-600/30 to-orange-600/30 border border-amber-500/50'
+                          ? 'bg-gradient-to-r from-amber-100 to-yellow-100 border border-amber-400 text-gray-900'
                           : 'bg-gray-800 text-gray-100'
                       }`}
                     >
@@ -273,15 +273,15 @@ const ChatBox = () => {
                       {!isOwnMessage && (
                         <div className="flex items-center gap-1 mb-1">
                           {senderIsExecutive && (
-                            <Crown className="w-3 h-3 text-amber-400" />
+                            <Crown className="w-3 h-3 text-amber-600" />
                           )}
                           <span className={`text-xs font-semibold ${
-                            senderIsExecutive ? 'text-amber-400' : 'text-blue-400'
+                            senderIsExecutive ? 'text-amber-700' : 'text-blue-400'
                           }`}>
                             {message.sender?.firstName} {message.sender?.lastName}
                           </span>
                           {senderIsExecutive && (
-                            <span className="text-xs text-amber-400/70">
+                            <span className="text-xs text-amber-600">
                               • {message.sender?.role}
                             </span>
                           )}
@@ -290,7 +290,7 @@ const ChatBox = () => {
                       
                       {/* Message content */}
                       <p
-                        className="text-sm break-words"
+                        className={`text-sm break-words ${senderIsExecutive && !isOwnMessage ? 'text-gray-800' : ''}`}
                         dangerouslySetInnerHTML={{
                           __html: formatMessageContent(message.content),
                         }}
@@ -298,7 +298,7 @@ const ChatBox = () => {
                       
                       {/* Timestamp */}
                       <div className={`text-xs mt-1 ${
-                        isOwnMessage ? 'text-blue-200' : 'text-gray-500'
+                        isOwnMessage ? 'text-blue-200' : senderIsExecutive ? 'text-amber-600' : 'text-gray-500'
                       }`}>
                         {format(new Date(message.createdAt), 'MMM d, h:mm a')}
                       </div>
