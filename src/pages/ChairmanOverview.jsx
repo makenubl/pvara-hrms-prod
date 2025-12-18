@@ -465,29 +465,6 @@ const ChairmanOverview = () => {
                 JPEG
               </Button>
             </div>
-            <Button 
-              onClick={() => setShowAnnouncement(true)}
-              variant="outline"
-              className="border-purple-500/50 text-purple-400 hover:bg-purple-500/20"
-            >
-              <MessageSquare className="mr-2" size={18} />
-              Announce
-            </Button>
-            <Button 
-              onClick={() => setShowAddHighlight(true)}
-              variant="outline"
-              className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20"
-            >
-              <Star className="mr-2" size={18} />
-              Add Highlight
-            </Button>
-            <Button 
-              onClick={() => setShowAddProject(true)}
-              className="bg-gradient-to-r from-cyan-500 to-blue-600"
-            >
-              <Plus className="mr-2" size={18} />
-              New Project
-            </Button>
           </div>
         </div>
 
