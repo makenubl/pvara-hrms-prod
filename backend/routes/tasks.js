@@ -339,7 +339,7 @@ router.post('/seed-demo', authenticate, async (req, res) => {
         assignedBy: req.user._id,
         project: 'TASK-2025-0005',
         department: 'Operations',
-        priority: 'urgent',
+        priority: 'critical',
         status: 'in-progress',
         progress: 80,
         deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
