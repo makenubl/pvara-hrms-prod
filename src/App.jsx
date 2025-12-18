@@ -132,7 +132,7 @@ function App() {
         />
         <Route
           path="/task-management"
-          element={<ProtectedRoute allowedRoles={['admin', 'manager']}><TaskManagement /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin']}><TaskManagement /></ProtectedRoute>}
         />
         <Route
           path="/my-tasks"

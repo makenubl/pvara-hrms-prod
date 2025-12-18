@@ -69,12 +69,12 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Create new task (managers can assign tasks)
+// Create new task (admin only)
 router.post('/', authenticate, async (req, res) => {
   try {
-    // Check if user has manager-level permissions
-    if (!isManager(req.user.role)) {
-      return res.status(403).json({ message: 'Only managers can create tasks' });
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can create tasks' });
     }
 
     const {

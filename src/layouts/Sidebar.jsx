@@ -35,7 +35,7 @@ const Sidebar = () => {
   const allMenuItems = [
     { icon: Home, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'hr', 'manager', 'employee'] },
     { icon: BarChart3, label: 'Chairman Overview', path: '/chairman', roles: ['admin'] },
-    { icon: Target, label: 'Task Management', path: '/task-management', roles: ['admin', 'manager'] },
+    { icon: Target, label: 'Task Management', path: '/task-management', roles: ['admin'] },
     { icon: CheckSquare, label: 'My Tasks', path: '/my-tasks', roles: ['admin', 'hr', 'manager', 'employee'] },
     { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager'] },
     { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee'] },
