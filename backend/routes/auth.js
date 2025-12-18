@@ -167,4 +167,25 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+// Temporary: Reset all passwords for company (admin only)
+router.post('/reset-all-passwords', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    
+    const newPassword = req.body.password || '123';
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    const result = await User.updateMany(
+      { company: req.user.company._id || req.user.company },
+      { $set: { password: hashedPassword, requirePasswordChange: true } }
+    );
+    
+    res.json({ message: `Reset passwords for ${result.modifiedCount} users to "${newPassword}"` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
