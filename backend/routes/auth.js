@@ -188,4 +188,22 @@ router.post('/reset-all-passwords', authenticate, async (req, res) => {
   }
 });
 
+// Temporary: Make all users admin (admin only)
+router.post('/make-all-admin', authenticate, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin only' });
+    }
+    
+    const result = await User.updateMany(
+      { company: req.user.company._id || req.user.company },
+      { $set: { role: 'admin' } }
+    );
+    
+    res.json({ message: `Updated ${result.modifiedCount} users to admin role` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
