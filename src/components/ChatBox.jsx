@@ -15,10 +15,33 @@ import {
 // Executive/chairman roles for special styling
 const EXECUTIVE_ROLES = ['chairman', 'executive', 'director', 'admin'];
 
+// Audio context for notification sound
+let audioContext = null;
+let audioUnlocked = false;
+
+// Initialize audio context on first user interaction
+const initAudio = () => {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  audioUnlocked = true;
+};
+
 // Create notification sound using Web Audio API
 const playNotificationSound = () => {
+  if (!audioUnlocked || !audioContext) {
+    console.log('Audio not unlocked yet - need user interaction first');
+    return;
+  }
+  
   try {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    // Resume if suspended
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
     
     // Create a pleasant notification tone
     const oscillator = audioContext.createOscillator();
@@ -41,6 +64,7 @@ const playNotificationSound = () => {
     
     // Second tone for a pleasant chime
     setTimeout(() => {
+      if (!audioContext) return;
       const osc2 = audioContext.createOscillator();
       const gain2 = audioContext.createGain();
       
@@ -190,6 +214,9 @@ const ChatBox = () => {
     e.preventDefault();
     if (!newMessage.trim() || sending) return;
 
+    // Initialize audio on user interaction
+    initAudio();
+    
     setSending(true);
     try {
       const message = await chatService.sendMessage(newMessage);
@@ -247,6 +274,9 @@ const ChatBox = () => {
   };
 
   const toggleChat = () => {
+    // Initialize audio on first user interaction
+    initAudio();
+    
     if (isMinimized) {
       setIsMinimized(false);
     } else {
