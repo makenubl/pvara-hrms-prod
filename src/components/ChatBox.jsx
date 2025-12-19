@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import chatService from '../services/chatService';
 import { format } from 'date-fns';
@@ -15,6 +15,53 @@ import {
 // Executive/chairman roles for special styling
 const EXECUTIVE_ROLES = ['chairman', 'executive', 'director', 'admin'];
 
+// Create notification sound using Web Audio API
+const playNotificationSound = () => {
+  try {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // Create a pleasant notification tone
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    // Pleasant notification frequency
+    oscillator.frequency.setValueAtTime(587.33, audioContext.currentTime); // D5
+    oscillator.type = 'sine';
+    
+    // Gentle volume envelope
+    gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+    
+    // Second tone for a pleasant chime
+    setTimeout(() => {
+      const osc2 = audioContext.createOscillator();
+      const gain2 = audioContext.createGain();
+      
+      osc2.connect(gain2);
+      gain2.connect(audioContext.destination);
+      
+      osc2.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+      osc2.type = 'sine';
+      
+      gain2.gain.setValueAtTime(0, audioContext.currentTime);
+      gain2.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
+      gain2.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.25);
+      
+      osc2.start(audioContext.currentTime);
+      osc2.stop(audioContext.currentTime + 0.25);
+    }, 150);
+  } catch (error) {
+    console.log('Audio not supported');
+  }
+};
+
 const ChatBox = () => {
   const { user, token } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
@@ -30,6 +77,7 @@ const ChatBox = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const pollInterval = useRef(null);
+  const lastMessageCount = useRef(0);
 
   const isAuthenticated = !!token && !!user;
 
@@ -44,7 +92,7 @@ const ChatBox = () => {
         if (isOpen && !isMinimized) {
           loadMessages(true);
         } else {
-          loadUnreadCount();
+          checkForNewMessages();
         }
       }, 10000);
 
@@ -71,11 +119,39 @@ const ChatBox = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const checkForNewMessages = async () => {
+    try {
+      const data = await chatService.getUnreadCount();
+      const newCount = data.count || 0;
+      
+      // Play sound if there are new unread messages
+      if (newCount > unreadCount && unreadCount >= 0) {
+        playNotificationSound();
+      }
+      
+      setUnreadCount(newCount);
+    } catch (error) {
+      console.error('Failed to check messages:', error);
+    }
+  };
+
   const loadMessages = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const data = await chatService.getMessages({ limit: 100 });
-      setMessages(data.messages || []);
+      const newMessages = data.messages || [];
+      
+      // Play sound if new messages arrived while chat is open
+      if (silent && newMessages.length > lastMessageCount.current && lastMessageCount.current > 0) {
+        const latestMessage = newMessages[newMessages.length - 1];
+        // Don't play sound for own messages
+        if (latestMessage?.sender?._id !== user?._id) {
+          playNotificationSound();
+        }
+      }
+      
+      lastMessageCount.current = newMessages.length;
+      setMessages(newMessages);
     } catch (error) {
       console.error('Failed to load messages:', error);
     } finally {
