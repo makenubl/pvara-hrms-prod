@@ -1139,7 +1139,7 @@ const TasksABTesting = () => {
 
       {/* Boost Modal */}
       {boostModal.show && boostModal.task && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl">
             <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-orange-500/20 to-yellow-500/20">
               <div className="flex items-center gap-3">
@@ -1210,7 +1210,7 @@ const TasksABTesting = () => {
 
       {/* Bottleneck Response Modal */}
       {bottleneckResponseModal.show && bottleneckResponseModal.task && bottleneckResponseModal.bottleneck && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-purple-500/20 to-blue-500/20">
               <div className="flex items-center gap-3">
