@@ -672,6 +672,42 @@ const TasksABTesting = () => {
                                 </button>
                               </div>
                             )}
+
+                            {/* Mark as Resolved button - show if not yet resolved */}
+                            {bottleneck.status !== 'resolved' && (
+                              <div className="mt-3 pt-3 border-t border-slate-700/50 flex gap-2">
+                                <button
+                                  onClick={() => setBottleneckResponseModal({ 
+                                    show: true, 
+                                    task, 
+                                    bottleneck 
+                                  })}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-700 text-slate-300 text-sm rounded-lg hover:bg-slate-600 transition-colors"
+                                >
+                                  <Send size={14} />
+                                  {bottleneck.chairpersonResponse ? 'Update Response' : 'Respond'}
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    try {
+                                      const updatedTask = await taskService.respondToBottleneck(
+                                        task._id,
+                                        bottleneck._id,
+                                        { status: 'resolved', chairpersonResponse: bottleneck.chairpersonResponse || 'Resolved' }
+                                      );
+                                      onTaskUpdate(updatedTask);
+                                      toast.success('Bottleneck marked as resolved');
+                                    } catch (error) {
+                                      toast.error(error.message || 'Failed to resolve bottleneck');
+                                    }
+                                  }}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-sm rounded-lg hover:bg-emerald-500/30 transition-colors"
+                                >
+                                  <CheckCircle size={14} />
+                                  Mark as Resolved
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
