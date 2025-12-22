@@ -159,7 +159,7 @@ function App() {
         />
         <Route
           path="/task-management"
-          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director', 'manager', 'hr', 'hod', 'teamlead']}><TaskManagement /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director', 'manager', 'hr', 'hod', 'teamlead', 'employee']}><TaskManagement /></ProtectedRoute>}
         />
         <Route
           path="/tasks-ab"

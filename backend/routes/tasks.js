@@ -73,14 +73,9 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Create new task (admin only)
+// Create new task
 router.post('/', authenticate, async (req, res) => {
   try {
-    // Check if user is admin
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Only admins can create tasks' });
-    }
-
     const {
       title,
       description,
@@ -92,6 +87,13 @@ router.post('/', authenticate, async (req, res) => {
       deadline,
       capacity,
     } = req.body;
+
+    // Check permissions: admins/managers can assign to anyone, employees can only assign to themselves
+    const canAssignToOthers = ['admin', 'chairman', 'manager', 'hr', 'director', 'executive', 'hod', 'teamlead'].includes(req.user.role);
+    
+    if (!canAssignToOthers && assignedTo !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'You can only create tasks for yourself' });
+    }
 
     // Verify assigned user exists and belongs to same company
     const assignedUser = await User.findOne({ _id: assignedTo, company: req.user.company });
