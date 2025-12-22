@@ -1,5 +1,69 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
+
+// Tooltip Component with 3-second delay
+export const Tooltip = ({ children, content, delay = 3000, position = 'top' }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const timeoutRef = useRef(null);
+
+  const handleMouseEnter = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsVisible(true);
+    }, delay);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setIsVisible(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const positionClasses = {
+    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+  };
+
+  const arrowClasses = {
+    top: 'top-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-b-transparent border-t-slate-700',
+    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent border-b-slate-700',
+    left: 'left-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-r-transparent border-l-slate-700',
+    right: 'right-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent border-r-slate-700',
+  };
+
+  if (!content) return children;
+
+  return (
+    <div 
+      className="relative inline-flex"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {children}
+      {isVisible && (
+        <div 
+          className={`absolute z-[100] ${positionClasses[position]} animate-fade-in`}
+          role="tooltip"
+        >
+          <div className="relative bg-slate-700 text-white text-xs px-3 py-2 rounded-lg shadow-lg max-w-xs whitespace-normal border border-slate-600">
+            {content}
+            <div className={`absolute w-0 h-0 border-4 ${arrowClasses[position]}`} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const Card = ({ children, className = '', ...props }) => (
   <div

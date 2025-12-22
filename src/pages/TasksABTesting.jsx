@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from '../layouts/MainLayout';
-import { Card, Button, Badge } from '../components/UI';
+import { Card, Button, Badge, Tooltip } from '../components/UI';
 import { useAuthStore } from '../store/authStore';
 import taskService from '../services/taskService';
 import employeeService from '../services/employeeService';
@@ -301,24 +301,24 @@ const TasksABTesting = () => {
               {tabs.map(tab => {
                 const Icon = tab.icon;
                 return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                      activeTab === tab.key
-                        ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                    }`}
-                    title={tab.tooltip}
-                  >
-                    <Icon size={16} />
-                    {tab.label}
-                    {tab.count > 0 && (
-                      <span className="ml-1 px-1.5 py-0.5 bg-slate-700 rounded text-xs">
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
+                  <Tooltip key={tab.key} content={tab.tooltip} position="bottom">
+                    <button
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                        activeTab === tab.key
+                          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                      }`}
+                    >
+                      <Icon size={16} />
+                      {tab.label}
+                      {tab.count > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 bg-slate-700 rounded text-xs">
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  </Tooltip>
                 );
               })}
             </div>
@@ -685,15 +685,16 @@ const TasksABTesting = () => {
                             {attachment.uploadedBy?.firstName && ` • by ${attachment.uploadedBy.firstName} ${attachment.uploadedBy.lastName || ''}`}
                           </p>
                         </div>
-                        <a
-                          href={attachment.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 hover:bg-slate-600 rounded-lg transition-colors"
-                          title="Open attachment"
-                        >
-                          <Link size={16} className="text-cyan-400" />
-                        </a>
+                        <Tooltip content="Open attachment in new tab" position="left">
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-slate-600 rounded-lg transition-colors"
+                          >
+                            <Link size={16} className="text-cyan-400" />
+                          </a>
+                        </Tooltip>
                       </div>
                     ))
                   ) : (
@@ -736,154 +737,178 @@ const TasksABTesting = () => {
             ? 'border-yellow-500/50 bg-yellow-500/5' 
             : 'border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800'
         }`}
-        title="Click to view full task details"
       >
         <div className="flex items-center gap-3">
           {/* Boost Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onBoost(task);
-            }}
-            className={`flex-shrink-0 p-2 rounded-lg transition-all ${
-              isPendingBoost
-                ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
-                : hasResponse
-                ? 'bg-emerald-500/20 text-emerald-400'
-                : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
-            }`}
-            title={isPendingBoost ? '⏳ Boost sent - Awaiting response from assignee' : hasResponse ? '✅ Assignee has responded to your boost' : '⚡ Click to Boost/Expedite this task and request immediate update'}
+          <Tooltip 
+            content={isPendingBoost ? '⏳ Boost sent - Awaiting response from assignee' : hasResponse ? '✅ Assignee has responded to your boost' : '⚡ Click to Boost/Expedite this task and request immediate update'}
+            position="top"
           >
-            <Zap size={18} className={isPendingBoost ? 'animate-pulse' : ''} />
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onBoost(task);
+              }}
+              className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+                isPendingBoost
+                  ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
+                  : hasResponse
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
+              }`}
+            >
+              <Zap size={18} className={isPendingBoost ? 'animate-pulse' : ''} />
+            </button>
+          </Tooltip>
 
           {/* Status Icon */}
-          <div 
-            className="flex-shrink-0" 
-            onClick={() => onClick(task)}
-            title={`Status: ${task.status?.toUpperCase() || 'PENDING'} - ${
+          <Tooltip 
+            content={`Status: ${task.status?.toUpperCase() || 'PENDING'} - ${
               task.status === 'completed' ? 'Task has been completed' :
               task.status === 'in-progress' ? 'Task is currently being worked on' :
               task.status === 'blocked' ? 'Task is blocked and needs attention' :
               'Task is waiting to be started'
             }`}
+            position="top"
           >
-            {getStatusIcon(task.status)}
-          </div>
+            <div 
+              className="flex-shrink-0" 
+              onClick={() => onClick(task)}
+            >
+              {getStatusIcon(task.status)}
+            </div>
+          </Tooltip>
 
           {/* Task ID + Title Combined */}
           <div className="flex-1 min-w-0" onClick={() => onClick(task)}>
             <div className="flex items-center gap-2 flex-wrap">
               {/* Task ID - Prominently before title */}
-              <span 
-                className="flex-shrink-0 flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"
-                title={`Task ID: ${getTaskId(task)} - Unique identifier for this task`}
-              >
-                <Hash size={10} />
-                {getTaskId(task).replace('#', '').replace('TASK-', '')}
-              </span>
+              <Tooltip content={`Task ID: ${getTaskId(task)} - Unique identifier for this task`} position="top">
+                <span 
+                  className="flex-shrink-0 flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"
+                >
+                  <Hash size={10} />
+                  {getTaskId(task).replace('#', '').replace('TASK-', '')}
+                </span>
+              </Tooltip>
               {/* Task Title */}
               <h4 
                 className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors"
-                title={`Task: ${task.title}`}
               >
                 {task.title}
               </h4>
             </div>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <span 
-                className="flex items-center gap-1 text-xs text-slate-400"
-                title={`Assigned to: ${getEmployeeName(task)} - Person responsible for this task`}
-              >
-                <User size={12} />
-                {getEmployeeName(task)}
-              </span>
-              {task.deadline && (
+              <Tooltip content={`Assigned to: ${getEmployeeName(task)} - Person responsible for this task`} position="bottom">
                 <span 
-                  className={`flex items-center gap-1 text-xs ${
-                    new Date(task.deadline) < new Date() && task.status !== 'completed'
-                      ? 'text-red-400'
-                      : 'text-slate-400'
-                  }`}
-                  title={`Deadline: ${format(new Date(task.deadline), 'EEEE, MMMM d, yyyy')}${
+                  className="flex items-center gap-1 text-xs text-slate-400"
+                >
+                  <User size={12} />
+                  {getEmployeeName(task)}
+                </span>
+              </Tooltip>
+              {task.deadline && (
+                <Tooltip 
+                  content={`Deadline: ${format(new Date(task.deadline), 'EEEE, MMMM d, yyyy')}${
                     new Date(task.deadline) < new Date() && task.status !== 'completed' 
                       ? ' - ⚠️ OVERDUE - Task has passed its deadline!' 
                       : ''
                   }`}
+                  position="bottom"
                 >
-                  <Calendar size={12} />
-                  {format(new Date(task.deadline), 'MMM d, yyyy')}
-                  {new Date(task.deadline) < new Date() && task.status !== 'completed' && ' (Overdue)'}
-                </span>
+                  <span 
+                    className={`flex items-center gap-1 text-xs ${
+                      new Date(task.deadline) < new Date() && task.status !== 'completed'
+                        ? 'text-red-400'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    <Calendar size={12} />
+                    {format(new Date(task.deadline), 'MMM d, yyyy')}
+                    {new Date(task.deadline) < new Date() && task.status !== 'completed' && ' (Overdue)'}
+                  </span>
+                </Tooltip>
               )}
               {/* Boost indicator */}
               {task.boosts?.length > 0 && (
-                <span 
-                  className={`flex items-center gap-1 text-xs ${
-                    isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
-                  }`}
-                  title={isPendingBoost 
+                <Tooltip 
+                  content={isPendingBoost 
                     ? '⚡ You have boosted this task - Waiting for assignee to respond with an update' 
                     : `✅ ${task.boosts.length} boost(s) sent - Assignee has responded`
                   }
+                  position="bottom"
                 >
-                  <Zap size={10} />
-                  {isPendingBoost ? 'Boosted - Awaiting' : `${task.boosts.length} boost${task.boosts.length > 1 ? 's' : ''}`}
-                </span>
+                  <span 
+                    className={`flex items-center gap-1 text-xs ${
+                      isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
+                    }`}
+                  >
+                    <Zap size={10} />
+                    {isPendingBoost ? 'Boosted - Awaiting' : `${task.boosts.length} boost${task.boosts.length > 1 ? 's' : ''}`}
+                  </span>
+                </Tooltip>
               )}
             </div>
           </div>
 
           {/* Priority & Status Badges */}
           <div className="flex items-center gap-2 flex-shrink-0" onClick={() => onClick(task)}>
-            <span 
-              className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}
-              title={`Priority: ${(task.priority || 'medium').toUpperCase()} - ${
+            <Tooltip 
+              content={`Priority: ${(task.priority || 'medium').toUpperCase()} - ${
                 task.priority === 'critical' ? '🔴 Requires immediate attention' :
                 task.priority === 'high' ? '🟠 High importance, should be addressed soon' :
                 task.priority === 'medium' ? '🟡 Normal priority task' :
                 '🟢 Low priority, can be addressed later'
               }`}
+              position="top"
             >
-              {task.priority || 'medium'}
-            </span>
-            <span 
-              className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}
-              title={`Current Status: ${(task.status || 'pending').toUpperCase()}`}
-            >
-              {task.status || 'pending'}
-            </span>
+              <span 
+                className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}
+              >
+                {task.priority || 'medium'}
+              </span>
+            </Tooltip>
+            <Tooltip content={`Current Status: ${(task.status || 'pending').toUpperCase()}`} position="top">
+              <span 
+                className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}
+              >
+                {task.status || 'pending'}
+              </span>
+            </Tooltip>
           </div>
 
           {/* Arrow */}
-          <ChevronRight 
-            size={20} 
-            className="text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" 
-            onClick={() => onClick(task)} 
-            title="Click to view full details"
-          />
+          <Tooltip content="Click to view full details" position="left">
+            <ChevronRight 
+              size={20} 
+              className="text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" 
+              onClick={() => onClick(task)} 
+            />
+          </Tooltip>
         </div>
 
         {/* Blocker indicator */}
         {task.blocker && (
-          <div 
-            className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2"
-            title={`⚠️ BLOCKER: ${task.blocker} - This issue is preventing task progress`}
-          >
-            <AlertTriangle size={12} />
-            <span className="truncate">{task.blocker}</span>
-          </div>
+          <Tooltip content={`⚠️ BLOCKER: ${task.blocker} - This issue is preventing task progress`} position="bottom">
+            <div 
+              className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2"
+            >
+              <AlertTriangle size={12} />
+              <span className="truncate">{task.blocker}</span>
+            </div>
+          </Tooltip>
         )}
 
         {/* Latest boost response preview */}
         {latestBoost?.response && (
-          <div 
-            className="mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2"
-            title={`✅ Boost Response from Assignee: "${latestBoost.response}" - Click task for full details`}
-          >
-            <Zap size={12} className="mt-0.5 flex-shrink-0" />
-            <span className="truncate">Response: {latestBoost.response}</span>
-          </div>
+          <Tooltip content={`✅ Boost Response from Assignee: "${latestBoost.response}" - Click task for full details`} position="bottom">
+            <div 
+              className="mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2"
+            >
+              <Zap size={12} className="mt-0.5 flex-shrink-0" />
+              <span className="truncate">Response: {latestBoost.response}</span>
+            </div>
+          </Tooltip>
         )}
       </div>
     );
@@ -907,88 +932,101 @@ const TasksABTesting = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 
-              className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"
-              title="Chairperson Task Dashboard - View and manage all organization tasks"
-            >
-              Chairperson Task Dashboard
-            </h1>
+            <Tooltip content="Chairperson Task Dashboard - View and manage all organization tasks" position="bottom">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Chairperson Task Dashboard
+              </h1>
+            </Tooltip>
             <p className="text-slate-400 mt-1 text-sm">
               Monitor tasks, boost priority items, and track team progress
             </p>
           </div>
-          <div 
-            className="flex items-center gap-2"
-            title="Current filter status showing filtered vs total tasks"
-          >
-            <Filter size={16} className="text-slate-400" />
-            <span className="text-slate-400 text-sm">
-              Showing {filteredTasks.length} of {tasks.length} tasks
-            </span>
-          </div>
+          <Tooltip content="Current filter status showing filtered vs total tasks" position="left">
+            <div className="flex items-center gap-2">
+              <Filter size={16} className="text-slate-400" />
+              <span className="text-slate-400 text-sm">
+                Showing {filteredTasks.length} of {tasks.length} tasks
+              </span>
+            </div>
+          </Tooltip>
         </div>
 
         {/* Quick Legend */}
         <div className="flex flex-wrap items-center gap-4 p-3 bg-slate-800/30 rounded-lg border border-slate-700/50 text-xs">
           <span className="text-slate-400 font-medium">Quick Guide:</span>
-          <span className="flex items-center gap-1 text-cyan-400" title="Task ID - Unique identifier for each task">
-            <Hash size={12} /> Task ID
-          </span>
-          <span className="flex items-center gap-1 text-orange-400" title="Click to boost a task and request immediate update from assignee">
-            <Zap size={12} /> Boost Task
-          </span>
-          <span className="flex items-center gap-1 text-yellow-400" title="Task has been boosted, waiting for assignee response">
-            <Zap size={12} className="animate-pulse" /> Awaiting Response
-          </span>
-          <span className="flex items-center gap-1 text-emerald-400" title="Assignee has responded to your boost">
-            <Zap size={12} /> Response Received
-          </span>
-          <span className="flex items-center gap-1 text-red-400" title="Task is blocked or overdue">
-            <AlertTriangle size={12} /> Blocker/Overdue
-          </span>
+          <Tooltip content="Task ID - Unique identifier for each task" position="bottom">
+            <span className="flex items-center gap-1 text-cyan-400">
+              <Hash size={12} /> Task ID
+            </span>
+          </Tooltip>
+          <Tooltip content="Click to boost a task and request immediate update from assignee" position="bottom">
+            <span className="flex items-center gap-1 text-orange-400">
+              <Zap size={12} /> Boost Task
+            </span>
+          </Tooltip>
+          <Tooltip content="Task has been boosted, waiting for assignee response" position="bottom">
+            <span className="flex items-center gap-1 text-yellow-400">
+              <Zap size={12} className="animate-pulse" /> Awaiting Response
+            </span>
+          </Tooltip>
+          <Tooltip content="Assignee has responded to your boost" position="bottom">
+            <span className="flex items-center gap-1 text-emerald-400">
+              <Zap size={12} /> Response Received
+            </span>
+          </Tooltip>
+          <Tooltip content="Task is blocked or overdue" position="bottom">
+            <span className="flex items-center gap-1 text-red-400">
+              <AlertTriangle size={12} /> Blocker/Overdue
+            </span>
+          </Tooltip>
         </div>
 
         {/* Filter Buttons */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {filterButtons.map(btn => (
-            <button
-              key={btn.key}
-              onClick={() => setFilter(btn.key)}
-              className={`p-4 rounded-xl border transition-all ${
-                filter === btn.key
-                  ? `bg-gradient-to-br ${btn.color} border-transparent shadow-lg`
-                  : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
-              }`}
-              title={
+            <Tooltip 
+              key={btn.key} 
+              content={
                 btn.key === 'all' ? 'View all tasks in the organization' :
                 btn.key === 'completed' ? 'View tasks that have been successfully completed' :
                 btn.key === 'pending' ? 'View tasks that are pending or in progress' :
                 'View tasks that are blocked, overdue, or need attention'
               }
+              position="bottom"
             >
-              <div className="text-2xl font-bold text-white">{btn.count}</div>
-              <div className={`text-sm ${filter === btn.key ? 'text-white/80' : 'text-slate-400'}`}>
-                {btn.label}
-              </div>
-            </button>
+              <button
+                onClick={() => setFilter(btn.key)}
+                className={`p-4 rounded-xl border transition-all ${
+                  filter === btn.key
+                    ? `bg-gradient-to-br ${btn.color} border-transparent shadow-lg`
+                    : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                }`}
+              >
+                <div className="text-2xl font-bold text-white">{btn.count}</div>
+                <div className={`text-sm ${filter === btn.key ? 'text-white/80' : 'text-slate-400'}`}>
+                  {btn.label}
+                </div>
+              </button>
+            </Tooltip>
           ))}
         </div>
 
         {/* Task List */}
         <Card className="bg-slate-800/30 border-slate-700/50">
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-700">
-            <List size={20} className="text-cyan-400" title="Task list" />
+            <Tooltip content="Task list - All tasks matching your current filter" position="right">
+              <List size={20} className="text-cyan-400" />
+            </Tooltip>
             <h3 className="text-lg font-semibold text-white">
               {filter === 'all' ? 'All Tasks' : 
                filter === 'completed' ? 'Completed Tasks' :
                filter === 'pending' ? 'Pending Tasks' : 'Bottleneck Tasks'}
             </h3>
-            <span 
-              className="ml-auto text-slate-400 text-sm"
-              title={`${filteredTasks.length} task(s) in current view`}
-            >
-              {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
-            </span>
+            <Tooltip content={`${filteredTasks.length} task(s) in current view`} position="left">
+              <span className="ml-auto text-slate-400 text-sm">
+                {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
+              </span>
+            </Tooltip>
           </div>
 
           <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
