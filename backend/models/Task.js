@@ -145,6 +145,46 @@ const taskSchema = new mongoose.Schema(
       response: String, // Assignee's response to the boost
       respondedAt: Date,
     }],
+    // Bottlenecks - Support requests from assignee to chairperson
+    bottlenecks: [{
+      issue: {
+        type: String,
+        required: true,
+      },
+      description: String, // Detailed description of the bottleneck
+      category: {
+        type: String,
+        enum: ['resource', 'dependency', 'approval', 'technical', 'external', 'other'],
+        default: 'other',
+      },
+      severity: {
+        type: String,
+        enum: ['low', 'medium', 'high', 'critical'],
+        default: 'medium',
+      },
+      raisedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      raisedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      status: {
+        type: String,
+        enum: ['open', 'acknowledged', 'in-progress', 'resolved'],
+        default: 'open',
+      },
+      // Chairperson response
+      chairpersonResponse: String,
+      respondedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      respondedAt: Date,
+      resolvedAt: Date,
+      resolution: String, // How it was resolved
+    }],
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',

@@ -661,4 +661,160 @@ router.patch('/:id/boost/:boostId', authenticate, async (req, res) => {
   }
 });
 
+// ==================== BOTTLENECK ROUTES ====================
+
+// Add a bottleneck to a task (assignee requests support from chairperson)
+router.post('/:id/bottleneck', authenticate, async (req, res) => {
+  try {
+    const { issue, description, category, severity } = req.body;
+
+    if (!issue || !issue.trim()) {
+      return res.status(400).json({ message: 'Issue description is required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only assignee can raise bottleneck
+    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    
+    if (!isAssignee && !isAdmin) {
+      return res.status(403).json({ message: 'Only the assignee can raise a bottleneck' });
+    }
+
+    task.bottlenecks.push({
+      issue: issue.trim(),
+      description: description?.trim() || '',
+      category: category || 'other',
+      severity: severity || 'medium',
+      raisedBy: req.user._id,
+      raisedAt: new Date(),
+      status: 'open',
+    });
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('bottlenecks.raisedBy', 'firstName lastName')
+      .populate('bottlenecks.respondedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Respond to a bottleneck (chairperson provides support/response)
+router.patch('/:id/bottleneck/:bottleneckId', authenticate, async (req, res) => {
+  try {
+    const { chairpersonResponse, status, resolution } = req.body;
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only admin/chairman can respond to bottlenecks
+    if (req.user.role !== 'admin' && req.user.role !== 'chairman') {
+      return res.status(403).json({ message: 'Only chairperson can respond to bottlenecks' });
+    }
+
+    const bottleneck = task.bottlenecks.id(req.params.bottleneckId);
+    if (!bottleneck) {
+      return res.status(404).json({ message: 'Bottleneck not found' });
+    }
+
+    // Update status
+    if (status) {
+      bottleneck.status = status;
+      if (status === 'resolved' && !bottleneck.resolvedAt) {
+        bottleneck.resolvedAt = new Date();
+      }
+    }
+
+    // Add chairperson response
+    if (chairpersonResponse) {
+      bottleneck.chairpersonResponse = chairpersonResponse.trim();
+      bottleneck.respondedBy = req.user._id;
+      bottleneck.respondedAt = new Date();
+      if (bottleneck.status === 'open') {
+        bottleneck.status = 'acknowledged';
+      }
+    }
+
+    // Add resolution
+    if (resolution) {
+      bottleneck.resolution = resolution.trim();
+      bottleneck.resolvedAt = new Date();
+      bottleneck.status = 'resolved';
+    }
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('bottlenecks.raisedBy', 'firstName lastName')
+      .populate('bottlenecks.respondedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all open bottlenecks across all tasks (for chairperson dashboard)
+router.get('/bottlenecks/all', authenticate, async (req, res) => {
+  try {
+    // Only admin/chairman can view all bottlenecks
+    if (req.user.role !== 'admin' && req.user.role !== 'chairman') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const tasks = await Task.find({
+      company: req.user.company,
+      'bottlenecks.0': { $exists: true }, // Has at least one bottleneck
+    })
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('bottlenecks.raisedBy', 'firstName lastName')
+      .populate('bottlenecks.respondedBy', 'firstName lastName')
+      .sort({ 'bottlenecks.raisedAt': -1 });
+
+    // Extract and format bottlenecks with task info
+    const bottlenecksWithTasks = [];
+    tasks.forEach(task => {
+      task.bottlenecks.forEach(bn => {
+        bottlenecksWithTasks.push({
+          ...bn.toObject(),
+          taskId: task._id,
+          taskTitle: task.title,
+          taskProject: task.project,
+          taskPriority: task.priority,
+          taskStatus: task.status,
+          taskDeadline: task.deadline,
+          assignedTo: task.assignedTo,
+        });
+      });
+    });
+
+    // Sort by status (open first) then by raisedAt (newest first)
+    bottlenecksWithTasks.sort((a, b) => {
+      const statusOrder = { open: 0, acknowledged: 1, 'in-progress': 2, resolved: 3 };
+      if (statusOrder[a.status] !== statusOrder[b.status]) {
+        return statusOrder[a.status] - statusOrder[b.status];
+      }
+      return new Date(b.raisedAt) - new Date(a.raisedAt);
+    });
+
+    res.json(bottlenecksWithTasks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

@@ -21,6 +21,8 @@ import {
   X,
   Zap,
   Bell,
+  AlertTriangle,
+  HelpCircle,
 } from 'lucide-react';
 
 const MyTasks = () => {
@@ -54,6 +56,16 @@ const MyTasks = () => {
   const [boostResponseModal, setBoostResponseModal] = useState({ show: false, task: null, boost: null });
   const [boostResponse, setBoostResponse] = useState('');
   const [respondingToBoost, setRespondingToBoost] = useState(false);
+
+  // Bottleneck state
+  const [bottleneckModal, setBottleneckModal] = useState({ show: false, task: null });
+  const [bottleneckForm, setBottleneckForm] = useState({
+    issue: '',
+    description: '',
+    category: 'other',
+    severity: 'medium',
+  });
+  const [raisingBottleneck, setRaisingBottleneck] = useState(false);
 
   // Count pending boosts across all tasks
   const pendingBoostsCount = tasks.reduce((count, task) => {
@@ -225,6 +237,44 @@ const MyTasks = () => {
   // Get pending boosts for a task
   const getPendingBoosts = (task) => {
     return task.boosts?.filter(b => !b.acknowledged) || [];
+  };
+
+  // Handle raising a bottleneck
+  const handleRaiseBottleneck = async () => {
+    if (!bottleneckModal.task || !bottleneckForm.issue.trim()) {
+      toast.error('Please describe the issue');
+      return;
+    }
+
+    setRaisingBottleneck(true);
+    try {
+      const updatedTask = await taskService.raiseBottleneck(
+        bottleneckModal.task._id,
+        bottleneckForm
+      );
+      
+      // Update tasks list
+      setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+      
+      // Update selected task if it's the same
+      if (selectedTask?._id === updatedTask._id) {
+        setSelectedTask(updatedTask);
+      }
+      
+      toast.success('Bottleneck raised! Chairperson will be notified.');
+      setBottleneckModal({ show: false, task: null });
+      setBottleneckForm({ issue: '', description: '', category: 'other', severity: 'medium' });
+    } catch (error) {
+      console.error('Failed to raise bottleneck:', error);
+      toast.error(error.message || 'Failed to raise bottleneck');
+    } finally {
+      setRaisingBottleneck(false);
+    }
+  };
+
+  // Get open bottlenecks count
+  const getOpenBottlenecks = (task) => {
+    return task.bottlenecks?.filter(b => b.status !== 'resolved') || [];
   };
 
   const stats = {
@@ -607,9 +657,10 @@ const MyTasks = () => {
               )}
 
               {/* Tabs */}
-              <div className="flex gap-1 mb-4 border-b border-white/10">
+              <div className="flex gap-1 mb-4 border-b border-white/10 overflow-x-auto">
                 {[
                   { id: 'updates', label: 'Updates', icon: MessageSquare, count: selectedTask.updates?.length || 0 },
+                  { id: 'bottlenecks', label: 'Bottlenecks', icon: AlertTriangle, count: selectedTask.bottlenecks?.length || 0 },
                   { id: 'activities', label: 'Activities', icon: Activity, count: selectedTask.activities?.length || 0 },
                   { id: 'attachments', label: 'Attachments', icon: Paperclip, count: selectedTask.attachments?.length || 0 },
                 ].map(tab => (
@@ -715,6 +766,98 @@ const MyTasks = () => {
                       {submitting ? 'Adding...' : 'Add Update'}
                     </Button>
                   </form>
+                </div>
+              )}
+
+              {/* Bottlenecks Tab */}
+              {activeTab === 'bottlenecks' && (
+                <div>
+                  {/* Raise Bottleneck Button */}
+                  <button
+                    onClick={() => setBottleneckModal({ show: true, task: selectedTask })}
+                    className="flex items-center gap-2 px-4 py-2 mb-4 bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30 transition-all"
+                  >
+                    <AlertTriangle size={18} />
+                    Raise Bottleneck / Request Support
+                  </button>
+
+                  {/* Bottlenecks List */}
+                  {selectedTask.bottlenecks && selectedTask.bottlenecks.length > 0 ? (
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {selectedTask.bottlenecks.slice().reverse().map((bn, idx) => (
+                        <div 
+                          key={bn._id || idx} 
+                          className={`p-4 rounded-lg border ${
+                            bn.status === 'resolved' 
+                              ? 'bg-emerald-500/10 border-emerald-500/30' 
+                              : bn.status === 'in-progress'
+                              ? 'bg-blue-500/10 border-blue-500/30'
+                              : bn.status === 'acknowledged'
+                              ? 'bg-yellow-500/10 border-yellow-500/30'
+                              : 'bg-red-500/10 border-red-500/30'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                bn.severity === 'critical' ? 'bg-red-500/20 text-red-300' :
+                                bn.severity === 'high' ? 'bg-orange-500/20 text-orange-300' :
+                                bn.severity === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
+                                'bg-slate-500/20 text-slate-300'
+                              }`}>
+                                {bn.severity?.toUpperCase()}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                bn.status === 'resolved' ? 'bg-emerald-500/20 text-emerald-300' :
+                                bn.status === 'in-progress' ? 'bg-blue-500/20 text-blue-300' :
+                                bn.status === 'acknowledged' ? 'bg-yellow-500/20 text-yellow-300' :
+                                'bg-red-500/20 text-red-300'
+                              }`}>
+                                {bn.status?.toUpperCase()}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-xs bg-slate-700 text-slate-300">
+                                {bn.category}
+                              </span>
+                            </div>
+                            <span className="text-xs text-slate-500">
+                              {bn.raisedAt && format(new Date(bn.raisedAt), 'MMM d, h:mm a')}
+                            </span>
+                          </div>
+                          
+                          <h4 className="text-white font-medium mb-1">{bn.issue}</h4>
+                          {bn.description && (
+                            <p className="text-slate-400 text-sm mb-2">{bn.description}</p>
+                          )}
+
+                          {/* Chairperson Response */}
+                          {bn.chairpersonResponse && (
+                            <div className="mt-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                              <p className="text-xs text-cyan-400 mb-1">
+                                Chairperson Response • {bn.respondedAt && format(new Date(bn.respondedAt), 'MMM d, h:mm a')}
+                              </p>
+                              <p className="text-white text-sm">{bn.chairpersonResponse}</p>
+                            </div>
+                          )}
+
+                          {/* Resolution */}
+                          {bn.resolution && (
+                            <div className="mt-2 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                              <p className="text-xs text-emerald-400 mb-1">
+                                Resolution • {bn.resolvedAt && format(new Date(bn.resolvedAt), 'MMM d, h:mm a')}
+                              </p>
+                              <p className="text-emerald-300 text-sm">{bn.resolution}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">
+                      <AlertTriangle size={40} className="mx-auto mb-3 opacity-50" />
+                      <p>No bottlenecks raised yet</p>
+                      <p className="text-xs mt-1">Click the button above to request support from Chairperson</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1074,6 +1217,128 @@ const MyTasks = () => {
                     ) : (
                       <span className="flex items-center gap-2">
                         <Send size={16} /> Send Response
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bottleneck Modal */}
+        {bottleneckModal.show && bottleneckModal.task && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
+              <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-red-500/20 to-orange-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-500/30 rounded-lg">
+                    <AlertTriangle size={24} className="text-red-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Raise Bottleneck</h2>
+                    <p className="text-sm text-slate-400">Request support from Chairperson</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setBottleneckModal({ show: false, task: null });
+                      setBottleneckForm({ issue: '', description: '', category: 'other', severity: 'medium' });
+                    }}
+                    className="ml-auto p-2 hover:bg-slate-700 rounded-lg"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-5 space-y-4">
+                <div>
+                  <p className="text-sm text-slate-400 mb-1">Task:</p>
+                  <p className="text-white font-medium">{bottleneckModal.task.title}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Issue / Problem <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={bottleneckForm.issue}
+                    onChange={(e) => setBottleneckForm(prev => ({ ...prev, issue: e.target.value }))}
+                    placeholder="Briefly describe the issue..."
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    value={bottleneckForm.description}
+                    onChange={(e) => setBottleneckForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Provide more details about the bottleneck..."
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Category</label>
+                    <select
+                      value={bottleneckForm.category}
+                      onChange={(e) => setBottleneckForm(prev => ({ ...prev, category: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-red-500 outline-none"
+                    >
+                      <option value="resource">Resource</option>
+                      <option value="dependency">Dependency</option>
+                      <option value="approval">Approval Needed</option>
+                      <option value="technical">Technical</option>
+                      <option value="external">External</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">Severity</label>
+                    <select
+                      value={bottleneckForm.severity}
+                      onChange={(e) => setBottleneckForm(prev => ({ ...prev, severity: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-red-500 outline-none"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={() => {
+                      setBottleneckModal({ show: false, task: null });
+                      setBottleneckForm({ issue: '', description: '', category: 'other', severity: 'medium' });
+                    }}
+                    variant="outline"
+                    className="flex-1 border-slate-600 text-slate-300"
+                    disabled={raisingBottleneck}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRaiseBottleneck}
+                    className="flex-1 bg-gradient-to-r from-red-500 to-orange-500 text-white"
+                    disabled={raisingBottleneck || !bottleneckForm.issue.trim()}
+                  >
+                    {raisingBottleneck ? (
+                      <span className="flex items-center gap-2">
+                        <span className="animate-spin">⏳</span> Raising...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <AlertTriangle size={16} /> Raise Bottleneck
                       </span>
                     )}
                   </Button>

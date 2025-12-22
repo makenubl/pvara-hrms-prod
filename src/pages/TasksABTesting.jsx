@@ -30,6 +30,7 @@ import {
   ArrowRightCircle,
   Zap,
   Hash,
+  HelpCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -43,6 +44,13 @@ const TasksABTesting = () => {
   const [boostModal, setBoostModal] = useState({ show: false, task: null });
   const [boostMessage, setBoostMessage] = useState('');
   const [boosting, setBoosting] = useState(false);
+  
+  // Bottleneck response state
+  const [bottleneckResponseModal, setBottleneckResponseModal] = useState({ show: false, task: null, bottleneck: null });
+  const [bottleneckResponse, setBottleneckResponse] = useState('');
+  const [bottleneckStatus, setBottleneckStatus] = useState('acknowledged');
+  const [bottleneckResolution, setBottleneckResolution] = useState('');
+  const [respondingToBottleneck, setRespondingToBottleneck] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -89,6 +97,54 @@ const TasksABTesting = () => {
     }
   };
 
+  // Handle respond to bottleneck
+  const handleRespondToBottleneck = async () => {
+    if (!bottleneckResponseModal.task || !bottleneckResponseModal.bottleneck) return;
+    
+    if (!bottleneckResponse.trim() && bottleneckStatus !== 'resolved') {
+      toast.error('Please enter a response');
+      return;
+    }
+
+    setRespondingToBottleneck(true);
+    try {
+      const updatedTask = await taskService.respondToBottleneck(
+        bottleneckResponseModal.task._id,
+        bottleneckResponseModal.bottleneck._id,
+        {
+          chairpersonResponse: bottleneckResponse.trim(),
+          status: bottleneckStatus,
+          resolution: bottleneckStatus === 'resolved' ? bottleneckResolution.trim() : undefined,
+        }
+      );
+      
+      setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+      if (selectedTask?._id === updatedTask._id) {
+        setSelectedTask(updatedTask);
+      }
+      
+      toast.success('Response sent to assignee');
+      setBottleneckResponseModal({ show: false, task: null, bottleneck: null });
+      setBottleneckResponse('');
+      setBottleneckStatus('acknowledged');
+      setBottleneckResolution('');
+    } catch (error) {
+      toast.error(error.message || 'Failed to respond to bottleneck');
+    } finally {
+      setRespondingToBottleneck(false);
+    }
+  };
+
+  // Get open bottlenecks for a task
+  const getOpenBottlenecks = (task) => {
+    return task.bottlenecks?.filter(b => b.status !== 'resolved') || [];
+  };
+
+  // Count total open bottlenecks
+  const totalOpenBottlenecks = tasks.reduce((count, task) => {
+    return count + getOpenBottlenecks(task).length;
+  }, 0);
+
   // Get short task ID
   const getTaskId = (task) => {
     if (task.project?.startsWith('TASK-')) {
@@ -121,9 +177,9 @@ const TasksABTesting = () => {
   // Task categorization
   const completedTasks = tasks.filter(t => t.status === 'completed');
   const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'in-progress');
+  // Bottleneck tasks - tasks that have open bottlenecks (support requests)
   const bottleneckTasks = tasks.filter(t => 
-    t.status === 'blocked' || 
-    (new Date(t.deadline) < new Date() && t.status !== 'completed')
+    getOpenBottlenecks(t).length > 0
   );
 
   // Get filtered tasks based on selection
@@ -201,7 +257,7 @@ const TasksABTesting = () => {
     { key: 'all', label: 'All Tasks', count: tasks.length, color: 'from-cyan-500 to-blue-500' },
     { key: 'completed', label: 'Completed', count: completedTasks.length, color: 'from-emerald-500 to-teal-500' },
     { key: 'pending', label: 'Pending', count: pendingTasks.length, color: 'from-amber-500 to-yellow-500' },
-    { key: 'bottleneck', label: 'Bottleneck', count: bottleneckTasks.length, color: 'from-red-500 to-rose-500' },
+    { key: 'bottleneck', label: 'Support Requests', count: bottleneckTasks.length, color: 'from-red-500 to-rose-500' },
   ];
 
   // Task Detail Modal/Panel
@@ -265,6 +321,7 @@ const TasksABTesting = () => {
     const tabs = [
       { key: 'details', label: 'Details', icon: FileText, tooltip: 'View task details including description, assignee, deadline and progress' },
       { key: 'boosts', label: 'Boosts', icon: Zap, count: task.boosts?.length || 0, tooltip: 'View and manage boost/expedite requests - Track responses from assignees' },
+      { key: 'bottlenecks', label: 'Support Requests', icon: HelpCircle, count: task.bottlenecks?.length || 0, tooltip: 'View and respond to support requests from assignees' },
       { key: 'activities', label: 'Activities', icon: Activity, count: task.activities?.length || 0, tooltip: 'View task journey/timeline - Track actions across departments' },
       { key: 'comments', label: 'Comments', icon: MessageSquare, count: task.chairmanComments?.length || 0, tooltip: 'View and add chairperson comments on this task' },
       { key: 'attachments', label: 'Attachments', icon: Paperclip, count: task.attachments?.length || 0, tooltip: 'View documents and files attached to this task' },
@@ -522,6 +579,108 @@ const TasksABTesting = () => {
                       <Zap size={48} className="mx-auto mb-4 opacity-50" />
                       <p>No boosts yet</p>
                       <p className="text-sm mt-2">Click "Boost Task" to expedite and request an update</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Bottlenecks/Support Requests Tab */}
+            {activeTab === 'bottlenecks' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <HelpCircle size={18} className="text-red-400" />
+                    Support Requests from Assignee
+                  </h3>
+                </div>
+
+                {/* Bottlenecks Timeline */}
+                <div className="space-y-3">
+                  {task.bottlenecks && task.bottlenecks.length > 0 ? (
+                    [...task.bottlenecks].reverse().map((bottleneck, index) => {
+                      const isOpen = bottleneck.status === 'open';
+                      const isInProgress = bottleneck.status === 'in-progress';
+                      return (
+                        <div key={bottleneck._id || index} className={`relative pl-6 pb-4 border-l-2 ${
+                          isOpen ? 'border-red-500/50' : isInProgress ? 'border-amber-500/50' : 'border-emerald-500/50'
+                        } last:border-l-0 last:pb-0`}>
+                          <div className={`absolute -left-2 top-0 w-4 h-4 rounded-full flex items-center justify-center ${
+                            isOpen ? 'bg-red-500 animate-pulse' : isInProgress ? 'bg-amber-500' : 'bg-emerald-500'
+                          }`}>
+                            <HelpCircle size={10} className="text-white" />
+                          </div>
+                          <div className={`rounded-lg p-4 ml-2 ${
+                            isOpen 
+                              ? 'bg-red-500/10 border border-red-500/30' 
+                              : isInProgress 
+                              ? 'bg-amber-500/10 border border-amber-500/30'
+                              : 'bg-emerald-500/10 border border-emerald-500/30'
+                          }`}>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`px-2 py-0.5 rounded text-xs font-medium border ${
+                                  bottleneck.urgency === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                                  bottleneck.urgency === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' :
+                                  bottleneck.urgency === 'medium' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' :
+                                  'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                                }`}>
+                                  {bottleneck.urgency?.toUpperCase() || 'MEDIUM'} URGENCY
+                                </span>
+                                <span className={`text-sm font-medium ${
+                                  isOpen ? 'text-red-400' : isInProgress ? 'text-amber-400' : 'text-emerald-400'
+                                }`}>
+                                  {isOpen ? '🔴 Needs Response' : isInProgress ? '🟡 In Progress' : '✓ Resolved'}
+                                </span>
+                              </div>
+                              <span className="text-xs text-slate-500">
+                                {bottleneck.raisedAt && format(new Date(bottleneck.raisedAt), 'MMM d, yyyy h:mm a')}
+                              </span>
+                            </div>
+                            
+                            {/* Issue raised by assignee */}
+                            <div className="mb-3 p-3 bg-slate-800/50 rounded">
+                              <p className="text-xs text-slate-500 mb-1">
+                                Support requested by {bottleneck.raisedBy?.firstName 
+                                  ? `${bottleneck.raisedBy.firstName} ${bottleneck.raisedBy.lastName || ''}`.trim() 
+                                  : 'Assignee'}:
+                              </p>
+                              <p className="text-white text-sm">{bottleneck.issue}</p>
+                            </div>
+
+                            {/* Response from chairman */}
+                            {bottleneck.chairpersonResponse ? (
+                              <div className="p-3 bg-emerald-500/10 rounded border border-emerald-500/20">
+                                <p className="text-xs text-emerald-500 mb-1">
+                                  Your Response • {bottleneck.respondedAt && format(new Date(bottleneck.respondedAt), 'MMM d, h:mm a')}
+                                </p>
+                                <p className="text-emerald-300 text-sm">{bottleneck.chairpersonResponse}</p>
+                              </div>
+                            ) : (
+                              <div className="p-3 bg-red-500/10 rounded border border-red-500/20">
+                                <p className="text-xs text-red-400 mb-2">⏳ Awaiting your response...</p>
+                                <button
+                                  onClick={() => setBottleneckResponseModal({ 
+                                    show: true, 
+                                    task, 
+                                    bottleneck 
+                                  })}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+                                >
+                                  <Send size={14} />
+                                  Respond Now
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-12 text-slate-500">
+                      <HelpCircle size={48} className="mx-auto mb-4 opacity-50" />
+                      <p>No support requests yet</p>
+                      <p className="text-sm mt-2">Assignees can raise support requests when they face challenges</p>
                     </div>
                   )}
                 </div>
@@ -828,6 +987,13 @@ const TasksABTesting = () => {
                   {isPendingBoost ? 'Awaiting' : 'Responded'}
                 </span>
               )}
+              {/* Bottleneck indicator */}
+              {getOpenBottlenecks(task).length > 0 && (
+                <span className="flex items-center gap-1 text-red-400">
+                  <AlertTriangle size={10} />
+                  {getOpenBottlenecks(task).length} support req
+                </span>
+              )}
             </div>
           </div>
 
@@ -1033,6 +1199,146 @@ const TasksABTesting = () => {
                   ) : (
                     <span className="flex items-center gap-2">
                       <Zap size={16} /> Boost Task
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bottleneck Response Modal */}
+      {bottleneckResponseModal.show && bottleneckResponseModal.task && bottleneckResponseModal.bottleneck && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-purple-500/20 to-blue-500/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-500/20 rounded-lg">
+                  <HelpCircle size={24} className="text-purple-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Respond to Support Request</h2>
+                  <p className="text-sm text-slate-400">Help the assignee resolve their challenge</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-sm text-slate-400 mb-2">Task:</p>
+                <p className="text-white font-medium">{bottleneckResponseModal.task.title}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Requested by: {bottleneckResponseModal.bottleneck.raisedBy?.firstName 
+                    ? `${bottleneckResponseModal.bottleneck.raisedBy.firstName} ${bottleneckResponseModal.bottleneck.raisedBy.lastName || ''}`.trim()
+                    : getEmployeeName(bottleneckResponseModal.task)}
+                </p>
+              </div>
+
+              {/* Issue */}
+              <div>
+                <p className="text-sm text-slate-400 mb-2">Issue Raised:</p>
+                <div className="bg-slate-700/50 p-3 rounded-lg border-l-4 border-red-500">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      bottleneckResponseModal.bottleneck.urgency === 'critical' ? 'bg-red-500/20 text-red-400' :
+                      bottleneckResponseModal.bottleneck.urgency === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                      bottleneckResponseModal.bottleneck.urgency === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                      'bg-slate-500/20 text-slate-400'
+                    }`}>
+                      {bottleneckResponseModal.bottleneck.urgency?.toUpperCase() || 'MEDIUM'} URGENCY
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {bottleneckResponseModal.bottleneck.raisedAt && 
+                        format(new Date(bottleneckResponseModal.bottleneck.raisedAt), 'MMM d, h:mm a')}
+                    </span>
+                  </div>
+                  <p className="text-white">{bottleneckResponseModal.bottleneck.issue}</p>
+                </div>
+              </div>
+
+              {/* Response Status */}
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">
+                  Response Status
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'acknowledged', label: 'Acknowledged', color: 'amber' },
+                    { value: 'in-progress', label: 'Working on it', color: 'blue' },
+                    { value: 'resolved', label: 'Resolved', color: 'emerald' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setBottleneckStatus(opt.value)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        bottleneckStatus === opt.value
+                          ? `bg-${opt.color}-500/20 text-${opt.color}-400 border border-${opt.color}-500/50`
+                          : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Response Message */}
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">
+                  Your Response *
+                </label>
+                <textarea
+                  value={bottleneckResponse}
+                  onChange={(e) => setBottleneckResponse(e.target.value)}
+                  placeholder="Provide guidance, instructions, or let them know you're looking into it..."
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none resize-none"
+                  rows={4}
+                />
+              </div>
+
+              {/* Resolution Notes (only if resolved) */}
+              {bottleneckStatus === 'resolved' && (
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Resolution Notes (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={bottleneckResolution}
+                    onChange={(e) => setBottleneckResolution(e.target.value)}
+                    placeholder="Brief summary of how this was resolved..."
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-purple-500 outline-none"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setBottleneckResponseModal({ show: false, task: null, bottleneck: null });
+                    setBottleneckResponse('');
+                    setBottleneckStatus('acknowledged');
+                    setBottleneckResolution('');
+                  }}
+                  variant="outline"
+                  className="flex-1 border-slate-600 text-slate-300"
+                  disabled={respondingToBottleneck}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleRespondToBottleneck}
+                  className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white"
+                  disabled={respondingToBottleneck || !bottleneckResponse.trim()}
+                >
+                  {respondingToBottleneck ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span> Sending...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Send size={16} /> Send Response
                     </span>
                   )}
                 </Button>

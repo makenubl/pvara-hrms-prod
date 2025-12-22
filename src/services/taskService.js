@@ -151,6 +151,47 @@ const taskService = {
       throw error.response?.data || { message: 'Failed to acknowledge boost' };
     }
   },
+
+  // ==================== BOTTLENECK METHODS ====================
+
+  // Raise a bottleneck (assignee requests support from chairperson)
+  raiseBottleneck: async (taskId, { issue, description, category, severity }) => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/bottleneck`, {
+        issue,
+        description,
+        category,
+        severity,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to raise bottleneck' };
+    }
+  },
+
+  // Respond to a bottleneck (chairperson provides support)
+  respondToBottleneck: async (taskId, bottleneckId, { chairpersonResponse, status, resolution }) => {
+    try {
+      const response = await api.patch(`/tasks/${taskId}/bottleneck/${bottleneckId}`, {
+        chairpersonResponse,
+        status,
+        resolution,
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to respond to bottleneck' };
+    }
+  },
+
+  // Get all bottlenecks (for chairperson dashboard)
+  getAllBottlenecks: async () => {
+    try {
+      const response = await api.get('/tasks/bottlenecks/all');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to get bottlenecks' };
+    }
+  },
 };
 
 export default taskService;
