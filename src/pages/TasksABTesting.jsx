@@ -257,12 +257,12 @@ const TasksABTesting = () => {
     { key: 'all', label: 'All Tasks', count: tasks.length, color: 'from-cyan-500 to-blue-500' },
     { key: 'completed', label: 'Completed', count: completedTasks.length, color: 'from-emerald-500 to-teal-500' },
     { key: 'pending', label: 'Pending', count: pendingTasks.length, color: 'from-amber-500 to-yellow-500' },
-    { key: 'bottleneck', label: 'Support Requests', count: bottleneckTasks.length, color: 'from-red-500 to-rose-500' },
+    { key: 'bottleneck', label: 'Bottlenecks', count: bottleneckTasks.length, color: 'from-red-500 to-rose-500' },
   ];
 
   // Task Detail Modal/Panel
-  const TaskDetailPanel = ({ task, onClose, onTaskUpdate }) => {
-    const [activeTab, setActiveTab] = useState('details');
+  const TaskDetailPanel = ({ task, onClose, onTaskUpdate, defaultTab = 'details' }) => {
+    const [activeTab, setActiveTab] = useState(defaultTab);
     const [newComment, setNewComment] = useState('');
     const [addingComment, setAddingComment] = useState(false);
 
@@ -321,7 +321,7 @@ const TasksABTesting = () => {
     const tabs = [
       { key: 'details', label: 'Details', icon: FileText, tooltip: 'View task details including description, assignee, deadline and progress' },
       { key: 'boosts', label: 'Boosts', icon: Zap, count: task.boosts?.length || 0, tooltip: 'View and manage boost/expedite requests - Track responses from assignees' },
-      { key: 'bottlenecks', label: 'Support Requests', icon: HelpCircle, count: task.bottlenecks?.length || 0, tooltip: 'View and respond to support requests from assignees' },
+      { key: 'bottlenecks', label: 'Bottlenecks', icon: HelpCircle, count: task.bottlenecks?.length || 0, tooltip: 'View and respond to bottlenecks raised by assignees' },
       { key: 'activities', label: 'Activities', icon: Activity, count: task.activities?.length || 0, tooltip: 'View task journey/timeline - Track actions across departments' },
       { key: 'comments', label: 'Comments', icon: MessageSquare, count: task.chairmanComments?.length || 0, tooltip: 'View and add chairperson comments on this task' },
       { key: 'attachments', label: 'Attachments', icon: Paperclip, count: task.attachments?.length || 0, tooltip: 'View documents and files attached to this task' },
@@ -585,13 +585,13 @@ const TasksABTesting = () => {
               </div>
             )}
 
-            {/* Bottlenecks/Support Requests Tab */}
+            {/* Bottlenecks Tab */}
             {activeTab === 'bottlenecks' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                     <HelpCircle size={18} className="text-red-400" />
-                    Support Requests from Assignee
+                    Bottlenecks
                   </h3>
                 </div>
 
@@ -641,7 +641,7 @@ const TasksABTesting = () => {
                             {/* Issue raised by assignee */}
                             <div className="mb-3 p-3 bg-slate-800/50 rounded">
                               <p className="text-xs text-slate-500 mb-1">
-                                Support requested by {bottleneck.raisedBy?.firstName 
+                                Raised by {bottleneck.raisedBy?.firstName 
                                   ? `${bottleneck.raisedBy.firstName} ${bottleneck.raisedBy.lastName || ''}`.trim() 
                                   : 'Assignee'}:
                               </p>
@@ -679,8 +679,8 @@ const TasksABTesting = () => {
                   ) : (
                     <div className="text-center py-12 text-slate-500">
                       <HelpCircle size={48} className="mx-auto mb-4 opacity-50" />
-                      <p>No support requests yet</p>
-                      <p className="text-sm mt-2">Assignees can raise support requests when they face challenges</p>
+                      <p>No bottlenecks yet</p>
+                      <p className="text-sm mt-2">Assignees can raise bottlenecks when they face challenges</p>
                     </div>
                   )}
                 </div>
@@ -991,7 +991,7 @@ const TasksABTesting = () => {
               {getOpenBottlenecks(task).length > 0 && (
                 <span className="flex items-center gap-1 text-red-400">
                   <AlertTriangle size={10} />
-                  {getOpenBottlenecks(task).length} support req
+                  {getOpenBottlenecks(task).length} bottleneck{getOpenBottlenecks(task).length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -1218,7 +1218,7 @@ const TasksABTesting = () => {
                   <HelpCircle size={24} className="text-purple-400" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Respond to Support Request</h2>
+                  <h2 className="text-xl font-bold text-white">Respond to Bottleneck</h2>
                   <p className="text-sm text-slate-400">Help the assignee resolve their challenge</p>
                 </div>
               </div>
@@ -1351,7 +1351,8 @@ const TasksABTesting = () => {
       {/* Task Detail Modal */}
       {selectedTask && (
         <TaskDetailPanel 
-          task={selectedTask} 
+          task={selectedTask}
+          defaultTab={filter === 'bottleneck' ? 'bottlenecks' : 'details'}
           onClose={() => setSelectedTask(null)}
           onTaskUpdate={(updatedTask) => {
             // Update the task in the list and in selectedTask
