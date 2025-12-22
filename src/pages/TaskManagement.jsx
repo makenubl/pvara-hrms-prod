@@ -30,7 +30,7 @@ import {
 import toast from 'react-hot-toast';
 
 const TaskManagement = () => {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -57,10 +57,14 @@ const TaskManagement = () => {
   });
 
   // Check if user can manage all tasks (admin, chairman, managers)
-  const canManageAllTasks = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod', 'teamlead'].includes(user?.role);
+  // Use top-level role from authStore for consistency
+  const canManageAllTasks = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod', 'teamlead'].includes(role);
   
   // Check if user is an employee (restricted access)
-  const isEmployee = user?.role === 'employee';
+  const isEmployee = role === 'employee';
+  
+  // Debug: Log role
+  console.log('TaskManagement - role:', role, 'isEmployee:', isEmployee, 'canManageAllTasks:', canManageAllTasks);
   
   // Check if user can edit/delete a specific task
   const canEditTask = (task) => {
@@ -272,20 +276,8 @@ const TaskManagement = () => {
     overdue: tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'completed').length,
   };
 
-  if (!canManageTasks) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Card className="bg-slate-900/50 border-red-500/30 p-8 text-center">
-            <AlertCircle className="mx-auto text-red-400 mb-4" size={48} />
-            <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
-            <p className="text-slate-400">You don't have permission to manage tasks.</p>
-            <p className="text-slate-500 text-sm mt-2">Contact your administrator for access.</p>
-          </Card>
-        </div>
-      </MainLayout>
-    );
-  }
+  // Note: All users can access Task Management, but with different permissions
+  // Employees can only create tasks for themselves and edit their own tasks
 
   return (
     <MainLayout>

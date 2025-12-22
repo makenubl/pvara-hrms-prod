@@ -27,24 +27,24 @@ import pvaraLogo from '../pvara-logo.png';
 
 const Sidebar = () => {
   const { sidebarOpen, toggleSidebar } = useAppStore();
-  const { user, logout } = useAuthStore();
+  const { user, role, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Role-based menu configuration
   const allMenuItems = [
-    { icon: Home, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'hr', 'manager', 'employee'] },
-    { icon: BarChart3, label: 'Chairperson Tasks', path: '/tasks-ab', roles: ['admin'] },
-    { icon: Target, label: 'Task Management', path: '/task-management', roles: ['admin'] },
-    { icon: CheckSquare, label: 'My Tasks', path: '/my-tasks', roles: ['admin', 'hr', 'manager', 'employee'] },
-    { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager'] },
-    { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee'] },
-    { icon: UserCircle, label: 'My Profile', path: '/profile', roles: ['admin', 'hr', 'manager', 'employee'] },
-    { icon: Settings, label: 'Settings', path: '/settings', roles: ['admin', 'hr', 'manager', 'employee'] },
+    { icon: Home, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
+    { icon: BarChart3, label: 'Chairperson Dashboard', path: '/tasks-ab', roles: ['admin', 'chairman'] },
+    { icon: Target, label: 'Task Management', path: '/task-management', roles: ['admin', 'chairman', 'hr', 'manager', 'employee'] },
+    { icon: CheckSquare, label: 'My Tasks', path: '/my-tasks', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
+    { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager', 'chairman'] },
+    { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
+    { icon: UserCircle, label: 'My Profile', path: '/profile', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
+    { icon: Settings, label: 'Settings', path: '/settings', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
   ];
 
-  // Filter menu items based on user role
-  const userRole = user?.role || 'employee';
+  // Filter menu items based on user role - use top-level role from store
+  const userRole = role || user?.role || 'employee';
   const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
 
   const isActive = (path) => location.pathname.startsWith(path);

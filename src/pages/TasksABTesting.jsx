@@ -35,10 +35,14 @@ import {
 import toast from 'react-hot-toast';
 
 const TasksABTesting = () => {
-  const { user, isChairman, isEmployee } = useAuthStore();
+  const { user, role } = useAuthStore();
   
   // Role-based access control - only admin and chairman can perform actions
-  const canPerformActions = ['admin', 'chairman', 'manager', 'hr'].includes(user?.role);
+  // Use top-level role from authStore (set during login) for consistency
+  const canPerformActions = ['admin', 'chairman', 'manager', 'hr'].includes(role);
+  
+  // Debug: Log user role
+  console.log('TasksABTesting - role:', role, 'user.role:', user?.role, 'canPerformActions:', canPerformActions);
   
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
