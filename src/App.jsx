@@ -42,6 +42,23 @@ const DashboardRouter = () => {
   return <Dashboard />;
 };
 
+// Helper function to get default landing page based on user role
+const getDefaultRoute = (user) => {
+  // Chairman, admin, and handler roles go to Chairperson Tasks Dashboard
+  const chairmanRoles = ['admin', 'chairman', 'executive', 'director'];
+  if (chairmanRoles.includes(user?.role)) {
+    return '/tasks-ab';
+  }
+  
+  // Employees default to My Tasks
+  if (user?.role === 'employee') {
+    return '/my-tasks';
+  }
+  
+  // Other roles (manager, hr, hod, teamlead) go to dashboard
+  return '/dashboard';
+};
+
 // Protected Route Wrapper
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { token, user } = useAuthStore();
@@ -52,7 +69,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   // If allowedRoles is specified, check if user has permission
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDefaultRoute(user)} replace />;
   }
 
   return children;
@@ -60,10 +77,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 // Public Route Wrapper (redirect if already logged in)
 const PublicRoute = ({ children }) => {
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   
   if (token) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDefaultRoute(user)} replace />;
   }
 
   return children;
@@ -134,19 +151,19 @@ function App() {
         />
         <Route
           path="/chairman-simple"
-          element={<ProtectedRoute allowedRoles={['admin']}><ChairmanOverviewSimple /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director']}><ChairmanOverviewSimple /></ProtectedRoute>}
         />
         <Route
           path="/chairman-detailed"
-          element={<ProtectedRoute allowedRoles={['admin']}><ChairmanOverview /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director']}><ChairmanOverview /></ProtectedRoute>}
         />
         <Route
           path="/task-management"
-          element={<ProtectedRoute allowedRoles={['admin']}><TaskManagement /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director', 'manager', 'hr', 'hod', 'teamlead']}><TaskManagement /></ProtectedRoute>}
         />
         <Route
           path="/tasks-ab"
-          element={<ProtectedRoute allowedRoles={['admin']}><TasksABTesting /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director']}><TasksABTesting /></ProtectedRoute>}
         />
         <Route
           path="/my-tasks"
