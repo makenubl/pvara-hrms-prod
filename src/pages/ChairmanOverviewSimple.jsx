@@ -14,8 +14,6 @@ import {
   Image,
   User,
   Calendar,
-  ChevronDown,
-  ChevronUp,
   Flag,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -27,7 +25,6 @@ const ChairmanOverviewSimple = () => {
   const [employees, setEmployees] = useState([]);
   const [date, setDate] = useState(new Date());
   const [exporting, setExporting] = useState(false);
-  const [expandedSection, setExpandedSection] = useState(null);
   const dashboardRef = useRef(null);
 
   useEffect(() => {
@@ -55,13 +52,22 @@ const ChairmanOverviewSimple = () => {
     }
   };
 
-  // Task categorization
-  const completedTasks = tasks.filter(t => t.status === 'completed');
-  const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'in-progress');
-  const bottleneckTasks = tasks.filter(t => 
+  // Sort helper - latest first (by createdAt or deadline)
+  const sortByLatest = (taskList) => {
+    return [...taskList].sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.deadline || 0);
+      const dateB = new Date(b.createdAt || b.deadline || 0);
+      return dateB - dateA; // Descending - latest first
+    });
+  };
+
+  // Task categorization (sorted by latest)
+  const completedTasks = sortByLatest(tasks.filter(t => t.status === 'completed'));
+  const pendingTasks = sortByLatest(tasks.filter(t => t.status === 'pending' || t.status === 'in-progress'));
+  const bottleneckTasks = sortByLatest(tasks.filter(t => 
     t.status === 'blocked' || 
     (new Date(t.deadline) < new Date() && t.status !== 'completed')
-  );
+  ));
 
   // Get employee name helper
   const getEmployeeName = (task) => {
@@ -202,125 +208,82 @@ const ChairmanOverviewSimple = () => {
         {/* Dashboard Content */}
         <div ref={dashboardRef} className="space-y-6 bg-slate-900 p-2">
           
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Stats Summary Row */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/30 rounded-xl p-4 text-center">
+              <CheckCircle2 className="text-emerald-400 mx-auto mb-2" size={28} />
+              <p className="text-3xl font-bold text-white">{completedTasks.length}</p>
+              <p className="text-emerald-400 text-sm">Completed</p>
+            </div>
+            <div className="bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
+              <Clock className="text-amber-400 mx-auto mb-2" size={28} />
+              <p className="text-3xl font-bold text-white">{pendingTasks.length}</p>
+              <p className="text-amber-400 text-sm">Pending</p>
+            </div>
+            <div className={`bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-500/30 rounded-xl p-4 text-center ${bottleneckTasks.length > 0 ? 'animate-pulse' : ''}`}>
+              <AlertTriangle className="text-red-400 mx-auto mb-2" size={28} />
+              <p className="text-3xl font-bold text-white">{bottleneckTasks.length}</p>
+              <p className="text-red-400 text-sm">Bottleneck</p>
+            </div>
+          </div>
+
+          {/* Three Column Task Lists - All Visible by Default */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             
-            {/* Completed Tasks */}
-            <Card 
-              className="bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border-emerald-500/30 cursor-pointer hover:border-emerald-400 transition-all"
-              onClick={() => toggleSection('completed')}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-emerald-500/30 rounded-xl flex items-center justify-center">
-                    <CheckCircle2 className="text-emerald-400" size={24} />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Completed</p>
-                    <p className="text-3xl font-bold text-white">{completedTasks.length}</p>
-                  </div>
-                </div>
-                {expandedSection === 'completed' ? (
-                  <ChevronUp className="text-emerald-400" size={20} />
+            {/* Completed Column */}
+            <Card className="bg-slate-800/50 border-emerald-500/30">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-700">
+                <CheckCircle2 className="text-emerald-400" size={20} />
+                <h3 className="text-lg font-semibold text-white">Completed</h3>
+                <span className="ml-auto bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2 py-1 rounded-full">
+                  {completedTasks.length}
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {completedTasks.length > 0 ? (
+                  completedTasks.map(task => <TaskCard key={task._id} task={task} />)
                 ) : (
-                  <ChevronDown className="text-slate-400" size={20} />
+                  <p className="text-slate-500 text-center py-8">No completed tasks</p>
                 )}
               </div>
             </Card>
 
-            {/* Pending Tasks */}
-            <Card 
-              className="bg-gradient-to-br from-amber-500/20 to-yellow-500/10 border-amber-500/30 cursor-pointer hover:border-amber-400 transition-all"
-              onClick={() => toggleSection('pending')}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-amber-500/30 rounded-xl flex items-center justify-center">
-                    <Clock className="text-amber-400" size={24} />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Pending</p>
-                    <p className="text-3xl font-bold text-white">{pendingTasks.length}</p>
-                  </div>
-                </div>
-                {expandedSection === 'pending' ? (
-                  <ChevronUp className="text-amber-400" size={20} />
+            {/* Pending Column */}
+            <Card className="bg-slate-800/50 border-amber-500/30">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-700">
+                <Clock className="text-amber-400" size={20} />
+                <h3 className="text-lg font-semibold text-white">Pending</h3>
+                <span className="ml-auto bg-amber-500/20 text-amber-400 text-xs font-bold px-2 py-1 rounded-full">
+                  {pendingTasks.length}
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {pendingTasks.length > 0 ? (
+                  pendingTasks.map(task => <TaskCard key={task._id} task={task} />)
                 ) : (
-                  <ChevronDown className="text-slate-400" size={20} />
+                  <p className="text-slate-500 text-center py-8">No pending tasks</p>
                 )}
               </div>
             </Card>
 
-            {/* Bottleneck Tasks */}
-            <Card 
-              className={`bg-gradient-to-br from-red-500/20 to-rose-500/10 border-red-500/30 cursor-pointer hover:border-red-400 transition-all ${bottleneckTasks.length > 0 ? 'animate-pulse' : ''}`}
-              onClick={() => toggleSection('bottleneck')}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-red-500/30 rounded-xl flex items-center justify-center">
-                    <AlertTriangle className="text-red-400" size={24} />
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Bottleneck</p>
-                    <p className="text-3xl font-bold text-white">{bottleneckTasks.length}</p>
-                  </div>
-                </div>
-                {expandedSection === 'bottleneck' ? (
-                  <ChevronUp className="text-red-400" size={20} />
+            {/* Bottleneck Column */}
+            <Card className="bg-slate-800/50 border-red-500/30">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-700">
+                <AlertTriangle className="text-red-400" size={20} />
+                <h3 className="text-lg font-semibold text-white">Bottleneck</h3>
+                <span className="ml-auto bg-red-500/20 text-red-400 text-xs font-bold px-2 py-1 rounded-full">
+                  {bottleneckTasks.length}
+                </span>
+              </div>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                {bottleneckTasks.length > 0 ? (
+                  bottleneckTasks.map(task => <TaskCard key={task._id} task={task} />)
                 ) : (
-                  <ChevronDown className="text-slate-400" size={20} />
+                  <p className="text-slate-500 text-center py-8 text-emerald-400">✓ No bottlenecks!</p>
                 )}
               </div>
             </Card>
           </div>
-
-          {/* Expanded Task Lists */}
-          {expandedSection && (
-            <Card className="bg-slate-800/50 border-slate-700">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white capitalize flex items-center gap-2">
-                  {expandedSection === 'completed' && <CheckCircle2 className="text-emerald-400" size={20} />}
-                  {expandedSection === 'pending' && <Clock className="text-amber-400" size={20} />}
-                  {expandedSection === 'bottleneck' && <AlertTriangle className="text-red-400" size={20} />}
-                  {expandedSection} Tasks
-                </h3>
-                <Button
-                  variant="ghost"
-                  onClick={() => setExpandedSection(null)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  Close
-                </Button>
-              </div>
-              
-              <div className="grid gap-3 max-h-96 overflow-y-auto">
-                {expandedSection === 'completed' && (
-                  completedTasks.length > 0 ? (
-                    completedTasks.map(task => <TaskCard key={task._id} task={task} />)
-                  ) : (
-                    <p className="text-slate-500 text-center py-8">No completed tasks</p>
-                  )
-                )}
-                
-                {expandedSection === 'pending' && (
-                  pendingTasks.length > 0 ? (
-                    pendingTasks.map(task => <TaskCard key={task._id} task={task} />)
-                  ) : (
-                    <p className="text-slate-500 text-center py-8">No pending tasks</p>
-                  )
-                )}
-                
-                {expandedSection === 'bottleneck' && (
-                  bottleneckTasks.length > 0 ? (
-                    bottleneckTasks.map(task => <TaskCard key={task._id} task={task} />)
-                  ) : (
-                    <p className="text-slate-500 text-center py-8">No bottleneck tasks - everything is on track!</p>
-                  )
-                )}
-              </div>
-            </Card>
-          )}
 
           {/* Summary Footer */}
           <div className="text-center text-slate-500 text-sm pt-4 border-t border-slate-800">
