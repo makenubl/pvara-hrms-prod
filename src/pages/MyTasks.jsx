@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import {
   CheckCircle2,
+  CheckCircle,
   Clock,
   AlertCircle,
   TrendingUp,
@@ -269,6 +270,21 @@ const MyTasks = () => {
       toast.error(error.message || 'Failed to raise bottleneck');
     } finally {
       setRaisingBottleneck(false);
+    }
+  };
+
+  // Handle resolving a bottleneck (assignee marks as resolved)
+  const handleResolveBottleneck = async (taskId, bottleneckId) => {
+    try {
+      const updatedTask = await taskService.resolveBottleneck(taskId, bottleneckId);
+      setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+      if (selectedTask?._id === updatedTask._id) {
+        setSelectedTask(updatedTask);
+      }
+      toast.success('Bottleneck marked as resolved!');
+    } catch (error) {
+      console.error('Failed to resolve bottleneck:', error);
+      toast.error(error.message || 'Failed to resolve bottleneck');
     }
   };
 
@@ -846,6 +862,19 @@ const MyTasks = () => {
                                 Resolution • {bn.resolvedAt && format(new Date(bn.resolvedAt), 'MMM d, h:mm a')}
                               </p>
                               <p className="text-emerald-300 text-sm">{bn.resolution}</p>
+                            </div>
+                          )}
+
+                          {/* Mark as Resolved button - show only if not resolved */}
+                          {bn.status !== 'resolved' && (
+                            <div className="mt-3 pt-3 border-t border-slate-700">
+                              <button
+                                onClick={() => handleResolveBottleneck(selectedTask._id, bn._id)}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 text-emerald-400 text-sm rounded-lg hover:bg-emerald-500/30 transition-colors"
+                              >
+                                <CheckCircle size={14} />
+                                Mark as Resolved
+                              </button>
                             </div>
                           )}
                         </div>

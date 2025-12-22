@@ -709,7 +709,7 @@ router.post('/:id/bottleneck', authenticate, async (req, res) => {
   }
 });
 
-// Respond to a bottleneck (chairperson provides support/response)
+// Respond to a bottleneck (chairperson provides support/response) OR assignee marks as resolved
 router.patch('/:id/bottleneck/:bottleneckId', authenticate, async (req, res) => {
   try {
     const { chairpersonResponse, status, resolution } = req.body;
@@ -719,9 +719,17 @@ router.patch('/:id/bottleneck/:bottleneckId', authenticate, async (req, res) => 
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Only admin/chairman can respond to bottlenecks
-    if (req.user.role !== 'admin' && req.user.role !== 'chairman') {
-      return res.status(403).json({ message: 'Only chairperson can respond to bottlenecks' });
+    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isChairperson = req.user.role === 'admin' || req.user.role === 'chairman';
+
+    // Assignee can only mark as resolved, chairperson can do everything
+    if (!isAssignee && !isChairperson) {
+      return res.status(403).json({ message: 'Not authorized to update this bottleneck' });
+    }
+
+    // If assignee is trying to do more than just resolve, deny
+    if (isAssignee && !isChairperson && (chairpersonResponse || (status && status !== 'resolved'))) {
+      return res.status(403).json({ message: 'Assignee can only mark bottlenecks as resolved' });
     }
 
     const bottleneck = task.bottlenecks.id(req.params.bottleneckId);

@@ -183,6 +183,18 @@ const taskService = {
     }
   },
 
+  // Resolve a bottleneck (assignee marks as resolved)
+  resolveBottleneck: async (taskId, bottleneckId) => {
+    try {
+      const response = await api.patch(`/tasks/${taskId}/bottleneck/${bottleneckId}`, {
+        status: 'resolved',
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to resolve bottleneck' };
+    }
+  },
+
   // Get all bottlenecks (for chairperson dashboard)
   getAllBottlenecks: async () => {
     try {
