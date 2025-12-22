@@ -263,11 +263,11 @@ const TasksABTesting = () => {
     };
 
     const tabs = [
-      { key: 'details', label: 'Details', icon: FileText },
-      { key: 'boosts', label: 'Boosts', icon: Zap, count: task.boosts?.length || 0 },
-      { key: 'activities', label: 'Activities', icon: Activity, count: task.activities?.length || 0 },
-      { key: 'comments', label: 'Comments', icon: MessageSquare, count: task.chairmanComments?.length || 0 },
-      { key: 'attachments', label: 'Attachments', icon: Paperclip, count: task.attachments?.length || 0 },
+      { key: 'details', label: 'Details', icon: FileText, tooltip: 'View task details including description, assignee, deadline and progress' },
+      { key: 'boosts', label: 'Boosts', icon: Zap, count: task.boosts?.length || 0, tooltip: 'View and manage boost/expedite requests - Track responses from assignees' },
+      { key: 'activities', label: 'Activities', icon: Activity, count: task.activities?.length || 0, tooltip: 'View task journey/timeline - Track actions across departments' },
+      { key: 'comments', label: 'Comments', icon: MessageSquare, count: task.chairmanComments?.length || 0, tooltip: 'View and add chairperson comments on this task' },
+      { key: 'attachments', label: 'Attachments', icon: Paperclip, count: task.attachments?.length || 0, tooltip: 'View documents and files attached to this task' },
     ];
 
     return (
@@ -309,6 +309,7 @@ const TasksABTesting = () => {
                         ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                         : 'text-slate-400 hover:text-white hover:bg-slate-700'
                     }`}
+                    title={tab.tooltip}
                   >
                     <Icon size={16} />
                     {tab.label}
@@ -735,16 +736,9 @@ const TasksABTesting = () => {
             ? 'border-yellow-500/50 bg-yellow-500/5' 
             : 'border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800'
         }`}
+        title="Click to view full task details"
       >
         <div className="flex items-center gap-3">
-          {/* Task ID */}
-          <div className="flex-shrink-0 min-w-[90px]">
-            <span className="flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20">
-              <Hash size={10} />
-              {getTaskId(task).replace('#', '').replace('TASK-', '')}
-            </span>
-          </div>
-
           {/* Boost Button */}
           <button
             onClick={(e) => {
@@ -758,32 +752,65 @@ const TasksABTesting = () => {
                 ? 'bg-emerald-500/20 text-emerald-400'
                 : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
             }`}
-            title={isPendingBoost ? 'Awaiting response' : hasResponse ? 'Response received' : 'Boost/Expedite this task'}
+            title={isPendingBoost ? '⏳ Boost sent - Awaiting response from assignee' : hasResponse ? '✅ Assignee has responded to your boost' : '⚡ Click to Boost/Expedite this task and request immediate update'}
           >
             <Zap size={18} className={isPendingBoost ? 'animate-pulse' : ''} />
           </button>
 
           {/* Status Icon */}
-          <div className="flex-shrink-0" onClick={() => onClick(task)}>
+          <div 
+            className="flex-shrink-0" 
+            onClick={() => onClick(task)}
+            title={`Status: ${task.status?.toUpperCase() || 'PENDING'} - ${
+              task.status === 'completed' ? 'Task has been completed' :
+              task.status === 'in-progress' ? 'Task is currently being worked on' :
+              task.status === 'blocked' ? 'Task is blocked and needs attention' :
+              'Task is waiting to be started'
+            }`}
+          >
             {getStatusIcon(task.status)}
           </div>
 
-          {/* Main Content */}
+          {/* Task ID + Title Combined */}
           <div className="flex-1 min-w-0" onClick={() => onClick(task)}>
-            <h4 className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors">
-              {task.title}
-            </h4>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Task ID - Prominently before title */}
+              <span 
+                className="flex-shrink-0 flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"
+                title={`Task ID: ${getTaskId(task)} - Unique identifier for this task`}
+              >
+                <Hash size={10} />
+                {getTaskId(task).replace('#', '').replace('TASK-', '')}
+              </span>
+              {/* Task Title */}
+              <h4 
+                className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors"
+                title={`Task: ${task.title}`}
+              >
+                {task.title}
+              </h4>
+            </div>
             <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <span className="flex items-center gap-1 text-xs text-slate-400">
+              <span 
+                className="flex items-center gap-1 text-xs text-slate-400"
+                title={`Assigned to: ${getEmployeeName(task)} - Person responsible for this task`}
+              >
                 <User size={12} />
                 {getEmployeeName(task)}
               </span>
               {task.deadline && (
-                <span className={`flex items-center gap-1 text-xs ${
-                  new Date(task.deadline) < new Date() && task.status !== 'completed'
-                    ? 'text-red-400'
-                    : 'text-slate-400'
-                }`}>
+                <span 
+                  className={`flex items-center gap-1 text-xs ${
+                    new Date(task.deadline) < new Date() && task.status !== 'completed'
+                      ? 'text-red-400'
+                      : 'text-slate-400'
+                  }`}
+                  title={`Deadline: ${format(new Date(task.deadline), 'EEEE, MMMM d, yyyy')}${
+                    new Date(task.deadline) < new Date() && task.status !== 'completed' 
+                      ? ' - ⚠️ OVERDUE - Task has passed its deadline!' 
+                      : ''
+                  }`}
+                >
                   <Calendar size={12} />
                   {format(new Date(task.deadline), 'MMM d, yyyy')}
                   {new Date(task.deadline) < new Date() && task.status !== 'completed' && ' (Overdue)'}
@@ -791,9 +818,15 @@ const TasksABTesting = () => {
               )}
               {/* Boost indicator */}
               {task.boosts?.length > 0 && (
-                <span className={`flex items-center gap-1 text-xs ${
-                  isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
-                }`}>
+                <span 
+                  className={`flex items-center gap-1 text-xs ${
+                    isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
+                  }`}
+                  title={isPendingBoost 
+                    ? '⚡ You have boosted this task - Waiting for assignee to respond with an update' 
+                    : `✅ ${task.boosts.length} boost(s) sent - Assignee has responded`
+                  }
+                >
                   <Zap size={10} />
                   {isPendingBoost ? 'Boosted - Awaiting' : `${task.boosts.length} boost${task.boosts.length > 1 ? 's' : ''}`}
                 </span>
@@ -803,21 +836,40 @@ const TasksABTesting = () => {
 
           {/* Priority & Status Badges */}
           <div className="flex items-center gap-2 flex-shrink-0" onClick={() => onClick(task)}>
-            <span className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+            <span 
+              className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}
+              title={`Priority: ${(task.priority || 'medium').toUpperCase()} - ${
+                task.priority === 'critical' ? '🔴 Requires immediate attention' :
+                task.priority === 'high' ? '🟠 High importance, should be addressed soon' :
+                task.priority === 'medium' ? '🟡 Normal priority task' :
+                '🟢 Low priority, can be addressed later'
+              }`}
+            >
               {task.priority || 'medium'}
             </span>
-            <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}>
+            <span 
+              className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}
+              title={`Current Status: ${(task.status || 'pending').toUpperCase()}`}
+            >
               {task.status || 'pending'}
             </span>
           </div>
 
           {/* Arrow */}
-          <ChevronRight size={20} className="text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" onClick={() => onClick(task)} />
+          <ChevronRight 
+            size={20} 
+            className="text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" 
+            onClick={() => onClick(task)} 
+            title="Click to view full details"
+          />
         </div>
 
         {/* Blocker indicator */}
         {task.blocker && (
-          <div className="mt-3 ml-[90px] p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2">
+          <div 
+            className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2"
+            title={`⚠️ BLOCKER: ${task.blocker} - This issue is preventing task progress`}
+          >
             <AlertTriangle size={12} />
             <span className="truncate">{task.blocker}</span>
           </div>
@@ -825,7 +877,10 @@ const TasksABTesting = () => {
 
         {/* Latest boost response preview */}
         {latestBoost?.response && (
-          <div className="mt-3 ml-[90px] p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2">
+          <div 
+            className="mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2"
+            title={`✅ Boost Response from Assignee: "${latestBoost.response}" - Click task for full details`}
+          >
             <Zap size={12} className="mt-0.5 flex-shrink-0" />
             <span className="truncate">Response: {latestBoost.response}</span>
           </div>
@@ -852,19 +907,45 @@ const TasksABTesting = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Chairperson Task Dashboard - v1
+            <h1 
+              className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"
+              title="Chairperson Task Dashboard - View and manage all organization tasks"
+            >
+              Chairperson Task Dashboard
             </h1>
             <p className="text-slate-400 mt-1 text-sm">
-              Click on any task to view full details
+              Monitor tasks, boost priority items, and track team progress
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div 
+            className="flex items-center gap-2"
+            title="Current filter status showing filtered vs total tasks"
+          >
             <Filter size={16} className="text-slate-400" />
             <span className="text-slate-400 text-sm">
               Showing {filteredTasks.length} of {tasks.length} tasks
             </span>
           </div>
+        </div>
+
+        {/* Quick Legend */}
+        <div className="flex flex-wrap items-center gap-4 p-3 bg-slate-800/30 rounded-lg border border-slate-700/50 text-xs">
+          <span className="text-slate-400 font-medium">Quick Guide:</span>
+          <span className="flex items-center gap-1 text-cyan-400" title="Task ID - Unique identifier for each task">
+            <Hash size={12} /> Task ID
+          </span>
+          <span className="flex items-center gap-1 text-orange-400" title="Click to boost a task and request immediate update from assignee">
+            <Zap size={12} /> Boost Task
+          </span>
+          <span className="flex items-center gap-1 text-yellow-400" title="Task has been boosted, waiting for assignee response">
+            <Zap size={12} className="animate-pulse" /> Awaiting Response
+          </span>
+          <span className="flex items-center gap-1 text-emerald-400" title="Assignee has responded to your boost">
+            <Zap size={12} /> Response Received
+          </span>
+          <span className="flex items-center gap-1 text-red-400" title="Task is blocked or overdue">
+            <AlertTriangle size={12} /> Blocker/Overdue
+          </span>
         </div>
 
         {/* Filter Buttons */}
@@ -878,6 +959,12 @@ const TasksABTesting = () => {
                   ? `bg-gradient-to-br ${btn.color} border-transparent shadow-lg`
                   : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
               }`}
+              title={
+                btn.key === 'all' ? 'View all tasks in the organization' :
+                btn.key === 'completed' ? 'View tasks that have been successfully completed' :
+                btn.key === 'pending' ? 'View tasks that are pending or in progress' :
+                'View tasks that are blocked, overdue, or need attention'
+              }
             >
               <div className="text-2xl font-bold text-white">{btn.count}</div>
               <div className={`text-sm ${filter === btn.key ? 'text-white/80' : 'text-slate-400'}`}>
@@ -890,13 +977,16 @@ const TasksABTesting = () => {
         {/* Task List */}
         <Card className="bg-slate-800/30 border-slate-700/50">
           <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-700">
-            <List size={20} className="text-cyan-400" />
+            <List size={20} className="text-cyan-400" title="Task list" />
             <h3 className="text-lg font-semibold text-white">
               {filter === 'all' ? 'All Tasks' : 
                filter === 'completed' ? 'Completed Tasks' :
                filter === 'pending' ? 'Pending Tasks' : 'Bottleneck Tasks'}
             </h3>
-            <span className="ml-auto text-slate-400 text-sm">
+            <span 
+              className="ml-auto text-slate-400 text-sm"
+              title={`${filteredTasks.length} task(s) in current view`}
+            >
               {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
             </span>
           </div>
