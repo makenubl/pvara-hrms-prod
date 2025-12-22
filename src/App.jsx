@@ -23,6 +23,7 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import OrganizationChart from './pages/OrganizationChart';
 import ChairmanOverview from './pages/ChairmanOverview';
+import ChairmanOverviewSimple from './pages/ChairmanOverviewSimple';
 import ChangePassword from './pages/ChangePassword';
 import MyTasks from './pages/MyTasks';
 import Worklog from './pages/Worklog';
@@ -128,6 +129,10 @@ function App() {
         />
         <Route
           path="/chairman"
+          element={<ProtectedRoute allowedRoles={['admin']}><ChairmanOverviewSimple /></ProtectedRoute>}
+        />
+        <Route
+          path="/chairman-detailed"
           element={<ProtectedRoute allowedRoles={['admin']}><ChairmanOverview /></ProtectedRoute>}
         />
         <Route
