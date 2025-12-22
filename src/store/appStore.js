@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export const useAppStore = create((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: false,
   theme: 'light',
   notifications: [],
   currentCompany: null,

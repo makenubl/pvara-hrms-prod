@@ -24,6 +24,7 @@ import Settings from './pages/Settings';
 import OrganizationChart from './pages/OrganizationChart';
 import ChairmanOverview from './pages/ChairmanOverview';
 import ChairmanOverviewSimple from './pages/ChairmanOverviewSimple';
+import TasksABTesting from './pages/TasksABTesting';
 import ChangePassword from './pages/ChangePassword';
 import MyTasks from './pages/MyTasks';
 import Worklog from './pages/Worklog';
@@ -129,6 +130,10 @@ function App() {
         />
         <Route
           path="/chairman"
+          element={<Navigate to="/tasks-ab" replace />}
+        />
+        <Route
+          path="/chairman-simple"
           element={<ProtectedRoute allowedRoles={['admin']}><ChairmanOverviewSimple /></ProtectedRoute>}
         />
         <Route
@@ -138,6 +143,10 @@ function App() {
         <Route
           path="/task-management"
           element={<ProtectedRoute allowedRoles={['admin']}><TaskManagement /></ProtectedRoute>}
+        />
+        <Route
+          path="/tasks-ab"
+          element={<ProtectedRoute allowedRoles={['admin']}><TasksABTesting /></ProtectedRoute>}
         />
         <Route
           path="/my-tasks"

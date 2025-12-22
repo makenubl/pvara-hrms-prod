@@ -358,4 +358,213 @@ router.post('/seed-demo', authenticate, async (req, res) => {
   }
 });
 
+// Add chairman comment to task
+router.post('/:id/comments', authenticate, async (req, res) => {
+  try {
+    const { comment } = req.body;
+    
+    if (!comment?.trim()) {
+      return res.status(400).json({ message: 'Comment is required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only admins (chairman) can add comments
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin/chairman can add comments' });
+    }
+
+    task.chairmanComments.push({
+      comment: comment.trim(),
+      addedBy: req.user._id,
+      addedAt: new Date(),
+    });
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('chairmanComments.addedBy', 'firstName lastName')
+      .populate('activities.addedBy', 'firstName lastName')
+      .populate('attachments.uploadedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add activity to task (task journey/timeline)
+router.post('/:id/activities', authenticate, async (req, res) => {
+  try {
+    const { action, department, poc, pocEmail, sentAt, responseReceivedAt, status, notes } = req.body;
+    
+    if (!action?.trim()) {
+      return res.status(400).json({ message: 'Action is required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only admins (chairman) can add activities
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin/chairman can add activities' });
+    }
+
+    task.activities.push({
+      action: action.trim(),
+      department: department?.trim(),
+      poc: poc?.trim(),
+      pocEmail: pocEmail?.trim(),
+      sentAt: sentAt ? new Date(sentAt) : new Date(),
+      responseReceivedAt: responseReceivedAt ? new Date(responseReceivedAt) : null,
+      status: status || 'sent',
+      notes: notes?.trim(),
+      addedBy: req.user._id,
+      addedAt: new Date(),
+    });
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('chairmanComments.addedBy', 'firstName lastName')
+      .populate('activities.addedBy', 'firstName lastName')
+      .populate('attachments.uploadedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Update activity status (e.g., mark response received)
+router.patch('/:id/activities/:activityId', authenticate, async (req, res) => {
+  try {
+    const { status, responseReceivedAt, notes } = req.body;
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only admins (chairman) can update activities
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin/chairman can update activities' });
+    }
+
+    const activity = task.activities.id(req.params.activityId);
+    if (!activity) {
+      return res.status(404).json({ message: 'Activity not found' });
+    }
+
+    if (status) activity.status = status;
+    if (responseReceivedAt) activity.responseReceivedAt = new Date(responseReceivedAt);
+    if (notes !== undefined) activity.notes = notes?.trim();
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('chairmanComments.addedBy', 'firstName lastName')
+      .populate('activities.addedBy', 'firstName lastName')
+      .populate('attachments.uploadedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add attachment to task (stores URL - actual upload handled separately or via base64)
+router.post('/:id/attachments', authenticate, async (req, res) => {
+  try {
+    const { name, url, type, size } = req.body;
+    
+    if (!name || !url) {
+      return res.status(400).json({ message: 'Name and URL are required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Allow admin, assignee (task owner), or assigner (task creator) to add attachments
+    const isAdmin = req.user.role === 'admin';
+    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isAssigner = task.assignedBy?.toString() === req.user._id.toString();
+    
+    if (!isAdmin && !isAssignee && !isAssigner) {
+      return res.status(403).json({ message: 'Only assignee, assigner, or admin can add attachments' });
+    }
+
+    task.attachments.push({
+      name,
+      url,
+      type: type || 'document',
+      size: size || 0,
+      uploadedBy: req.user._id,
+      uploadedAt: new Date(),
+    });
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('chairmanComments.addedBy', 'firstName lastName')
+      .populate('activities.addedBy', 'firstName lastName')
+      .populate('attachments.uploadedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Delete attachment
+router.delete('/:id/attachments/:attachmentId', authenticate, async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Allow admin, assignee, or assigner to delete attachments
+    // Also allow the person who uploaded the attachment to delete it
+    const isAdmin = req.user.role === 'admin';
+    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isAssigner = task.assignedBy?.toString() === req.user._id.toString();
+    const attachment = task.attachments.id(req.params.attachmentId);
+    const isUploader = attachment && attachment.uploadedBy?.toString() === req.user._id.toString();
+    
+    if (!isAdmin && !isAssignee && !isAssigner && !isUploader) {
+      return res.status(403).json({ message: 'Only assignee, assigner, uploader, or admin can delete attachments' });
+    }
+
+    task.attachments.pull(req.params.attachmentId);
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('chairmanComments.addedBy', 'firstName lastName')
+      .populate('activities.addedBy', 'firstName lastName')
+      .populate('attachments.uploadedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

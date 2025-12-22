@@ -69,6 +69,63 @@ const taskSchema = new mongoose.Schema(
       progress: Number,
       status: String,
     }],
+    // Chairman comments
+    chairmanComments: [{
+      comment: {
+        type: String,
+        required: true,
+      },
+      addedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      addedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
+    // Activity timeline (task journey through departments)
+    activities: [{
+      action: {
+        type: String,
+        required: true,
+        // e.g., 'initiated', 'sent_to_department', 'response_received', 'pending_response', 'escalated', 'resolved'
+      },
+      department: String,
+      poc: String, // Point of Contact
+      pocEmail: String,
+      sentAt: Date,
+      responseReceivedAt: Date,
+      status: {
+        type: String,
+        enum: ['sent', 'pending', 'received', 'completed', 'escalated'],
+        default: 'sent',
+      },
+      notes: String,
+      addedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      addedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
+    // Attachments
+    attachments: [{
+      name: String,
+      url: String,
+      type: String, // file type/mime
+      size: Number, // in bytes
+      uploadedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      uploadedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    }],
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',

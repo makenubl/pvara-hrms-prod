@@ -23,8 +23,10 @@ const MainLayout = ({ children }) => {
         ></div>
       )}
 
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar - Hidden on desktop when sidebarOpen is false */}
+      <div className={`${sidebarOpen ? 'block' : 'hidden md:hidden'}`}>
+        <Sidebar />
+      </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden relative z-10">

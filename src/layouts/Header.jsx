@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Bell, Settings, LogOut, User, MessageSquare, Search } from 'lucide-react';
+import { Bell, Settings, LogOut, User, MessageSquare, Search, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { useAppStore } from '../store/appStore';
 import { useNavigate } from 'react-router-dom';
 
 const Header = () => {
   const { user, logout } = useAuthStore();
+  const { sidebarOpen, toggleSidebar } = useAppStore();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const navigate = useNavigate();
@@ -26,12 +28,27 @@ const Header = () => {
   return (
     <header className="sticky top-0 z-30 backdrop-blur-xl bg-gradient-to-r from-slate-900/40 via-slate-900/40 to-slate-900/30 border-b border-white/10 shadow-lg">
       <div className="px-6 py-4 flex items-center justify-between">
-        {/* Left - Welcome Message */}
-        <div className="flex-1">
-          <h2 className="text-lg font-black bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
-            Welcome back, {displayName}
-          </h2>
-          <p className="text-xs text-slate-400 mt-0.5">{new Date().toLocaleDateString()}</p>
+        {/* Left - Sidebar Toggle & Welcome Message */}
+        <div className="flex items-center gap-3 flex-1">
+          {/* Sidebar Toggle Button */}
+          <button
+            onClick={toggleSidebar}
+            className="p-2 rounded-lg bg-slate-800/50 border border-slate-700 hover:border-cyan-500/50 hover:bg-slate-700 transition-all group"
+            title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose size={18} className="text-slate-400 group-hover:text-cyan-400" />
+            ) : (
+              <PanelLeft size={18} className="text-cyan-400" />
+            )}
+          </button>
+          
+          <div>
+            <h2 className="text-lg font-black bg-gradient-to-r from-cyan-300 to-blue-300 bg-clip-text text-transparent">
+              Welcome back, {displayName}
+            </h2>
+            <p className="text-xs text-slate-400 mt-0.5">{new Date().toLocaleDateString()}</p>
+          </div>
         </div>
 
         {/* Right - Actions */}

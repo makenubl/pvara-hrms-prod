@@ -11,6 +11,13 @@ import {
   TrendingUp,
   MessageSquare,
   Calendar,
+  Activity,
+  Paperclip,
+  Plus,
+  Send,
+  Upload,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 const MyTasks = () => {
@@ -23,6 +30,22 @@ const MyTasks = () => {
   const [updateProgress, setUpdateProgress] = useState('');
   const [updateStatus, setUpdateStatus] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  
+  // New state for tabs and activities/attachments
+  const [activeTab, setActiveTab] = useState('updates');
+  const [showActivityForm, setShowActivityForm] = useState(false);
+  const [activityForm, setActivityForm] = useState({
+    action: '',
+    department: '',
+    poc: '',
+    pocEmail: '',
+    notes: '',
+  });
+  const [attachmentForm, setAttachmentForm] = useState({
+    name: '',
+    url: '',
+    type: 'document',
+  });
 
   useEffect(() => {
     loadTasks();
@@ -66,6 +89,82 @@ const MyTasks = () => {
     } catch (error) {
       console.error('Failed to add update:', error);
       alert(error.message || 'Failed to add update');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Add activity handler
+  const handleAddActivity = async (e) => {
+    e.preventDefault();
+    if (!selectedTask || !activityForm.action.trim()) return;
+
+    setSubmitting(true);
+    try {
+      await taskService.addActivity(selectedTask._id, activityForm);
+      setActivityForm({ action: '', department: '', poc: '', pocEmail: '', notes: '' });
+      setShowActivityForm(false);
+      const updatedTask = await taskService.getById(selectedTask._id);
+      setSelectedTask(updatedTask);
+    } catch (error) {
+      console.error('Failed to add activity:', error);
+      alert(error.message || 'Failed to add activity');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Update activity status handler
+  const handleUpdateActivityStatus = async (activityId, status, responseReceivedAt = null) => {
+    if (!selectedTask) return;
+    
+    setSubmitting(true);
+    try {
+      const updateData = { status };
+      if (responseReceivedAt) updateData.responseReceivedAt = responseReceivedAt;
+      
+      await taskService.updateActivity(selectedTask._id, activityId, updateData);
+      const updatedTask = await taskService.getById(selectedTask._id);
+      setSelectedTask(updatedTask);
+    } catch (error) {
+      console.error('Failed to update activity:', error);
+      alert(error.message || 'Failed to update activity');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Add attachment handler
+  const handleAddAttachment = async (e) => {
+    e.preventDefault();
+    if (!selectedTask || !attachmentForm.name.trim() || !attachmentForm.url.trim()) return;
+
+    setSubmitting(true);
+    try {
+      await taskService.addAttachment(selectedTask._id, attachmentForm);
+      setAttachmentForm({ name: '', url: '', type: 'document' });
+      const updatedTask = await taskService.getById(selectedTask._id);
+      setSelectedTask(updatedTask);
+    } catch (error) {
+      console.error('Failed to add attachment:', error);
+      alert(error.message || 'Failed to add attachment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Delete attachment handler
+  const handleDeleteAttachment = async (attachmentId) => {
+    if (!selectedTask || !confirm('Delete this attachment?')) return;
+
+    setSubmitting(true);
+    try {
+      await taskService.deleteAttachment(selectedTask._id, attachmentId);
+      const updatedTask = await taskService.getById(selectedTask._id);
+      setSelectedTask(updatedTask);
+    } catch (error) {
+      console.error('Failed to delete attachment:', error);
+      alert(error.message || 'Failed to delete attachment');
     } finally {
       setSubmitting(false);
     }
@@ -269,7 +368,7 @@ const MyTasks = () => {
         {/* Task Detail Modal */}
         {selectedTask && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-            <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-950 border-cyan-500/30">
+            <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-950 border-cyan-500/30">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-white mb-2">{selectedTask.title}</h2>
@@ -283,7 +382,7 @@ const MyTasks = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => setSelectedTask(null)}
+                  onClick={() => { setSelectedTask(null); setActiveTab('updates'); }}
                   className="text-slate-400 hover:text-white text-2xl font-bold"
                 >
                   ×
@@ -339,99 +438,389 @@ const MyTasks = () => {
                 </div>
               )}
 
-              {/* Updates Section */}
-              <div className="mb-4">
-                <h3 className="text-white font-bold mb-3 flex items-center gap-2">
-                  <MessageSquare size={20} />
-                  Updates ({selectedTask.updates?.length || 0})
-                </h3>
-                {selectedTask.updates && selectedTask.updates.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {selectedTask.updates.slice().reverse().map((update, idx) => (
-                      <div key={idx} className="p-3 bg-slate-800/50 rounded-lg border border-white/5">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="text-cyan-300 font-medium text-sm">
-                            {update.addedBy?.firstName} {update.addedBy?.lastName}
-                          </p>
-                          <p className="text-slate-500 text-xs">
-                            {format(new Date(update.addedAt), 'MMM dd, h:mm a')}
-                          </p>
-                        </div>
-                        <p className="text-slate-300 text-sm">{update.message}</p>
-                        {(update.progress !== undefined || update.status) && (
-                          <div className="flex gap-3 mt-2">
-                            {update.progress !== undefined && (
-                              <span className="text-xs text-purple-300">Progress: {update.progress}%</span>
-                            )}
-                            {update.status && (
-                              <span className="text-xs text-blue-300">Status: {update.status}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400 text-sm">No updates yet</p>
-                )}
+              {/* Tabs */}
+              <div className="flex gap-1 mb-4 border-b border-white/10">
+                {[
+                  { id: 'updates', label: 'Updates', icon: MessageSquare, count: selectedTask.updates?.length || 0 },
+                  { id: 'activities', label: 'Activities', icon: Activity, count: selectedTask.activities?.length || 0 },
+                  { id: 'attachments', label: 'Attachments', icon: Paperclip, count: selectedTask.attachments?.length || 0 },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-all border-b-2 -mb-[2px] ${
+                      activeTab === tab.id
+                        ? 'text-cyan-400 border-cyan-400'
+                        : 'text-slate-400 border-transparent hover:text-white'
+                    }`}
+                  >
+                    <tab.icon size={16} />
+                    {tab.label}
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      activeTab === tab.id ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-700 text-slate-400'
+                    }`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
               </div>
 
-              {/* Add Update Form */}
-              <form onSubmit={handleAddUpdate} className="border-t border-white/10 pt-4">
-                <h4 className="text-white font-semibold mb-3">Add Update</h4>
-                <textarea
-                  value={updateMessage}
-                  onChange={(e) => setUpdateMessage(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-3"
-                  placeholder="Describe your progress or any blockers..."
-                  rows={3}
-                  required
-                />
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="block text-slate-400 text-sm mb-1">Update Progress (%)</label>
-                    <input
-                      type="number"
-                      value={updateProgress}
-                      onChange={(e) => setUpdateProgress(e.target.value)}
-                      min="0"
-                      max="100"
-                      className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      placeholder="0-100"
+              {/* Updates Tab */}
+              {activeTab === 'updates' && (
+                <div>
+                  <div className="mb-4">
+                    {selectedTask.updates && selectedTask.updates.length > 0 ? (
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {selectedTask.updates.slice().reverse().map((update, idx) => (
+                          <div key={idx} className="p-3 bg-slate-800/50 rounded-lg border border-white/5">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-cyan-300 font-medium text-sm">
+                                {update.addedBy?.firstName} {update.addedBy?.lastName}
+                              </p>
+                              <p className="text-slate-500 text-xs">
+                                {format(new Date(update.addedAt), 'MMM dd, h:mm a')}
+                              </p>
+                            </div>
+                            <p className="text-slate-300 text-sm">{update.message}</p>
+                            {(update.progress !== undefined || update.status) && (
+                              <div className="flex gap-3 mt-2">
+                                {update.progress !== undefined && (
+                                  <span className="text-xs text-purple-300">Progress: {update.progress}%</span>
+                                )}
+                                {update.status && (
+                                  <span className="text-xs text-blue-300">Status: {update.status}</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 text-sm">No updates yet</p>
+                    )}
+                  </div>
+
+                  {/* Add Update Form */}
+                  <form onSubmit={handleAddUpdate} className="border-t border-white/10 pt-4">
+                    <h4 className="text-white font-semibold mb-3">Add Update</h4>
+                    <textarea
+                      value={updateMessage}
+                      onChange={(e) => setUpdateMessage(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 mb-3"
+                      placeholder="Describe your progress or any blockers..."
+                      rows={3}
+                      required
                     />
-                  </div>
-                  <div>
-                    <label className="block text-slate-400 text-sm mb-1">Update Status</label>
-                    <select
-                      value={updateStatus}
-                      onChange={(e) => setUpdateStatus(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-1">Update Progress (%)</label>
+                        <input
+                          type="number"
+                          value={updateProgress}
+                          onChange={(e) => setUpdateProgress(e.target.value)}
+                          min="0"
+                          max="100"
+                          className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                          placeholder="0-100"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-1">Update Status</label>
+                        <select
+                          value={updateStatus}
+                          onChange={(e) => setUpdateStatus(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        >
+                          <option value="">Keep current</option>
+                          <option value="pending">Pending</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="blocked">Blocked</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
                     >
-                      <option value="">Keep current</option>
-                      <option value="pending">Pending</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="blocked">Blocked</option>
-                      <option value="completed">Completed</option>
-                    </select>
-                  </div>
+                      {submitting ? 'Adding...' : 'Add Update'}
+                    </Button>
+                  </form>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
-                  >
-                    {submitting ? 'Adding...' : 'Add Update'}
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={() => setSelectedTask(null)}
-                    className="bg-slate-700 hover:bg-slate-600"
-                  >
-                    Close
-                  </Button>
+              )}
+
+              {/* Activities Tab */}
+              {activeTab === 'activities' && (
+                <div>
+                  {/* Add Activity Button */}
+                  {!showActivityForm && (
+                    <button
+                      onClick={() => setShowActivityForm(true)}
+                      className="flex items-center gap-2 px-4 py-2 mb-4 bg-emerald-500/20 text-emerald-300 rounded-lg hover:bg-emerald-500/30 transition-all"
+                    >
+                      <Plus size={16} />
+                      Add Activity
+                    </button>
+                  )}
+
+                  {/* Add Activity Form */}
+                  {showActivityForm && (
+                    <form onSubmit={handleAddActivity} className="mb-4 p-4 bg-slate-800/50 rounded-lg border border-emerald-500/30">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-white font-semibold">New Activity</h4>
+                        <button type="button" onClick={() => setShowActivityForm(false)} className="text-slate-400 hover:text-white">
+                          <X size={18} />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="col-span-2">
+                          <label className="block text-slate-400 text-sm mb-1">Action / Activity *</label>
+                          <input
+                            type="text"
+                            value={activityForm.action}
+                            onChange={(e) => setActivityForm({ ...activityForm, action: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                            placeholder="e.g., Sent email to vendor, Called department head..."
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 text-sm mb-1">Department</label>
+                          <input
+                            type="text"
+                            value={activityForm.department}
+                            onChange={(e) => setActivityForm({ ...activityForm, department: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                            placeholder="e.g., Finance, HR, IT..."
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 text-sm mb-1">Point of Contact</label>
+                          <input
+                            type="text"
+                            value={activityForm.poc}
+                            onChange={(e) => setActivityForm({ ...activityForm, poc: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                            placeholder="Name of the person contacted"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 text-sm mb-1">POC Email</label>
+                          <input
+                            type="email"
+                            value={activityForm.pocEmail}
+                            onChange={(e) => setActivityForm({ ...activityForm, pocEmail: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                            placeholder="Email of the contact"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-slate-400 text-sm mb-1">Notes</label>
+                          <textarea
+                            value={activityForm.notes}
+                            onChange={(e) => setActivityForm({ ...activityForm, notes: e.target.value })}
+                            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                            placeholder="Additional notes..."
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-600"
+                      >
+                        {submitting ? 'Adding...' : 'Add Activity'}
+                      </Button>
+                    </form>
+                  )}
+
+                  {/* Activities List */}
+                  {selectedTask.activities && selectedTask.activities.length > 0 ? (
+                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                      {selectedTask.activities.slice().reverse().map((activity, idx) => (
+                        <div key={activity._id || idx} className="p-3 bg-slate-800/50 rounded-lg border border-white/5">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <p className="text-white font-medium">{activity.action}</p>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {activity.department && (
+                                  <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded">
+                                    {activity.department}
+                                  </span>
+                                )}
+                                {activity.poc && (
+                                  <span className="text-xs px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded">
+                                    POC: {activity.poc}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className={`text-xs px-2 py-1 rounded ${
+                                activity.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300' :
+                                activity.status === 'response-received' ? 'bg-blue-500/20 text-blue-300' :
+                                'bg-amber-500/20 text-amber-300'
+                              }`}>
+                                {activity.status === 'pending' ? '⏳ Pending' :
+                                 activity.status === 'response-received' ? '📩 Response Received' :
+                                 '✅ Completed'}
+                              </span>
+                            </div>
+                          </div>
+                          {activity.notes && (
+                            <p className="text-slate-400 text-sm mt-2">{activity.notes}</p>
+                          )}
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                            <p className="text-slate-500 text-xs">
+                              Sent: {format(new Date(activity.sentAt || activity.addedAt), 'MMM dd, h:mm a')}
+                              {activity.responseReceivedAt && (
+                                <span className="ml-2">
+                                  | Response: {format(new Date(activity.responseReceivedAt), 'MMM dd, h:mm a')}
+                                </span>
+                              )}
+                            </p>
+                            {activity.status === 'pending' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleUpdateActivityStatus(activity._id, 'response-received', new Date())}
+                                  className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/30"
+                                  disabled={submitting}
+                                >
+                                  Mark Response Received
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateActivityStatus(activity._id, 'completed')}
+                                  className="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded hover:bg-emerald-500/30"
+                                  disabled={submitting}
+                                >
+                                  Mark Completed
+                                </button>
+                              </div>
+                            )}
+                            {activity.status === 'response-received' && (
+                              <button
+                                onClick={() => handleUpdateActivityStatus(activity._id, 'completed')}
+                                className="text-xs px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded hover:bg-emerald-500/30"
+                                disabled={submitting}
+                              >
+                                Mark Completed
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-sm text-center py-4">No activities recorded yet. Add an activity to track your task journey.</p>
+                  )}
                 </div>
-              </form>
+              )}
+
+              {/* Attachments Tab */}
+              {activeTab === 'attachments' && (
+                <div>
+                  {/* Add Attachment Form */}
+                  <form onSubmit={handleAddAttachment} className="mb-4 p-4 bg-slate-800/50 rounded-lg border border-purple-500/30">
+                    <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                      <Upload size={16} />
+                      Add Attachment
+                    </h4>
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-1">Name *</label>
+                        <input
+                          type="text"
+                          value={attachmentForm.name}
+                          onChange={(e) => setAttachmentForm({ ...attachmentForm, name: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                          placeholder="Document name"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-1">URL *</label>
+                        <input
+                          type="url"
+                          value={attachmentForm.url}
+                          onChange={(e) => setAttachmentForm({ ...attachmentForm, url: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                          placeholder="https://..."
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-slate-400 text-sm mb-1">Type</label>
+                        <select
+                          value={attachmentForm.type}
+                          onChange={(e) => setAttachmentForm({ ...attachmentForm, type: e.target.value })}
+                          className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-lg text-white"
+                        >
+                          <option value="document">Document</option>
+                          <option value="image">Image</option>
+                          <option value="spreadsheet">Spreadsheet</option>
+                          <option value="presentation">Presentation</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-600"
+                    >
+                      {submitting ? 'Adding...' : 'Add Attachment'}
+                    </Button>
+                  </form>
+
+                  {/* Attachments List */}
+                  {selectedTask.attachments && selectedTask.attachments.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedTask.attachments.map((attachment, idx) => (
+                        <div key={attachment._id || idx} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-white/5">
+                          <div className="flex items-center gap-3">
+                            <Paperclip size={16} className="text-purple-400" />
+                            <div>
+                              <a
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-white hover:text-cyan-300 font-medium"
+                              >
+                                {attachment.name}
+                              </a>
+                              <p className="text-slate-500 text-xs">
+                                {attachment.type} • {attachment.uploadedBy?.firstName} {attachment.uploadedBy?.lastName} • {format(new Date(attachment.uploadedAt), 'MMM dd, yyyy')}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteAttachment(attachment._id)}
+                            className="text-red-400 hover:text-red-300 p-1"
+                            disabled={submitting}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-sm text-center py-4">No attachments yet. Add documents or files related to this task.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Close Button */}
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <Button
+                  type="button"
+                  onClick={() => { setSelectedTask(null); setActiveTab('updates'); }}
+                  className="w-full bg-slate-700 hover:bg-slate-600"
+                >
+                  Close
+                </Button>
+              </div>
             </Card>
           </div>
         )}

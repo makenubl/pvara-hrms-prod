@@ -71,6 +71,56 @@ const taskService = {
       throw error.response?.data || { message: 'Failed to fetch task statistics' };
     }
   },
+
+  // Add chairman comment to task
+  addComment: async (id, comment) => {
+    try {
+      const response = await api.post(`/tasks/${id}/comments`, { comment });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to add comment' };
+    }
+  },
+
+  // Add activity to task (task journey/timeline)
+  addActivity: async (id, activityData) => {
+    try {
+      const response = await api.post(`/tasks/${id}/activities`, activityData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to add activity' };
+    }
+  },
+
+  // Update activity status
+  updateActivity: async (taskId, activityId, updateData) => {
+    try {
+      const response = await api.patch(`/tasks/${taskId}/activities/${activityId}`, updateData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update activity' };
+    }
+  },
+
+  // Add attachment to task
+  addAttachment: async (id, attachmentData) => {
+    try {
+      const response = await api.post(`/tasks/${id}/attachments`, attachmentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to add attachment' };
+    }
+  },
+
+  // Delete attachment
+  deleteAttachment: async (taskId, attachmentId) => {
+    try {
+      const response = await api.delete(`/tasks/${taskId}/attachments/${attachmentId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to delete attachment' };
+    }
+  },
 };
 
 export default taskService;
