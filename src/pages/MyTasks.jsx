@@ -4,6 +4,7 @@ import { Card, Button, Badge } from '../components/UI';
 import taskService from '../services/taskService';
 import { useAuthStore } from '../store/authStore';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 import {
   CheckCircle2,
   Clock,
@@ -18,6 +19,8 @@ import {
   Upload,
   Trash2,
   X,
+  Zap,
+  Bell,
 } from 'lucide-react';
 
 const MyTasks = () => {
@@ -46,6 +49,16 @@ const MyTasks = () => {
     url: '',
     type: 'document',
   });
+  
+  // Boost response state
+  const [boostResponseModal, setBoostResponseModal] = useState({ show: false, task: null, boost: null });
+  const [boostResponse, setBoostResponse] = useState('');
+  const [respondingToBoost, setRespondingToBoost] = useState(false);
+
+  // Count pending boosts across all tasks
+  const pendingBoostsCount = tasks.reduce((count, task) => {
+    return count + (task.boosts?.filter(b => !b.acknowledged)?.length || 0);
+  }, 0);
 
   useEffect(() => {
     loadTasks();
@@ -170,6 +183,50 @@ const MyTasks = () => {
     }
   };
 
+  // Respond to boost handler
+  const handleRespondToBoost = async () => {
+    if (!boostResponseModal.task || !boostResponseModal.boost || !boostResponse.trim()) {
+      toast.error('Please enter a response');
+      return;
+    }
+
+    setRespondingToBoost(true);
+    try {
+      const updatedTask = await taskService.respondToBoost(
+        boostResponseModal.task._id,
+        boostResponseModal.boost._id,
+        boostResponse.trim()
+      );
+      
+      // Update tasks list
+      setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+      
+      // Update selected task if it's the same
+      if (selectedTask?._id === updatedTask._id) {
+        setSelectedTask(updatedTask);
+      }
+      
+      toast.success('Response sent to Chairperson');
+      setBoostResponseModal({ show: false, task: null, boost: null });
+      setBoostResponse('');
+    } catch (error) {
+      console.error('Failed to respond to boost:', error);
+      toast.error(error.message || 'Failed to respond to boost');
+    } finally {
+      setRespondingToBoost(false);
+    }
+  };
+
+  // Check if a task has pending boosts
+  const hasPendingBoost = (task) => {
+    return task.boosts?.some(b => !b.acknowledged) || false;
+  };
+
+  // Get pending boosts for a task
+  const getPendingBoosts = (task) => {
+    return task.boosts?.filter(b => !b.acknowledged) || [];
+  };
+
   const stats = {
     total: tasks.length,
     pending: tasks.filter(t => t.status === 'pending').length,
@@ -209,6 +266,39 @@ const MyTasks = () => {
           </h1>
           <p className="text-slate-400 mt-2">View and manage your assigned tasks</p>
         </div>
+
+        {/* Boost Notification Banner */}
+        {pendingBoostsCount > 0 && (
+          <div className="bg-gradient-to-r from-orange-500/20 to-yellow-500/20 border border-orange-500/50 rounded-xl p-4 animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-500/30 rounded-lg">
+                <Zap size={24} className="text-orange-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-orange-400 font-bold flex items-center gap-2">
+                  <Bell size={16} />
+                  Urgent: {pendingBoostsCount} Boost{pendingBoostsCount > 1 ? 's' : ''} Pending Response
+                </h3>
+                <p className="text-orange-300 text-sm">
+                  The Chairperson has expedited {pendingBoostsCount === 1 ? 'a task' : 'some tasks'} and is awaiting your update.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  // Find first task with pending boost
+                  const taskWithBoost = tasks.find(t => hasPendingBoost(t));
+                  if (taskWithBoost) {
+                    setSelectedTask(taskWithBoost);
+                    setActiveTab('updates'); // Switch to updates tab
+                  }
+                }}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium"
+              >
+                Respond Now
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -274,7 +364,9 @@ const MyTasks = () => {
               <Card
                 key={task._id}
                 className={`backdrop-blur-xl border cursor-pointer transition-all hover:scale-[1.01] ${
-                  task.status === 'completed'
+                  hasPendingBoost(task)
+                    ? 'bg-orange-500/10 border-orange-500/50 ring-2 ring-orange-500/30'
+                    : task.status === 'completed'
                     ? 'bg-emerald-500/10 border-emerald-500/20'
                     : task.status === 'blocked'
                     ? 'bg-red-500/10 border-red-500/20'
@@ -284,6 +376,27 @@ const MyTasks = () => {
                 }`}
                 onClick={() => setSelectedTask(task)}
               >
+                {/* Boost Alert Banner on Task Card */}
+                {hasPendingBoost(task) && (
+                  <div className="mb-3 p-2 bg-orange-500/20 border border-orange-500/30 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap size={16} className="text-orange-400 animate-pulse" />
+                      <span className="text-orange-300 text-sm font-medium">
+                        ⚡ Boosted by Chairperson - Response Required
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const pendingBoost = getPendingBoosts(task)[0];
+                        setBoostResponseModal({ show: true, task, boost: pendingBoost });
+                      }}
+                      className="px-3 py-1 bg-orange-500 text-white text-xs rounded-lg hover:bg-orange-600 transition-colors"
+                    >
+                      Respond
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -297,6 +410,17 @@ const MyTasks = () => {
                          task.status === 'completed' ? '✅ Completed' :
                          task.status === 'pending' ? '⏸️ Pending' : task.status}
                       </Badge>
+                      {/* Boost count badge */}
+                      {task.boosts?.length > 0 && (
+                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                          hasPendingBoost(task) 
+                            ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
+                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}>
+                          <Zap size={10} />
+                          {task.boosts.length} boost{task.boosts.length > 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                     {task.description && (
                       <p className="text-slate-300 mb-3">{task.description}</p>
@@ -379,6 +503,17 @@ const MyTasks = () => {
                     <Badge variant={getStatusColor(selectedTask.status)}>
                       {selectedTask.status.toUpperCase().replace('-', ' ')}
                     </Badge>
+                    {/* Boost badge */}
+                    {selectedTask.boosts?.length > 0 && (
+                      <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs ${
+                        hasPendingBoost(selectedTask) 
+                          ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' 
+                          : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      }`}>
+                        <Zap size={12} />
+                        {hasPendingBoost(selectedTask) ? 'Boost Pending' : 'Boosted'}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button
@@ -388,6 +523,39 @@ const MyTasks = () => {
                   ×
                 </button>
               </div>
+
+              {/* Pending Boost Alert in Modal */}
+              {hasPendingBoost(selectedTask) && (
+                <div className="mb-4 p-4 bg-orange-500/10 border border-orange-500/30 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-orange-500/20 rounded-lg">
+                      <Zap size={20} className="text-orange-400 animate-pulse" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-orange-400 font-bold mb-1">⚡ Boost Alert - Response Required</h4>
+                      {getPendingBoosts(selectedTask).map((boost, idx) => (
+                        <div key={boost._id || idx} className="mb-2 last:mb-0">
+                          <p className="text-orange-300 text-sm">
+                            "{boost.message || 'Task has been expedited - please provide an update.'}"
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            From {boost.boostedBy?.firstName || 'Chairperson'} • {boost.boostedAt && format(new Date(boost.boostedAt), 'MMM d, h:mm a')}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => {
+                        const pendingBoost = getPendingBoosts(selectedTask)[0];
+                        setBoostResponseModal({ show: true, task: selectedTask, boost: pendingBoost });
+                      }}
+                      className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium flex-shrink-0"
+                    >
+                      Respond Now
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {selectedTask.description && (
                 <p className="text-slate-300 mb-4">{selectedTask.description}</p>
@@ -822,6 +990,96 @@ const MyTasks = () => {
                 </Button>
               </div>
             </Card>
+          </div>
+        )}
+
+        {/* Boost Response Modal */}
+        {boostResponseModal.show && boostResponseModal.task && boostResponseModal.boost && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl">
+              <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-orange-500/20 to-yellow-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-500/30 rounded-lg">
+                    <Zap size={24} className="text-orange-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Respond to Boost</h2>
+                    <p className="text-sm text-slate-400">Chairperson is awaiting your update</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setBoostResponseModal({ show: false, task: null, boost: null });
+                      setBoostResponse('');
+                    }}
+                    className="ml-auto p-2 hover:bg-slate-700 rounded-lg"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-5 space-y-4">
+                <div>
+                  <p className="text-sm text-slate-400 mb-2">Task:</p>
+                  <p className="text-white font-medium">{boostResponseModal.task.title}</p>
+                </div>
+
+                <div className="p-3 bg-slate-700/50 rounded-lg">
+                  <p className="text-xs text-orange-400 mb-1">
+                    Message from {boostResponseModal.boost.boostedBy?.firstName || 'Chairperson'}:
+                  </p>
+                  <p className="text-white text-sm">
+                    {boostResponseModal.boost.message || 'Task has been expedited - please provide an update.'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-2">
+                    {boostResponseModal.boost.boostedAt && format(new Date(boostResponseModal.boost.boostedAt), 'MMM d, yyyy h:mm a')}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Your Response <span className="text-red-400">*</span>
+                  </label>
+                  <textarea
+                    value={boostResponse}
+                    onChange={(e) => setBoostResponse(e.target.value)}
+                    placeholder="Provide an update on the task status, progress, or any blockers..."
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none resize-none"
+                    rows={4}
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => {
+                      setBoostResponseModal({ show: false, task: null, boost: null });
+                      setBoostResponse('');
+                    }}
+                    variant="outline"
+                    className="flex-1 border-slate-600 text-slate-300"
+                    disabled={respondingToBoost}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleRespondToBoost}
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white"
+                    disabled={respondingToBoost || !boostResponse.trim()}
+                  >
+                    {respondingToBoost ? (
+                      <span className="flex items-center gap-2">
+                        <span className="animate-spin">⏳</span> Sending...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Send size={16} /> Send Response
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

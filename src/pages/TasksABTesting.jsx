@@ -28,6 +28,8 @@ import {
   CheckCircle,
   Clock3,
   ArrowRightCircle,
+  Zap,
+  Hash,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -38,6 +40,9 @@ const TasksABTesting = () => {
   const [employees, setEmployees] = useState([]);
   const [filter, setFilter] = useState('all'); // 'all', 'completed', 'pending', 'bottleneck'
   const [selectedTask, setSelectedTask] = useState(null);
+  const [boostModal, setBoostModal] = useState({ show: false, task: null });
+  const [boostMessage, setBoostMessage] = useState('');
+  const [boosting, setBoosting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -58,6 +63,50 @@ const TasksABTesting = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle boost task
+  const handleBoostTask = async () => {
+    if (!boostModal.task) return;
+    
+    setBoosting(true);
+    try {
+      const updatedTask = await taskService.boostTask(
+        boostModal.task._id, 
+        boostMessage || 'Task has been expedited - please provide an update.'
+      );
+      setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
+      if (selectedTask?._id === updatedTask._id) {
+        setSelectedTask(updatedTask);
+      }
+      toast.success('Task boosted! Assignee will be notified.');
+      setBoostModal({ show: false, task: null });
+      setBoostMessage('');
+    } catch (error) {
+      toast.error(error.message || 'Failed to boost task');
+    } finally {
+      setBoosting(false);
+    }
+  };
+
+  // Get short task ID
+  const getTaskId = (task) => {
+    if (task.project?.startsWith('TASK-')) {
+      return task.project;
+    }
+    // Fallback: use first 8 chars of MongoDB _id
+    return `#${task._id?.slice(-6)?.toUpperCase() || '------'}`;
+  };
+
+  // Check if task has pending (unacknowledged) boosts
+  const hasPendingBoost = (task) => {
+    return task.boosts?.some(b => !b.acknowledged) || false;
+  };
+
+  // Get latest boost info
+  const getLatestBoost = (task) => {
+    if (!task.boosts?.length) return null;
+    return task.boosts[task.boosts.length - 1];
   };
 
   // Sort by latest first
@@ -215,6 +264,7 @@ const TasksABTesting = () => {
 
     const tabs = [
       { key: 'details', label: 'Details', icon: FileText },
+      { key: 'boosts', label: 'Boosts', icon: Zap, count: task.boosts?.length || 0 },
       { key: 'activities', label: 'Activities', icon: Activity, count: task.activities?.length || 0 },
       { key: 'comments', label: 'Comments', icon: MessageSquare, count: task.chairmanComments?.length || 0 },
       { key: 'attachments', label: 'Attachments', icon: Paperclip, count: task.attachments?.length || 0 },
@@ -394,6 +444,86 @@ const TasksABTesting = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Boosts Tab */}
+            {activeTab === 'boosts' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Zap size={18} className="text-orange-400" />
+                    Boost History
+                  </h3>
+                  <button
+                    onClick={() => setBoostModal({ show: true, task })}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    <Zap size={14} />
+                    Boost Task
+                  </button>
+                </div>
+
+                {/* Boost Timeline */}
+                <div className="space-y-3">
+                  {task.boosts && task.boosts.length > 0 ? (
+                    [...task.boosts].reverse().map((boost, index) => (
+                      <div key={boost._id || index} className={`relative pl-6 pb-4 border-l-2 ${
+                        boost.acknowledged ? 'border-emerald-500/50' : 'border-orange-500/50'
+                      } last:border-l-0 last:pb-0`}>
+                        <div className={`absolute -left-2 top-0 w-4 h-4 rounded-full flex items-center justify-center ${
+                          boost.acknowledged ? 'bg-emerald-500' : 'bg-orange-500 animate-pulse'
+                        }`}>
+                          <Zap size={10} className="text-white" />
+                        </div>
+                        <div className={`rounded-lg p-4 ml-2 ${
+                          boost.acknowledged 
+                            ? 'bg-emerald-500/10 border border-emerald-500/30' 
+                            : 'bg-orange-500/10 border border-orange-500/30'
+                        }`}>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-sm font-medium ${
+                                boost.acknowledged ? 'text-emerald-400' : 'text-orange-400'
+                              }`}>
+                                {boost.acknowledged ? '✓ Responded' : '⚡ Pending Response'}
+                              </span>
+                            </div>
+                            <span className="text-xs text-slate-500">
+                              {boost.boostedAt && format(new Date(boost.boostedAt), 'MMM d, yyyy h:mm a')}
+                            </span>
+                          </div>
+                          
+                          {/* Boost message from chairman */}
+                          <div className="mb-3 p-2 bg-slate-800/50 rounded">
+                            <p className="text-xs text-slate-500 mb-1">Message from {boost.boostedBy?.firstName || 'Chairman'}:</p>
+                            <p className="text-white text-sm">{boost.message || 'Task has been expedited.'}</p>
+                          </div>
+
+                          {/* Response from assignee */}
+                          {boost.response ? (
+                            <div className="p-2 bg-emerald-500/10 rounded border border-emerald-500/20">
+                              <p className="text-xs text-emerald-500 mb-1">
+                                Response • {boost.respondedAt && format(new Date(boost.respondedAt), 'MMM d, h:mm a')}
+                              </p>
+                              <p className="text-emerald-300 text-sm">{boost.response}</p>
+                            </div>
+                          ) : (
+                            <div className="p-2 bg-orange-500/10 rounded border border-orange-500/20">
+                              <p className="text-xs text-orange-400">⏳ Awaiting response from assignee...</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 text-slate-500">
+                      <Zap size={48} className="mx-auto mb-4 opacity-50" />
+                      <p>No boosts yet</p>
+                      <p className="text-sm mt-2">Click "Boost Task" to expedite and request an update</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -593,64 +723,116 @@ const TasksABTesting = () => {
   };
 
   // Task Row Component
-  const TaskRow = ({ task, onClick }) => (
-    <div 
-      onClick={() => onClick(task)}
-      className="p-4 bg-slate-800/50 rounded-xl border border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800 transition-all cursor-pointer group"
-    >
-      <div className="flex items-center gap-4">
-        {/* Status Icon */}
-        <div className="flex-shrink-0">
-          {getStatusIcon(task.status)}
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 min-w-0">
-          <h4 className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors">
-            {task.title}
-          </h4>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            <span className="flex items-center gap-1 text-xs text-slate-400">
-              <User size={12} />
-              {getEmployeeName(task)}
+  const TaskRow = ({ task, onClick, onBoost }) => {
+    const latestBoost = getLatestBoost(task);
+    const isPendingBoost = hasPendingBoost(task);
+    const hasResponse = latestBoost?.response;
+    
+    return (
+      <div 
+        className={`p-4 bg-slate-800/50 rounded-xl border transition-all cursor-pointer group ${
+          isPendingBoost 
+            ? 'border-yellow-500/50 bg-yellow-500/5' 
+            : 'border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          {/* Task ID */}
+          <div className="flex-shrink-0 min-w-[90px]">
+            <span className="flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20">
+              <Hash size={10} />
+              {getTaskId(task).replace('#', '').replace('TASK-', '')}
             </span>
-            {task.deadline && (
-              <span className={`flex items-center gap-1 text-xs ${
-                new Date(task.deadline) < new Date() && task.status !== 'completed'
-                  ? 'text-red-400'
-                  : 'text-slate-400'
-              }`}>
-                <Calendar size={12} />
-                {format(new Date(task.deadline), 'MMM d, yyyy')}
-                {new Date(task.deadline) < new Date() && task.status !== 'completed' && ' (Overdue)'}
-              </span>
-            )}
           </div>
+
+          {/* Boost Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onBoost(task);
+            }}
+            className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+              isPendingBoost
+                ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
+                : hasResponse
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
+            }`}
+            title={isPendingBoost ? 'Awaiting response' : hasResponse ? 'Response received' : 'Boost/Expedite this task'}
+          >
+            <Zap size={18} className={isPendingBoost ? 'animate-pulse' : ''} />
+          </button>
+
+          {/* Status Icon */}
+          <div className="flex-shrink-0" onClick={() => onClick(task)}>
+            {getStatusIcon(task.status)}
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 min-w-0" onClick={() => onClick(task)}>
+            <h4 className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors">
+              {task.title}
+            </h4>
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <span className="flex items-center gap-1 text-xs text-slate-400">
+                <User size={12} />
+                {getEmployeeName(task)}
+              </span>
+              {task.deadline && (
+                <span className={`flex items-center gap-1 text-xs ${
+                  new Date(task.deadline) < new Date() && task.status !== 'completed'
+                    ? 'text-red-400'
+                    : 'text-slate-400'
+                }`}>
+                  <Calendar size={12} />
+                  {format(new Date(task.deadline), 'MMM d, yyyy')}
+                  {new Date(task.deadline) < new Date() && task.status !== 'completed' && ' (Overdue)'}
+                </span>
+              )}
+              {/* Boost indicator */}
+              {task.boosts?.length > 0 && (
+                <span className={`flex items-center gap-1 text-xs ${
+                  isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
+                }`}>
+                  <Zap size={10} />
+                  {isPendingBoost ? 'Boosted - Awaiting' : `${task.boosts.length} boost${task.boosts.length > 1 ? 's' : ''}`}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Priority & Status Badges */}
+          <div className="flex items-center gap-2 flex-shrink-0" onClick={() => onClick(task)}>
+            <span className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}>
+              {task.priority || 'medium'}
+            </span>
+            <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}>
+              {task.status || 'pending'}
+            </span>
+          </div>
+
+          {/* Arrow */}
+          <ChevronRight size={20} className="text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" onClick={() => onClick(task)} />
         </div>
 
-        {/* Priority & Status Badges */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}>
-            {task.priority || 'medium'}
-          </span>
-          <span className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}>
-            {task.status || 'pending'}
-          </span>
-        </div>
+        {/* Blocker indicator */}
+        {task.blocker && (
+          <div className="mt-3 ml-[90px] p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2">
+            <AlertTriangle size={12} />
+            <span className="truncate">{task.blocker}</span>
+          </div>
+        )}
 
-        {/* Arrow */}
-        <ChevronRight size={20} className="text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
+        {/* Latest boost response preview */}
+        {latestBoost?.response && (
+          <div className="mt-3 ml-[90px] p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2">
+            <Zap size={12} className="mt-0.5 flex-shrink-0" />
+            <span className="truncate">Response: {latestBoost.response}</span>
+          </div>
+        )}
       </div>
-
-      {/* Blocker indicator */}
-      {task.blocker && (
-        <div className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2">
-          <AlertTriangle size={12} />
-          <span className="truncate">{task.blocker}</span>
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -726,6 +908,7 @@ const TasksABTesting = () => {
                   key={task._id} 
                   task={task} 
                   onClick={setSelectedTask}
+                  onBoost={(task) => setBoostModal({ show: true, task })}
                 />
               ))
             ) : (
@@ -746,6 +929,77 @@ const TasksABTesting = () => {
           Completion Rate: {tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0}%
         </div>
       </div>
+
+      {/* Boost Modal */}
+      {boostModal.show && boostModal.task && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-orange-500/20 to-yellow-500/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-500/20 rounded-lg">
+                  <Zap size={24} className="text-orange-400" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Boost Task</h2>
+                  <p className="text-sm text-slate-400">Expedite and request immediate update</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <div>
+                <p className="text-sm text-slate-400 mb-2">Task:</p>
+                <p className="text-white font-medium">{boostModal.task.title}</p>
+                <p className="text-xs text-slate-500 mt-1">
+                  Assigned to: {getEmployeeName(boostModal.task)}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-400 mb-2">
+                  Message (optional)
+                </label>
+                <textarea
+                  value={boostMessage}
+                  onChange={(e) => setBoostMessage(e.target.value)}
+                  placeholder="Add a message for the assignee... (e.g., 'Need update by EOD')"
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none resize-none"
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setBoostModal({ show: false, task: null });
+                    setBoostMessage('');
+                  }}
+                  variant="outline"
+                  className="flex-1 border-slate-600 text-slate-300"
+                  disabled={boosting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleBoostTask}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-yellow-500 text-white"
+                  disabled={boosting}
+                >
+                  {boosting ? (
+                    <span className="flex items-center gap-2">
+                      <span className="animate-spin">⏳</span> Boosting...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Zap size={16} /> Boost Task
+                    </span>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Task Detail Modal */}
       {selectedTask && (

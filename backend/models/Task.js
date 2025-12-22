@@ -126,6 +126,25 @@ const taskSchema = new mongoose.Schema(
         default: Date.now,
       },
     }],
+    // Boost/Expedite feature - when chairperson energizes a task
+    boosts: [{
+      boostedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      boostedAt: {
+        type: Date,
+        default: Date.now,
+      },
+      message: String, // Optional message from chairperson
+      acknowledged: {
+        type: Boolean,
+        default: false,
+      },
+      acknowledgedAt: Date,
+      response: String, // Assignee's response to the boost
+      respondedAt: Date,
+    }],
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',

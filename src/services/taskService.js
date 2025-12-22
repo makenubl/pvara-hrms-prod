@@ -121,6 +121,36 @@ const taskService = {
       throw error.response?.data || { message: 'Failed to delete attachment' };
     }
   },
+
+  // Boost/Expedite a task (chairperson energizes a task)
+  boostTask: async (id, message) => {
+    try {
+      const response = await api.post(`/tasks/${id}/boost`, { message });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to boost task' };
+    }
+  },
+
+  // Respond to a boost (assignee acknowledges and responds)
+  respondToBoost: async (taskId, boostId, response) => {
+    try {
+      const res = await api.patch(`/tasks/${taskId}/boost/${boostId}`, { response, acknowledged: true });
+      return res.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to respond to boost' };
+    }
+  },
+
+  // Acknowledge a boost without response
+  acknowledgeBoost: async (taskId, boostId) => {
+    try {
+      const response = await api.patch(`/tasks/${taskId}/boost/${boostId}`, { acknowledged: true });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to acknowledge boost' };
+    }
+  },
 };
 
 export default taskService;

@@ -567,4 +567,98 @@ router.delete('/:id/attachments/:attachmentId', authenticate, async (req, res) =
   }
 });
 
+// Boost/Expedite a task (chairperson energizes/prioritizes a task)
+router.post('/:id/boost', authenticate, async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only admin/chairman can boost tasks
+    const chairmanRoles = ['admin', 'chairman', 'executive', 'director'];
+    if (!chairmanRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Only admin/chairman can boost tasks' });
+    }
+
+    task.boosts.push({
+      boostedBy: req.user._id,
+      boostedAt: new Date(),
+      message: message?.trim() || 'Task has been expedited - please provide an update.',
+      acknowledged: false,
+    });
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('chairmanComments.addedBy', 'firstName lastName')
+      .populate('activities.addedBy', 'firstName lastName')
+      .populate('attachments.uploadedBy', 'firstName lastName')
+      .populate('boosts.boostedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Respond to a boost (assignee acknowledges and responds)
+router.patch('/:id/boost/:boostId', authenticate, async (req, res) => {
+  try {
+    const { response, acknowledged } = req.body;
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only assignee can respond to boost
+    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    
+    if (!isAssignee && !isAdmin) {
+      return res.status(403).json({ message: 'Only the assignee can respond to boost' });
+    }
+
+    const boost = task.boosts.id(req.params.boostId);
+    if (!boost) {
+      return res.status(404).json({ message: 'Boost not found' });
+    }
+
+    if (acknowledged !== undefined) {
+      boost.acknowledged = acknowledged;
+      if (acknowledged && !boost.acknowledgedAt) {
+        boost.acknowledgedAt = new Date();
+      }
+    }
+    
+    if (response) {
+      boost.response = response.trim();
+      boost.respondedAt = new Date();
+      boost.acknowledged = true;
+      if (!boost.acknowledgedAt) {
+        boost.acknowledgedAt = new Date();
+      }
+    }
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(req.params.id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('chairmanComments.addedBy', 'firstName lastName')
+      .populate('activities.addedBy', 'firstName lastName')
+      .populate('attachments.uploadedBy', 'firstName lastName')
+      .populate('boosts.boostedBy', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
