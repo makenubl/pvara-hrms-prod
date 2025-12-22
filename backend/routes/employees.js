@@ -162,4 +162,32 @@ router.delete('/:id', authenticate, authorize(['admin', 'hr']), async (req, res)
   }
 });
 
+// Update user role (Admin only)
+router.patch('/:id/role', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const { role } = req.body;
+    
+    // Validate role
+    const validRoles = ['admin', 'hr', 'manager', 'employee', 'chairman'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ message: `Invalid role. Valid roles are: ${validRoles.join(', ')}` });
+    }
+    
+    const employee = await User.findByIdAndUpdate(
+      req.params.id,
+      { role },
+      { new: true }
+    ).populate([
+      { path: 'position', select: 'title department' },
+      { path: 'reportsTo', select: 'firstName lastName' },
+    ]);
+
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    res.json(employee);
+  } catch (error) {
+    console.error('❌ Error updating role:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
 export default router;

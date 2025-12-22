@@ -60,6 +60,16 @@ const employeeService = {
       throw error.response?.data || { message: 'Failed to delete employee' };
     }
   },
+
+  // Update employee role (Admin only)
+  updateRole: async (id, role) => {
+    try {
+      const response = await apiClient.patch(`/employees/${id}/role`, { role });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to update role' };
+    }
+  },
 };
 
 export default employeeService;

@@ -101,6 +101,24 @@ export const useAuthStore = create(
       setRole: (role) => set({ role }),
       setPermissions: (permissions) => set({ permissions }),
       setError: (error) => set({ error }),
+      
+      // Role check helpers
+      isAdmin: () => {
+        const state = useAuthStore.getState();
+        return state.role === 'admin';
+      },
+      isChairman: () => {
+        const state = useAuthStore.getState();
+        return ['admin', 'chairman'].includes(state.role);
+      },
+      canManageAllTasks: () => {
+        const state = useAuthStore.getState();
+        return ['admin', 'chairman', 'manager', 'hr'].includes(state.role);
+      },
+      isEmployee: () => {
+        const state = useAuthStore.getState();
+        return state.role === 'employee';
+      },
     }),
     {
       name: 'auth-store',

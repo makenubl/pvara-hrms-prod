@@ -56,8 +56,19 @@ const TaskManagement = () => {
     status: 'pending',
   });
 
-  // Check if user can manage tasks
-  const canManageTasks = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod', 'teamlead'].includes(user?.role);
+  // Check if user can manage all tasks (admin, chairman, managers)
+  const canManageAllTasks = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod', 'teamlead'].includes(user?.role);
+  
+  // Check if user is an employee (restricted access)
+  const isEmployee = user?.role === 'employee';
+  
+  // Check if user can edit/delete a specific task
+  const canEditTask = (task) => {
+    if (canManageAllTasks) return true;
+    // Employees can only edit their own tasks
+    const taskAssignee = task.assignedTo?._id || task.assignedTo;
+    return taskAssignee === user?._id;
+  };
 
   useEffect(() => {
     fetchData();
@@ -89,7 +100,10 @@ const TaskManagement = () => {
   const handleCreateTask = async (e) => {
     e.preventDefault();
     
-    if (!taskForm.title || !taskForm.assignedTo || !taskForm.deadline) {
+    // For employees, automatically assign to themselves
+    const assignedTo = isEmployee ? user?._id : taskForm.assignedTo;
+    
+    if (!taskForm.title || !assignedTo || !taskForm.deadline) {
       toast.error('Please fill in all required fields');
       return;
     }
@@ -97,6 +111,7 @@ const TaskManagement = () => {
     try {
       const newTask = await taskService.create({
         ...taskForm,
+        assignedTo,
         project: taskForm.project || generateTaskId(),
       });
       
@@ -472,20 +487,24 @@ const TaskManagement = () => {
                       >
                         <Eye size={16} className="text-slate-400 hover:text-emerald-400" />
                       </button>
-                      <button
-                        onClick={() => openEditModal(task)}
-                        className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
-                        title="Edit Task"
-                      >
-                        <Edit2 size={16} className="text-slate-400 hover:text-cyan-400" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTask(task._id)}
-                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
-                        title="Delete Task"
-                      >
-                        <Trash2 size={16} className="text-slate-400 hover:text-red-400" />
-                      </button>
+                      {canEditTask(task) && (
+                        <>
+                          <button
+                            onClick={() => openEditModal(task)}
+                            className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+                            title="Edit Task"
+                          >
+                            <Edit2 size={16} className="text-slate-400 hover:text-cyan-400" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTask(task._id)}
+                            className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
+                            title="Delete Task"
+                          >
+                            <Trash2 size={16} className="text-slate-400 hover:text-red-400" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 );
@@ -552,19 +571,26 @@ const TaskManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Assign To *</label>
-                  <select
-                    value={taskForm.assignedTo}
-                    onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
-                    required
-                  >
-                    <option value="">Select Team Member</option>
-                    {employees.map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
-                      </option>
-                    ))}
-                  </select>
+                  {isEmployee ? (
+                    // Employees can only assign tasks to themselves
+                    <div className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white">
+                      {user?.firstName} {user?.lastName} (You)
+                    </div>
+                  ) : (
+                    <select
+                      value={taskForm.assignedTo}
+                      onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
+                      required
+                    >
+                      <option value="">Select Team Member</option>
+                      {employees.map((emp) => (
+                        <option key={emp._id} value={emp._id}>
+                          {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -666,19 +692,26 @@ const TaskManagement = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">Assign To *</label>
-                  <select
-                    value={taskForm.assignedTo}
-                    onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
-                    required
-                  >
-                    <option value="">Select Team Member</option>
-                    {employees.map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
-                      </option>
-                    ))}
-                  </select>
+                  {isEmployee ? (
+                    // Employees cannot change assignment on their own tasks
+                    <div className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white">
+                      {user?.firstName} {user?.lastName} (You)
+                    </div>
+                  ) : (
+                    <select
+                      value={taskForm.assignedTo}
+                      onChange={(e) => setTaskForm({ ...taskForm, assignedTo: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
+                      required
+                    >
+                      <option value="">Select Team Member</option>
+                      {employees.map((emp) => (
+                        <option key={emp._id} value={emp._id}>
+                          {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
                 <div>

@@ -35,7 +35,11 @@ import {
 import toast from 'react-hot-toast';
 
 const TasksABTesting = () => {
-  const { user } = useAuthStore();
+  const { user, isChairman, isEmployee } = useAuthStore();
+  
+  // Role-based access control - only admin and chairman can perform actions
+  const canPerformActions = ['admin', 'chairman', 'manager', 'hr'].includes(user?.role);
+  
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -261,7 +265,7 @@ const TasksABTesting = () => {
   ];
 
   // Task Detail Modal/Panel
-  const TaskDetailPanel = ({ task, onClose, onTaskUpdate, defaultTab = 'details' }) => {
+  const TaskDetailPanel = ({ task, onClose, onTaskUpdate, defaultTab = 'details', canPerformActions = true }) => {
     const [activeTab, setActiveTab] = useState(defaultTab);
     const [newComment, setNewComment] = useState('');
     const [addingComment, setAddingComment] = useState(false);
@@ -513,13 +517,15 @@ const TasksABTesting = () => {
                     <Zap size={18} className="text-orange-400" />
                     Boost History
                   </h3>
-                  <button
-                    onClick={() => setBoostModal({ show: true, task })}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
-                  >
-                    <Zap size={14} />
-                    Boost Task
-                  </button>
+                  {canPerformActions && (
+                    <button
+                      onClick={() => setBoostModal({ show: true, task })}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-500 to-yellow-500 text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                      <Zap size={14} />
+                      Boost Task
+                    </button>
+                  )}
                 </div>
 
                 {/* Boost Timeline */}
@@ -656,7 +662,7 @@ const TasksABTesting = () => {
                                 </p>
                                 <p className="text-emerald-300 text-sm">{bottleneck.chairpersonResponse}</p>
                               </div>
-                            ) : (
+                            ) : canPerformActions ? (
                               <div className="p-3 bg-red-500/10 rounded border border-red-500/20">
                                 <p className="text-xs text-red-400 mb-2">⏳ Awaiting your response...</p>
                                 <button
@@ -671,10 +677,14 @@ const TasksABTesting = () => {
                                   Respond Now
                                 </button>
                               </div>
+                            ) : (
+                              <div className="p-3 bg-red-500/10 rounded border border-red-500/20">
+                                <p className="text-xs text-red-400">⏳ Awaiting chairperson response...</p>
+                              </div>
                             )}
 
-                            {/* Mark as Resolved button - show if not yet resolved */}
-                            {bottleneck.status !== 'resolved' && (
+                            {/* Mark as Resolved button - show if not yet resolved and user can perform actions */}
+                            {bottleneck.status !== 'resolved' && canPerformActions && (
                               <div className="mt-3 pt-3 border-t border-slate-700/50 flex gap-2">
                                 <button
                                   onClick={() => setBottleneckResponseModal({ 
@@ -809,24 +819,26 @@ const TasksABTesting = () => {
                   Chairman Comments
                 </h3>
 
-                {/* Add Comment */}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !addingComment && handleAddComment()}
-                    placeholder="Add a comment..."
-                    className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:border-purple-500 outline-none"
-                  />
-                  <Button
-                    onClick={handleAddComment}
-                    disabled={addingComment || !newComment.trim()}
-                    className="bg-purple-500 hover:bg-purple-600"
-                  >
-                    <Send size={16} />
-                  </Button>
-                </div>
+                {/* Add Comment - Only for users who can perform actions */}
+                {canPerformActions && (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !addingComment && handleAddComment()}
+                      placeholder="Add a comment..."
+                      className="flex-1 bg-slate-700/50 border border-slate-600 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:border-purple-500 outline-none"
+                    />
+                    <Button
+                      onClick={handleAddComment}
+                      disabled={addingComment || !newComment.trim()}
+                      className="bg-purple-500 hover:bg-purple-600"
+                    >
+                      <Send size={16} />
+                    </Button>
+                  </div>
+                )}
 
                 {/* Comments List */}
                 <div className="space-y-3">
@@ -920,7 +932,7 @@ const TasksABTesting = () => {
   };
 
   // Task Row Component
-  const TaskRow = ({ task, onClick, onBoost }) => {
+  const TaskRow = ({ task, onClick, onBoost, canPerformActions }) => {
     const latestBoost = getLatestBoost(task);
     const isPendingBoost = hasPendingBoost(task);
     const hasResponse = latestBoost?.response;
@@ -938,27 +950,42 @@ const TasksABTesting = () => {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           {/* Top row on mobile: Boost + Status + Task ID */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Boost Button */}
-            <Tooltip 
-              content={isPendingBoost ? '⏳ Boost sent - Awaiting response' : hasResponse ? '✅ Responded' : '⚡ Boost Task'}
-              position="top"
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBoost(task);
-                }}
-                className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+            {/* Boost Button - Only show for users who can perform actions */}
+            {canPerformActions ? (
+              <Tooltip 
+                content={isPendingBoost ? '⏳ Boost sent - Awaiting response' : hasResponse ? '✅ Responded' : '⚡ Boost Task'}
+                position="top"
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBoost(task);
+                  }}
+                  className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+                    isPendingBoost
+                      ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
+                      : hasResponse
+                      ? 'bg-emerald-500/20 text-emerald-400'
+                      : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
+                  }`}
+                >
+                  <Zap size={16} className={isPendingBoost ? 'animate-pulse' : ''} />
+                </button>
+              </Tooltip>
+            ) : (
+              // View-only indicator for employees
+              <Tooltip content={isPendingBoost ? '⏳ Boost pending' : hasResponse ? '✅ Responded' : '📋 View Only'} position="top">
+                <div className={`flex-shrink-0 p-2 rounded-lg ${
                   isPendingBoost
-                    ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
+                    ? 'bg-yellow-500/20 text-yellow-400'
                     : hasResponse
                     ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
-                }`}
-              >
-                <Zap size={16} className={isPendingBoost ? 'animate-pulse' : ''} />
-              </button>
-            </Tooltip>
+                    : 'bg-slate-700/30 text-slate-500'
+                }`}>
+                  <Zap size={16} />
+                </div>
+              </Tooltip>
+            )}
 
             {/* Status Icon - hidden on mobile, shown on desktop */}
             <div className="hidden sm:block flex-shrink-0">
@@ -1152,6 +1179,7 @@ const TasksABTesting = () => {
                   task={task} 
                   onClick={setSelectedTask}
                   onBoost={(task) => setBoostModal({ show: true, task })}
+                  canPerformActions={canPerformActions}
                 />
               ))
             ) : (
@@ -1408,6 +1436,7 @@ const TasksABTesting = () => {
             setTasks(prev => prev.map(t => t._id === updatedTask._id ? updatedTask : t));
             setSelectedTask(updatedTask);
           }}
+          canPerformActions={canPerformActions}
         />
       )}
     </MainLayout>
