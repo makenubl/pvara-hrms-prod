@@ -732,183 +732,144 @@ const TasksABTesting = () => {
     
     return (
       <div 
-        className={`p-4 bg-slate-800/50 rounded-xl border transition-all cursor-pointer group ${
+        className={`p-3 sm:p-4 bg-slate-800/50 rounded-xl border transition-all cursor-pointer group ${
           isPendingBoost 
             ? 'border-yellow-500/50 bg-yellow-500/5' 
             : 'border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800'
         }`}
+        onClick={() => onClick(task)}
       >
-        <div className="flex items-center gap-3">
-          {/* Boost Button */}
-          <Tooltip 
-            content={isPendingBoost ? '⏳ Boost sent - Awaiting response from assignee' : hasResponse ? '✅ Assignee has responded to your boost' : '⚡ Click to Boost/Expedite this task and request immediate update'}
-            position="top"
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onBoost(task);
-              }}
-              className={`flex-shrink-0 p-2 rounded-lg transition-all ${
-                isPendingBoost
-                  ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
-                  : hasResponse
-                  ? 'bg-emerald-500/20 text-emerald-400'
-                  : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
-              }`}
-            >
-              <Zap size={18} className={isPendingBoost ? 'animate-pulse' : ''} />
-            </button>
-          </Tooltip>
-
-          {/* Status Icon */}
-          <Tooltip 
-            content={`Status: ${task.status?.toUpperCase() || 'PENDING'} - ${
-              task.status === 'completed' ? 'Task has been completed' :
-              task.status === 'in-progress' ? 'Task is currently being worked on' :
-              task.status === 'blocked' ? 'Task is blocked and needs attention' :
-              'Task is waiting to be started'
-            }`}
-            position="top"
-          >
-            <div 
-              className="flex-shrink-0" 
-              onClick={() => onClick(task)}
-            >
-              {getStatusIcon(task.status)}
-            </div>
-          </Tooltip>
-
-          {/* Task ID + Title Combined */}
-          <div className="flex-1 min-w-0" onClick={() => onClick(task)}>
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Task ID - Prominently before title */}
-              <Tooltip content={`Task ID: ${getTaskId(task)} - Unique identifier for this task`} position="top">
-                <span 
-                  className="flex-shrink-0 flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"
-                >
-                  <Hash size={10} />
-                  {getTaskId(task).replace('#', '').replace('TASK-', '')}
-                </span>
-              </Tooltip>
-              {/* Task Title */}
-              <h4 
-                className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors"
-              >
-                {task.title}
-              </h4>
-            </div>
-            <div className="flex items-center gap-3 mt-1 flex-wrap">
-              <Tooltip content={`Assigned to: ${getEmployeeName(task)} - Person responsible for this task`} position="bottom">
-                <span 
-                  className="flex items-center gap-1 text-xs text-slate-400"
-                >
-                  <User size={12} />
-                  {getEmployeeName(task)}
-                </span>
-              </Tooltip>
-              {task.deadline && (
-                <Tooltip 
-                  content={`Deadline: ${format(new Date(task.deadline), 'EEEE, MMMM d, yyyy')}${
-                    new Date(task.deadline) < new Date() && task.status !== 'completed' 
-                      ? ' - ⚠️ OVERDUE - Task has passed its deadline!' 
-                      : ''
-                  }`}
-                  position="bottom"
-                >
-                  <span 
-                    className={`flex items-center gap-1 text-xs ${
-                      new Date(task.deadline) < new Date() && task.status !== 'completed'
-                        ? 'text-red-400'
-                        : 'text-slate-400'
-                    }`}
-                  >
-                    <Calendar size={12} />
-                    {format(new Date(task.deadline), 'MMM d, yyyy')}
-                    {new Date(task.deadline) < new Date() && task.status !== 'completed' && ' (Overdue)'}
-                  </span>
-                </Tooltip>
-              )}
-              {/* Boost indicator */}
-              {task.boosts?.length > 0 && (
-                <Tooltip 
-                  content={isPendingBoost 
-                    ? '⚡ You have boosted this task - Waiting for assignee to respond with an update' 
-                    : `✅ ${task.boosts.length} boost(s) sent - Assignee has responded`
-                  }
-                  position="bottom"
-                >
-                  <span 
-                    className={`flex items-center gap-1 text-xs ${
-                      isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
-                    }`}
-                  >
-                    <Zap size={10} />
-                    {isPendingBoost ? 'Boosted - Awaiting' : `${task.boosts.length} boost${task.boosts.length > 1 ? 's' : ''}`}
-                  </span>
-                </Tooltip>
-              )}
-            </div>
-          </div>
-
-          {/* Priority & Status Badges */}
-          <div className="flex items-center gap-2 flex-shrink-0" onClick={() => onClick(task)}>
+        {/* Mobile: Stack layout, Desktop: Row layout */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* Top row on mobile: Boost + Status + Task ID */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Boost Button */}
             <Tooltip 
-              content={`Priority: ${(task.priority || 'medium').toUpperCase()} - ${
-                task.priority === 'critical' ? '🔴 Requires immediate attention' :
-                task.priority === 'high' ? '🟠 High importance, should be addressed soon' :
-                task.priority === 'medium' ? '🟡 Normal priority task' :
-                '🟢 Low priority, can be addressed later'
-              }`}
+              content={isPendingBoost ? '⏳ Boost sent - Awaiting response' : hasResponse ? '✅ Responded' : '⚡ Boost Task'}
               position="top"
             >
-              <span 
-                className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBoost(task);
+                }}
+                className={`flex-shrink-0 p-2 rounded-lg transition-all ${
+                  isPendingBoost
+                    ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
+                    : hasResponse
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
+                }`}
               >
-                {task.priority || 'medium'}
-              </span>
+                <Zap size={16} className={isPendingBoost ? 'animate-pulse' : ''} />
+              </button>
             </Tooltip>
-            <Tooltip content={`Current Status: ${(task.status || 'pending').toUpperCase()}`} position="top">
+
+            {/* Status Icon - hidden on mobile, shown on desktop */}
+            <div className="hidden sm:block flex-shrink-0">
+              {getStatusIcon(task.status)}
+            </div>
+
+            {/* Task ID */}
+            <span 
+              className="flex-shrink-0 flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"
+            >
+              <Hash size={10} />
+              {getTaskId(task).replace('#', '').replace('TASK-', '')}
+            </span>
+
+            {/* Priority & Status Badges - Mobile only, inline with task ID */}
+            <div className="flex sm:hidden items-center gap-1 ml-auto">
               <span 
-                className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}
+                className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getPriorityColor(task.priority)}`}
               >
-                {task.status || 'pending'}
+                {(task.priority || 'med').slice(0, 3)}
               </span>
-            </Tooltip>
+              <span 
+                className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getStatusColor(task.status)}`}
+              >
+                {(task.status || 'pend').slice(0, 4)}
+              </span>
+            </div>
           </div>
 
-          {/* Arrow */}
-          <Tooltip content="Click to view full details" position="left">
-            <ChevronRight 
-              size={20} 
-              className="text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" 
-              onClick={() => onClick(task)} 
-            />
-          </Tooltip>
+          {/* Task Title + Details */}
+          <div className="flex-1 min-w-0">
+            <h4 className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors text-sm sm:text-base">
+              {task.title}
+            </h4>
+            <div className="flex items-center gap-2 sm:gap-3 mt-1 flex-wrap text-xs text-slate-400">
+              <span className="flex items-center gap-1">
+                <User size={11} />
+                <span className="truncate max-w-[100px] sm:max-w-none">{getEmployeeName(task)}</span>
+              </span>
+              {task.deadline && (
+                <span 
+                  className={`flex items-center gap-1 ${
+                    new Date(task.deadline) < new Date() && task.status !== 'completed'
+                      ? 'text-red-400'
+                      : ''
+                  }`}
+                >
+                  <Calendar size={11} />
+                  {format(new Date(task.deadline), 'MMM d')}
+                  {new Date(task.deadline) < new Date() && task.status !== 'completed' && (
+                    <span className="text-red-400">!</span>
+                  )}
+                </span>
+              )}
+              {task.boosts?.length > 0 && (
+                <span 
+                  className={`flex items-center gap-1 ${
+                    isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
+                  }`}
+                >
+                  <Zap size={10} />
+                  {isPendingBoost ? 'Awaiting' : 'Responded'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Priority & Status Badges - Desktop only */}
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+            <span 
+              className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}
+            >
+              {task.priority || 'medium'}
+            </span>
+            <span 
+              className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}
+            >
+              {task.status || 'pending'}
+            </span>
+          </div>
+
+          {/* Arrow - Desktop only */}
+          <ChevronRight 
+            size={20} 
+            className="hidden sm:block text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" 
+          />
         </div>
 
         {/* Blocker indicator */}
         {task.blocker && (
-          <Tooltip content={`⚠️ BLOCKER: ${task.blocker} - This issue is preventing task progress`} position="bottom">
-            <div 
-              className="mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2"
-            >
-              <AlertTriangle size={12} />
-              <span className="truncate">{task.blocker}</span>
-            </div>
-          </Tooltip>
+          <div 
+            className="mt-2 sm:mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2"
+          >
+            <AlertTriangle size={12} className="flex-shrink-0" />
+            <span className="truncate">{task.blocker}</span>
+          </div>
         )}
 
         {/* Latest boost response preview */}
         {latestBoost?.response && (
-          <Tooltip content={`✅ Boost Response from Assignee: "${latestBoost.response}" - Click task for full details`} position="bottom">
-            <div 
-              className="mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2"
-            >
-              <Zap size={12} className="mt-0.5 flex-shrink-0" />
-              <span className="truncate">Response: {latestBoost.response}</span>
-            </div>
-          </Tooltip>
+          <div 
+            className="mt-2 sm:mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2"
+          >
+            <Zap size={12} className="mt-0.5 flex-shrink-0" />
+            <span className="truncate">Response: {latestBoost.response}</span>
+          </div>
         )}
       </div>
     );
@@ -928,78 +889,60 @@ const TasksABTesting = () => {
 
   return (
     <MainLayout>
-      <div className="space-y-6 pb-6">
+      <div className="space-y-4 sm:space-y-6 pb-6 px-1 sm:px-0">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col gap-2 sm:gap-4">
           <div>
-            <Tooltip content="Chairperson Task Dashboard - View and manage all organization tasks" position="bottom">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Chairperson Task Dashboard
-              </h1>
-            </Tooltip>
-            <p className="text-slate-400 mt-1 text-sm">
-              Monitor tasks, boost priority items, and track team progress
+            <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Chairperson Tasks
+            </h1>
+            <p className="text-slate-400 mt-1 text-xs sm:text-sm">
+              Monitor tasks, boost priority items, and track progress
             </p>
           </div>
-          <Tooltip content="Current filter status showing filtered vs total tasks" position="left">
-            <div className="flex items-center gap-2">
-              <Filter size={16} className="text-slate-400" />
-              <span className="text-slate-400 text-sm">
-                Showing {filteredTasks.length} of {tasks.length} tasks
-              </span>
-            </div>
-          </Tooltip>
+          <div className="flex items-center gap-2">
+            <Filter size={14} className="text-slate-400" />
+            <span className="text-slate-400 text-xs sm:text-sm">
+              {filteredTasks.length} of {tasks.length} tasks
+            </span>
+          </div>
         </div>
 
         {/* Filter Buttons */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
           {filterButtons.map(btn => (
-            <Tooltip 
-              key={btn.key} 
-              content={
-                btn.key === 'all' ? 'View all tasks in the organization' :
-                btn.key === 'completed' ? 'View tasks that have been successfully completed' :
-                btn.key === 'pending' ? 'View tasks that are pending or in progress' :
-                'View tasks that are blocked, overdue, or need attention'
-              }
-              position="bottom"
-            >
-              <button
-                onClick={() => setFilter(btn.key)}
-                className={`w-full p-4 rounded-xl border transition-all text-center ${
+            <button
+              key={btn.key}
+              onClick={() => setFilter(btn.key)}
+              className={`w-full p-3 sm:p-4 rounded-xl border transition-all text-center ${
                   filter === btn.key
                     ? `bg-gradient-to-br ${btn.color} border-transparent shadow-lg`
                     : 'bg-slate-800/50 border-slate-700 hover:border-slate-600 hover:bg-slate-700/50'
                 }`}
-              >
-                <div className="text-2xl font-bold text-white">{btn.count}</div>
-                <div className={`text-sm ${filter === btn.key ? 'text-white/80' : 'text-slate-400'}`}>
-                  {btn.label}
-                </div>
-              </button>
-            </Tooltip>
+            >
+              <div className="text-xl sm:text-2xl font-bold text-white">{btn.count}</div>
+              <div className={`text-xs sm:text-sm ${filter === btn.key ? 'text-white/80' : 'text-slate-400'}`}>
+                {btn.label}
+              </div>
+            </button>
           ))}
         </div>
 
         {/* Task List */}
-        <Card className="bg-slate-800/30 border-slate-700/50">
-          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-700">
-            <Tooltip content="Task list - All tasks matching your current filter" position="right">
-              <List size={20} className="text-cyan-400" />
-            </Tooltip>
-            <h3 className="text-lg font-semibold text-white">
+        <Card className="bg-slate-800/30 border-slate-700/50 p-3 sm:p-6">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-700">
+            <List size={18} className="text-cyan-400" />
+            <h3 className="text-base sm:text-lg font-semibold text-white">
               {filter === 'all' ? 'All Tasks' : 
-               filter === 'completed' ? 'Completed Tasks' :
-               filter === 'pending' ? 'Pending Tasks' : 'Bottleneck Tasks'}
+               filter === 'completed' ? 'Completed' :
+               filter === 'pending' ? 'Pending' : 'Bottleneck'}
             </h3>
-            <Tooltip content={`${filteredTasks.length} task(s) in current view`} position="left">
-              <span className="ml-auto text-slate-400 text-sm">
-                {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
-              </span>
-            </Tooltip>
+            <span className="ml-auto text-slate-400 text-xs sm:text-sm">
+              {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
+            </span>
           </div>
 
-          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+          <div className="space-y-2 sm:space-y-3 max-h-[500px] sm:max-h-[600px] overflow-y-auto">
             {filteredTasks.length > 0 ? (
               filteredTasks.map(task => (
                 <TaskRow 
@@ -1010,21 +953,21 @@ const TasksABTesting = () => {
                 />
               ))
             ) : (
-              <div className="text-center py-12">
-                <List size={48} className="text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-500">No tasks in this category</p>
+              <div className="text-center py-8 sm:py-12">
+                <List size={40} className="text-slate-600 mx-auto mb-4" />
+                <p className="text-slate-500 text-sm">No tasks in this category</p>
               </div>
             )}
           </div>
         </Card>
 
-        {/* Summary */}
-        <div className="text-center text-slate-500 text-sm">
+        {/* Summary - Hidden on mobile, shown on larger screens */}
+        <div className="hidden sm:block text-center text-slate-500 text-xs sm:text-sm">
           Total: {tasks.length} | 
           Completed: {completedTasks.length} | 
           Pending: {pendingTasks.length} | 
           Bottleneck: {bottleneckTasks.length} |
-          Completion Rate: {tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0}%
+          Rate: {tasks.length > 0 ? Math.round((completedTasks.length / tasks.length) * 100) : 0}%
         </div>
       </div>
 
