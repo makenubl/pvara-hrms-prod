@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 
-// Tooltip Component with 3-second delay
-export const Tooltip = ({ children, content, delay = 3000, position = 'top' }) => {
+// Tooltip Component with 1-second delay
+export const Tooltip = ({ children, content, delay = 1000, position = 'top' }) => {
   const [isVisible, setIsVisible] = useState(false);
   const timeoutRef = useRef(null);
 
@@ -52,10 +52,11 @@ export const Tooltip = ({ children, content, delay = 3000, position = 'top' }) =
       {children}
       {isVisible && (
         <div 
-          className={`absolute z-[100] ${positionClasses[position]} animate-fade-in`}
+          className={`absolute z-[9999] ${positionClasses[position]} animate-fade-in pointer-events-none`}
           role="tooltip"
+          style={{ zIndex: 9999 }}
         >
-          <div className="relative bg-slate-700 text-white text-xs px-3 py-2 rounded-lg shadow-lg max-w-xs whitespace-normal border border-slate-600">
+          <div className="relative bg-slate-700 text-white text-xs px-3 py-2 rounded-lg shadow-2xl max-w-xs whitespace-normal border border-slate-600 drop-shadow-lg">
             {content}
             <div className={`absolute w-0 h-0 border-4 ${arrowClasses[position]}`} />
           </div>
