@@ -951,38 +951,8 @@ const TasksABTesting = () => {
           </Tooltip>
         </div>
 
-        {/* Quick Legend */}
-        <div className="flex flex-wrap items-center gap-4 p-3 bg-slate-800/30 rounded-lg border border-slate-700/50 text-xs">
-          <span className="text-slate-400 font-medium">Quick Guide:</span>
-          <Tooltip content="Task ID - Unique identifier for each task" position="bottom">
-            <span className="flex items-center gap-1 text-cyan-400">
-              <Hash size={12} /> Task ID
-            </span>
-          </Tooltip>
-          <Tooltip content="Click to boost a task and request immediate update from assignee" position="bottom">
-            <span className="flex items-center gap-1 text-orange-400">
-              <Zap size={12} /> Boost Task
-            </span>
-          </Tooltip>
-          <Tooltip content="Task has been boosted, waiting for assignee response" position="bottom">
-            <span className="flex items-center gap-1 text-yellow-400">
-              <Zap size={12} className="animate-pulse" /> Awaiting Response
-            </span>
-          </Tooltip>
-          <Tooltip content="Assignee has responded to your boost" position="bottom">
-            <span className="flex items-center gap-1 text-emerald-400">
-              <Zap size={12} /> Response Received
-            </span>
-          </Tooltip>
-          <Tooltip content="Task is blocked or overdue" position="bottom">
-            <span className="flex items-center gap-1 text-red-400">
-              <AlertTriangle size={12} /> Blocker/Overdue
-            </span>
-          </Tooltip>
-        </div>
-
         {/* Filter Buttons */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {filterButtons.map(btn => (
             <Tooltip 
               key={btn.key} 
@@ -996,10 +966,10 @@ const TasksABTesting = () => {
             >
               <button
                 onClick={() => setFilter(btn.key)}
-                className={`p-4 rounded-xl border transition-all ${
+                className={`w-full p-4 rounded-xl border transition-all text-center ${
                   filter === btn.key
                     ? `bg-gradient-to-br ${btn.color} border-transparent shadow-lg`
-                    : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
+                    : 'bg-slate-800/50 border-slate-700 hover:border-slate-600 hover:bg-slate-700/50'
                 }`}
               >
                 <div className="text-2xl font-bold text-white">{btn.count}</div>
