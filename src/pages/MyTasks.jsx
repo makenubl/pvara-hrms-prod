@@ -25,11 +25,12 @@ import {
   Bell,
   AlertTriangle,
   User,
+  Users,
   HelpCircle,
 } from 'lucide-react';
 
 const MyTasks = () => {
-  const { user: _user } = useAuthStore();
+  const { user } = useAuthStore();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -240,6 +241,26 @@ const MyTasks = () => {
   // Get pending boosts for a task
   const getPendingBoosts = (task) => {
     return task.boosts?.filter(b => !b.acknowledged) || [];
+  };
+
+  // Check if current user is primary or secondary assignee
+  const getAssigneeRole = (task) => {
+    const userId = user?._id;
+    if (!userId) return null;
+    
+    // Check primary assignee
+    const primaryId = task.assignedTo?._id || task.assignedTo;
+    if (primaryId?.toString() === userId.toString()) {
+      return 'primary';
+    }
+    
+    // Check secondary assignees
+    const secondaryIds = (task.secondaryAssignees || []).map(s => (s._id || s).toString());
+    if (secondaryIds.includes(userId.toString())) {
+      return 'secondary';
+    }
+    
+    return null;
   };
 
   // Handle raising a bottleneck
@@ -469,6 +490,18 @@ const MyTasks = () => {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <h3 className="text-white font-bold text-lg">{task.title}</h3>
+                      {/* Primary/Secondary role badge */}
+                      {getAssigneeRole(task) === 'primary' ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                          <User size={10} />
+                          Primary
+                        </span>
+                      ) : getAssigneeRole(task) === 'secondary' ? (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                          <Users size={10} />
+                          Secondary
+                        </span>
+                      ) : null}
                       <Badge variant={getPriorityColor(task.priority)}>
                         {task.priority.toUpperCase()}
                       </Badge>

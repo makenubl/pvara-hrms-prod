@@ -61,9 +61,11 @@ apiClient.interceptors.response.use(
     
     if (error.response?.status === 401) {
       logger.warn('Authentication failed - redirecting to login', { url });
-      // Token expired or invalid
+      // Token expired or invalid - clear ALL auth storage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      // Also clear zustand persist store to prevent redirect loops
+      localStorage.removeItem('auth-store');
       window.location.href = '/login';
     } else {
       logger.logApiError(method, url, error);

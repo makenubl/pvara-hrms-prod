@@ -411,7 +411,7 @@ const TasksABTesting = () => {
                   <div>
                     <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
                       <User size={14} />
-                      <span>Assigned To</span>
+                      <span>Primary Assignee</span>
                     </div>
                     <div className="bg-slate-700/50 p-3 rounded-lg">
                       <p className="text-white font-medium">{getEmployeeName(task)}</p>
@@ -434,6 +434,28 @@ const TasksABTesting = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Secondary Assignees */}
+                {task.secondaryAssignees && task.secondaryAssignees.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+                      <User size={14} />
+                      <span>Secondary Assignees</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {task.secondaryAssignees.map((assignee, idx) => (
+                        <div key={assignee._id || idx} className="bg-slate-700/50 px-3 py-2 rounded-lg">
+                          <p className="text-white text-sm font-medium">
+                            {assignee.firstName ? `${assignee.firstName} ${assignee.lastName || ''}`.trim() : 'Unknown'}
+                          </p>
+                          {assignee.email && (
+                            <p className="text-slate-400 text-xs">{assignee.email}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-4">

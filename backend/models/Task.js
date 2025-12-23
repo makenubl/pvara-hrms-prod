@@ -43,6 +43,11 @@ const taskSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    // Secondary assignees - can view and update task same as primary
+    secondaryAssignees: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
     assignedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -225,6 +230,7 @@ const taskSchema = new mongoose.Schema(
 
 // Index for faster queries
 taskSchema.index({ assignedTo: 1, status: 1 });
+taskSchema.index({ secondaryAssignees: 1, status: 1 });
 taskSchema.index({ company: 1, status: 1 });
 taskSchema.index({ deadline: 1 });
 

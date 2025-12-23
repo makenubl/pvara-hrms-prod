@@ -17,19 +17,30 @@ router.get('/', authenticate, async (req, res) => {
     const { status, assignedTo, project, priority, all, myTasks } = req.query;
     const filter = { company: req.user.company };
 
-    // If myTasks=true, always filter by current user's ID (for "My Tasks" page)
+    // If myTasks=true, filter by current user's ID (primary OR secondary assignee)
     if (myTasks === 'true') {
-      filter.assignedTo = req.user._id;
+      filter.$or = [
+        { assignedTo: req.user._id },
+        { secondaryAssignees: req.user._id }
+      ];
     }
     // Manager roles can see all tasks, regular employees only their own
     else if (!isManager(req.user.role)) {
-      filter.assignedTo = req.user._id;
+      filter.$or = [
+        { assignedTo: req.user._id },
+        { secondaryAssignees: req.user._id }
+      ];
     } else if (assignedTo) {
-      filter.assignedTo = assignedTo;
+      // Filter by specific assignee (primary or secondary)
+      filter.$or = [
+        { assignedTo: assignedTo },
+        { secondaryAssignees: assignedTo }
+      ];
     }
 
     // If 'all' query param is set and user is manager, show all company tasks
     if (all === 'true' && isManager(req.user.role) && myTasks !== 'true') {
+      delete filter.$or;
       delete filter.assignedTo;
     }
 
@@ -39,6 +50,7 @@ router.get('/', authenticate, async (req, res) => {
 
     const tasks = await Task.find(filter)
       .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email')
       .populate('updates.addedBy', 'firstName lastName')
       .sort({ deadline: 1 });
@@ -54,6 +66,7 @@ router.get('/:id', authenticate, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
       .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email')
       .populate('updates.addedBy', 'firstName lastName');
 
@@ -61,9 +74,13 @@ router.get('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check if user has access to this task (managers can view all, employees only their own)
+    // Check if user has access to this task
     const assignedToId = task.assignedTo?._id?.toString() || task.assignedTo?.toString();
-    if (!isManager(req.user.role) && assignedToId !== req.user._id.toString()) {
+    const secondaryIds = (task.secondaryAssignees || []).map(s => s._id?.toString() || s.toString());
+    const userId = req.user._id.toString();
+    const isAssignee = assignedToId === userId || secondaryIds.includes(userId);
+    
+    if (!isManager(req.user.role) && !isAssignee) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
@@ -80,6 +97,7 @@ router.post('/', authenticate, async (req, res) => {
       title,
       description,
       assignedTo,
+      secondaryAssignees,
       project,
       department,
       priority,
@@ -104,6 +122,16 @@ router.post('/', authenticate, async (req, res) => {
     const assignedUser = await User.findOne({ _id: assignedTo, company: req.user.company });
     if (!assignedUser) {
       return res.status(404).json({ message: 'Assigned user not found' });
+    }
+
+    // Verify secondary assignees exist and belong to same company
+    let validSecondaryAssignees = [];
+    if (secondaryAssignees && secondaryAssignees.length > 0) {
+      const secondaryUsers = await User.find({ 
+        _id: { $in: secondaryAssignees }, 
+        company: req.user.company 
+      }).select('_id');
+      validSecondaryAssignees = secondaryUsers.map(u => u._id);
     }
 
     // Generate a task ID (e.g., TASK-2024-001 or MTG-2024-001 for meetings)
@@ -132,6 +160,7 @@ router.post('/', authenticate, async (req, res) => {
       title,
       description,
       assignedTo,
+      secondaryAssignees: validSecondaryAssignees,
       assignedBy: req.user._id,
       project: project || taskId,
       department: department || assignedUser.department,
@@ -150,6 +179,7 @@ router.post('/', authenticate, async (req, res) => {
     const savedTask = await task.save();
     const populatedTask = await Task.findById(savedTask._id)
       .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email')
       .populate('attendees.user', 'firstName lastName email');
 
@@ -167,8 +197,12 @@ router.put('/:id', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check permissions
-    const isAssignee = task.assignedTo.toString() === req.user._id.toString();
+    // Check permissions - primary or secondary assignees can update
+    const isPrimaryAssignee = task.assignedTo.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
     const hasManagerAccess = isManager(req.user.role);
 
     if (!isAssignee && !hasManagerAccess) {
@@ -179,6 +213,7 @@ router.put('/:id', authenticate, async (req, res) => {
       title,
       description,
       assignedTo,
+      secondaryAssignees,
       project,
       department,
       priority,
@@ -194,6 +229,18 @@ router.put('/:id', authenticate, async (req, res) => {
       if (title !== undefined) task.title = title;
       if (description !== undefined) task.description = description;
       if (assignedTo !== undefined) task.assignedTo = assignedTo;
+      if (secondaryAssignees !== undefined) {
+        // Verify secondary assignees exist
+        if (secondaryAssignees.length > 0) {
+          const secondaryUsers = await User.find({ 
+            _id: { $in: secondaryAssignees }, 
+            company: req.user.company 
+          }).select('_id');
+          task.secondaryAssignees = secondaryUsers.map(u => u._id);
+        } else {
+          task.secondaryAssignees = [];
+        }
+      }
       if (project !== undefined) task.project = project;
       if (department !== undefined) task.department = department;
       if (priority !== undefined) task.priority = priority;
@@ -201,7 +248,7 @@ router.put('/:id', authenticate, async (req, res) => {
       if (capacity !== undefined) task.capacity = capacity;
     }
 
-    // Both managers and assignee can update status, progress, and blocker
+    // Both managers and assignees (primary or secondary) can update status, progress, and blocker
     if (status !== undefined) task.status = status;
     if (progress !== undefined) task.progress = progress;
     if (blocker !== undefined) task.blocker = blocker;
@@ -210,6 +257,7 @@ router.put('/:id', authenticate, async (req, res) => {
 
     const updatedTask = await Task.findById(task._id)
       .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email');
 
     res.json(updatedTask);
@@ -228,8 +276,12 @@ router.post('/:id/updates', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Check permissions
-    const isAssignee = task.assignedTo.toString() === req.user._id.toString();
+    // Check permissions - primary or secondary assignees can add updates
+    const isPrimaryAssignee = task.assignedTo.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
     const hasManagerAccess = isManager(req.user.role);
 
     if (!isAssignee && !hasManagerAccess) {
@@ -251,6 +303,7 @@ router.post('/:id/updates', authenticate, async (req, res) => {
 
     const updatedTask = await Task.findById(task._id)
       .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email')
       .populate('updates.addedBy', 'firstName lastName');
 
@@ -528,9 +581,13 @@ router.post('/:id/attachments', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Allow admin, assignee (task owner), or assigner (task creator) to add attachments
+    // Allow admin, assignee (primary or secondary), or assigner (task creator) to add attachments
     const isAdmin = req.user.role === 'admin';
-    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isPrimaryAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
     const isAssigner = task.assignedBy?.toString() === req.user._id.toString();
     
     if (!isAdmin && !isAssignee && !isAssigner) {
@@ -569,10 +626,14 @@ router.delete('/:id/attachments/:attachmentId', authenticate, async (req, res) =
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Allow admin, assignee, or assigner to delete attachments
+    // Allow admin, assignee (primary or secondary), or assigner to delete attachments
     // Also allow the person who uploaded the attachment to delete it
     const isAdmin = req.user.role === 'admin';
-    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isPrimaryAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
     const isAssigner = task.assignedBy?.toString() === req.user._id.toString();
     const attachment = task.attachments.id(req.params.attachmentId);
     const isUploader = attachment && attachment.uploadedBy?.toString() === req.user._id.toString();
@@ -646,8 +707,12 @@ router.patch('/:id/boost/:boostId', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Only assignee can respond to boost
-    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    // Only assignee (primary or secondary) can respond to boost
+    const isPrimaryAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
     const isAdmin = req.user.role === 'admin';
     
     if (!isAssignee && !isAdmin) {
@@ -707,8 +772,12 @@ router.post('/:id/bottleneck', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Only assignee can raise bottleneck
-    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    // Only assignee (primary or secondary) can raise bottleneck
+    const isPrimaryAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
     const isAdmin = req.user.role === 'admin';
     
     if (!isAssignee && !isAdmin) {
@@ -749,7 +818,11 @@ router.patch('/:id/bottleneck/:bottleneckId', authenticate, async (req, res) => 
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    const isAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isPrimaryAssignee = task.assignedTo?.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
     const isChairperson = req.user.role === 'admin' || req.user.role === 'chairman';
 
     // Assignee can only mark as resolved, chairperson can do everything

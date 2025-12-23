@@ -53,6 +53,7 @@ const TaskManagement = () => {
     title: '',
     description: '',
     assignedTo: '',
+    secondaryAssignees: [],
     project: '',
     priority: 'medium',
     deadline: '',
@@ -191,6 +192,7 @@ const TaskManagement = () => {
       title: task.title || '',
       description: task.description || '',
       assignedTo: task.assignedTo?._id || task.assignedTo || '',
+      secondaryAssignees: (task.secondaryAssignees || []).map(s => s._id || s),
       project: task.project || '',
       priority: task.priority || 'medium',
       deadline: task.deadline ? format(new Date(task.deadline), 'yyyy-MM-dd') : '',
@@ -209,6 +211,7 @@ const TaskManagement = () => {
       title: '',
       description: '',
       assignedTo: '',
+      secondaryAssignees: [],
       project: '',
       priority: 'medium',
       deadline: '',
@@ -756,7 +759,7 @@ const TaskManagement = () => {
               )}              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">
-                    {taskForm.category === 'meeting' ? 'Organizer/Owner *' : 'Assign To *'}
+                    {taskForm.category === 'meeting' ? 'Organizer/Owner *' : 'Primary Assignee *'}
                   </label>
                   {isEmployee ? (
                     // Employees can only assign tasks to themselves
@@ -770,7 +773,7 @@ const TaskManagement = () => {
                       className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
                       required
                     >
-                      <option value="">{taskForm.category === 'meeting' ? 'Select Organizer' : 'Select Team Member'}</option>
+                      <option value="">{taskForm.category === 'meeting' ? 'Select Organizer' : 'Select Primary Assignee'}</option>
                       {employees.map((emp) => (
                         <option key={emp._id} value={emp._id}>
                           {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
@@ -793,6 +796,64 @@ const TaskManagement = () => {
                   />
                 </div>
               </div>
+
+              {/* Secondary Assignees - not for employees */}
+              {!isEmployee && taskForm.category !== 'meeting' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    Secondary Assignees (Optional)
+                  </label>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {taskForm.secondaryAssignees.map((id) => {
+                        const emp = employees.find(e => e._id === id);
+                        return emp ? (
+                          <span
+                            key={id}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-sm"
+                          >
+                            {emp.firstName} {emp.lastName}
+                            <button
+                              type="button"
+                              onClick={() => setTaskForm({
+                                ...taskForm,
+                                secondaryAssignees: taskForm.secondaryAssignees.filter(s => s !== id)
+                              })}
+                              className="ml-1 text-purple-400 hover:text-purple-200"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value && !taskForm.secondaryAssignees.includes(e.target.value) && e.target.value !== taskForm.assignedTo) {
+                          setTaskForm({
+                            ...taskForm,
+                            secondaryAssignees: [...taskForm.secondaryAssignees, e.target.value]
+                          });
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">Add secondary assignee...</option>
+                      {employees
+                        .filter(emp => emp._id !== taskForm.assignedTo && !taskForm.secondaryAssignees.includes(emp._id))
+                        .map((emp) => (
+                          <option key={emp._id} value={emp._id}>
+                            {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Secondary assignees can view, update, and add comments to this task.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -892,7 +953,7 @@ const TaskManagement = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Assign To *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Primary Assignee *</label>
                   {isEmployee ? (
                     // Employees cannot change assignment on their own tasks
                     <div className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white">
@@ -905,7 +966,7 @@ const TaskManagement = () => {
                       className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
                       required
                     >
-                      <option value="">Select Team Member</option>
+                      <option value="">Select Primary Assignee</option>
                       {employees.map((emp) => (
                         <option key={emp._id} value={emp._id}>
                           {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
@@ -926,6 +987,64 @@ const TaskManagement = () => {
                   />
                 </div>
               </div>
+
+              {/* Secondary Assignees - not for employees */}
+              {!isEmployee && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    Secondary Assignees (Optional)
+                  </label>
+                  <div className="bg-slate-800 border border-slate-700 rounded-lg p-3">
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {taskForm.secondaryAssignees.map((id) => {
+                        const emp = employees.find(e => e._id === id);
+                        return emp ? (
+                          <span
+                            key={id}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-sm"
+                          >
+                            {emp.firstName} {emp.lastName}
+                            <button
+                              type="button"
+                              onClick={() => setTaskForm({
+                                ...taskForm,
+                                secondaryAssignees: taskForm.secondaryAssignees.filter(s => s !== id)
+                              })}
+                              className="ml-1 text-purple-400 hover:text-purple-200"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value && !taskForm.secondaryAssignees.includes(e.target.value) && e.target.value !== taskForm.assignedTo) {
+                          setTaskForm({
+                            ...taskForm,
+                            secondaryAssignees: [...taskForm.secondaryAssignees, e.target.value]
+                          });
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="">Add secondary assignee...</option>
+                      {employees
+                        .filter(emp => emp._id !== taskForm.assignedTo && !taskForm.secondaryAssignees.includes(emp._id))
+                        .map((emp) => (
+                          <option key={emp._id} value={emp._id}>
+                            {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-slate-400 mt-2">
+                      Secondary assignees can view, update, and add comments to this task.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-4">
                 <div>
@@ -1138,7 +1257,7 @@ const TaskManagement = () => {
                       <p className="text-white font-medium">{selectedTask.project || 'N/A'}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400 text-sm">Assigned To</p>
+                      <p className="text-slate-400 text-sm">Primary Assignee</p>
                       <p className="text-white font-medium">
                         {selectedTask.assignedTo?.firstName} {selectedTask.assignedTo?.lastName}
                       </p>
@@ -1165,6 +1284,23 @@ const TaskManagement = () => {
                       </p>
                     </div>
                   </div>
+                  
+                  {/* Secondary Assignees */}
+                  {selectedTask.secondaryAssignees && selectedTask.secondaryAssignees.length > 0 && (
+                    <div>
+                      <p className="text-slate-400 text-sm mb-2">Secondary Assignees</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedTask.secondaryAssignees.map((assignee, idx) => (
+                          <span
+                            key={assignee._id || idx}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-sm"
+                          >
+                            {assignee.firstName ? `${assignee.firstName} ${assignee.lastName || ''}`.trim() : 'Unknown'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
