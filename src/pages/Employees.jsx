@@ -18,7 +18,7 @@ const Employees = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState([]);
 
   // Fetch employees and departments on mount

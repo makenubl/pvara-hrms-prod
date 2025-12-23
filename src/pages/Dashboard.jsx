@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Calendar, BarChart3, DollarSign, TrendingUp, AlertCircle, ArrowUpRight, ArrowDownRight, CheckCircle2, Clock } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
-import { handleMarkAttendance, handleProcessPayroll, handleCreateJob } from '../utils/handlers';
 import toast from 'react-hot-toast';
 import { Card, Stat, Button, Badge } from '../components/UI';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -15,7 +14,7 @@ const Dashboard = () => {
   const [dateRange, setDateRange] = useState('this-month');
   const [employees, setEmployees] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
@@ -44,7 +43,7 @@ const Dashboard = () => {
   const generateAttendanceData = () => {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     const activeCount = employees.filter(e => e.status === 'active').length;
-    return days.map((day, idx) => ({
+    return days.map((day) => ({
       name: day,
       present: Math.round(activeCount * (0.85 + Math.random() * 0.15)),
       absent: Math.round(activeCount * (0.1 + Math.random() * 0.05))

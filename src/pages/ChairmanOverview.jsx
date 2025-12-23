@@ -39,7 +39,7 @@ import {
 import toast from 'react-hot-toast';
 
 const ChairmanOverview = () => {
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -52,13 +52,13 @@ const ChairmanOverview = () => {
   const [showAddHighlight, setShowAddHighlight] = useState(false);
   const [showEditHighlight, setShowEditHighlight] = useState(false);
   const [editingHighlight, setEditingHighlight] = useState(null);
-  const [selectedProject, setSelectedProject] = useState(null);
+  const [_selectedProject, _setSelectedProject] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
   const [chairmanComment, setChairmanComment] = useState('');
   const [announcement, setAnnouncement] = useState({ title: '', message: '', priority: 'medium' });
-  const [announcements, setAnnouncements] = useState([]);
+  const [_announcements, _setAnnouncements] = useState([]);
   const [activeTab, setActiveTab] = useState('tasks');
   const [exporting, setExporting] = useState(false);
   
@@ -215,7 +215,7 @@ const ChairmanOverview = () => {
   ].sort((a, b) => new Date(a.dueDate || 0) - new Date(b.dueDate || 0)).slice(0, 5);
 
   const showstoppers = highlights.filter(h => h.type === 'showstopper' || h.priority === 'critical');
-  const supportNeeded = highlights.filter(h => h.type === 'support-needed');
+  const _supportNeeded = highlights.filter(h => h.type === 'support-needed');
 
   // ===== DEPARTMENT CALCULATIONS =====
   const departments = Array.from(new Set(employees.map(e => e.department).filter(Boolean)));
@@ -258,7 +258,7 @@ const ChairmanOverview = () => {
   }).sort((a, b) => b.needsSupport.length - a.needsSupport.length || b.employees - a.employees);
 
   // Filter departments that need support
-  const deptsNeedingSupport = deptData.filter(d => d.needsSupport.length > 0 || d.status === 'needs-attention');
+  const _deptsNeedingSupport = deptData.filter(d => d.needsSupport.length > 0 || d.status === 'needs-attention');
 
   // ===== PROJECT CALCULATIONS =====
   const projectStats = {
@@ -305,7 +305,7 @@ const ChairmanOverview = () => {
   const handleCreateHighlight = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.post('/highlights', newHighlight);
+      await api.post('/highlights', newHighlight);
       toast.success('Highlight saved to database!');
       setShowAddHighlight(false);
       setNewHighlight({ type: 'achievement', title: '', description: '', department: '', priority: 'medium', dueDate: '' });

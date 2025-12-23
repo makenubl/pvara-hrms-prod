@@ -11,7 +11,7 @@ const Payroll = () => {
   const [filterMonth, setFilterMonth] = useState('2025-12');
   const [payslips, setPayslips] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {

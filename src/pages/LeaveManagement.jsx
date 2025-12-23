@@ -16,7 +16,7 @@ const LeaveManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [leaveRecords, setLeaveRecords] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
 
   const [formData, setFormData] = useState({
     leaveType: '',

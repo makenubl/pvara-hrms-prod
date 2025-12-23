@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge } from '../components/UI';
 import { useAuthStore } from '../store/authStore';
 import taskService from '../services/taskService';
 import employeeService from '../services/employeeService';
-import { format, startOfWeek, endOfWeek, subWeeks, addWeeks, differenceInDays, parseISO } from 'date-fns';
+import { format, startOfWeek, endOfWeek, subWeeks, addWeeks, differenceInDays } from 'date-fns';
 import {
   FileText,
   Download,
@@ -24,7 +24,7 @@ import {
 import toast from 'react-hot-toast';
 
 const Reports = () => {
-  const { user, role } = useAuthStore();
+  useAuthStore(); // Using store for authentication check
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -32,7 +32,6 @@ const Reports = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterEmployee, setFilterEmployee] = useState('all');
   const [generating, setGenerating] = useState(false);
-  const reportRef = useRef(null);
 
   // Calculate week range
   const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 }); // Monday

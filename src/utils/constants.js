@@ -2,7 +2,7 @@
 export const API_BASE_URL = 
   typeof window !== 'undefined' && window.location.hostname === 'localhost'
     ? 'http://localhost:5000'
-    : process.env.REACT_APP_API_URL || '/api';
+    : import.meta.env?.VITE_API_URL || '/api';
 
 // Leave Types
 export const LEAVE_TYPES = {

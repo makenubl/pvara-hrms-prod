@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import api from '../services/api';
 
 const EmployeePerformance = () => {
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('reviews');
   const [reviews, setReviews] = useState([]);
   const [goals, setGoals] = useState([]);
@@ -109,7 +109,7 @@ const EmployeePerformance = () => {
     return <Badge variant={variants[status] || 'gray'}>{status}</Badge>;
   };
 
-  const calculateGoalProgress = (goal) => {
+  const _calculateGoalProgress = (goal) => {
     if (!goal.targetValue || goal.targetValue === 0) return 0;
     const actual = goal.actualValue || 0;
     return Math.min(100, Math.round((actual / goal.targetValue) * 100));

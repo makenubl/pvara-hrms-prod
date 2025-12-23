@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 
 const MyTasks = () => {
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -291,7 +291,7 @@ const MyTasks = () => {
   };
 
   // Get open bottlenecks count
-  const getOpenBottlenecks = (task) => {
+  const _getOpenBottlenecks = (task) => {
     return task.bottlenecks?.filter(b => b.status !== 'resolved') || [];
   };
 

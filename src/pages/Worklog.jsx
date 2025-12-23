@@ -22,7 +22,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const Worklog = () => {
-  const { user } = useAuthStore();
+  const { user: _user } = useAuthStore();
   const [worklogs, setWorklogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);

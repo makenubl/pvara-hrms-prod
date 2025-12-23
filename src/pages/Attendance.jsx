@@ -4,14 +4,13 @@ import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
 import { getMonthlyCalendar, formatDate } from '../utils/dateUtils';
 import api from '../services/api';
-import toast from 'react-hot-toast';
 
 const Attendance = () => {
   const [viewMode, setViewMode] = useState('list');
   const [selectedMonth] = useState(new Date());
   const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState(null);
 
   useEffect(() => {
     fetchAttendanceData();

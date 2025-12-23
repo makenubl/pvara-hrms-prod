@@ -4,13 +4,12 @@ import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table, Input, Stat } from '../components/UI';
 import { PERFORMANCE_RATING, APPRAISAL_STATUS } from '../utils/constants';
 import api from '../services/api';
-import toast from 'react-hot-toast';
 
 const PerformanceManagement = () => {
   const [activeTab, setActiveTab] = useState('appraisals');
   const [appraisals, setAppraisals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState(null);
 
   useEffect(() => {
     fetchPerformanceData();

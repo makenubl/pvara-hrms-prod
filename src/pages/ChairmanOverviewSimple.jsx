@@ -19,12 +19,13 @@ import {
 import toast from 'react-hot-toast';
 
 const ChairmanOverviewSimple = () => {
-  const { user } = useAuthStore();
+  useAuthStore(); // Using store for authentication
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [date, setDate] = useState(new Date());
   const [exporting, setExporting] = useState(false);
+  const [expandedSection, setExpandedSection] = useState(null);
   const dashboardRef = useRef(null);
 
   useEffect(() => {
@@ -122,7 +123,7 @@ const ChairmanOverviewSimple = () => {
     }
   };
 
-  const toggleSection = (section) => {
+  const _toggleSection = (section) => {
     setExpandedSection(expandedSection === section ? null : section);
   };
 

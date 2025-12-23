@@ -7,7 +7,7 @@ import employeeService from '../services/employeeService';
 const Analytics = () => {
   const [dateRange, setDateRange] = useState('month');
   const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchEmployees();

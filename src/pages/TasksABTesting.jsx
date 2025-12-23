@@ -149,7 +149,7 @@ const TasksABTesting = () => {
   };
 
   // Count total open bottlenecks
-  const totalOpenBottlenecks = tasks.reduce((count, task) => {
+  const _totalOpenBottlenecks = tasks.reduce((count, task) => {
     return count + getOpenBottlenecks(task).length;
   }, 0);
 

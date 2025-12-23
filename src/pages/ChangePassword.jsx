@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button } from '../components/UI';
 import authService from '../services/authService';
-import { useAuthStore } from '../store/authStore';
 import { Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
 
 const ChangePassword = ({ onSuccess, isFirstTime = false }) => {

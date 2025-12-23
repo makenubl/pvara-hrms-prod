@@ -1,5 +1,4 @@
 import React from 'react';
-import toast from 'react-hot-toast';
 import MainLayout from '../layouts/MainLayout';
 import { Shield, UserCheck, UserX, Clock, AlertTriangle, CheckCircle2, Filter } from 'lucide-react';
 import { Card, Button, Badge } from '../components/UI';

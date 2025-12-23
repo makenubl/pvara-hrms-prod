@@ -133,7 +133,7 @@ const Settings = () => {
         return;
       }
 
-      const result = await positionService.create({
+      await positionService.create({
         title: newPosition.title,
         department: newPosition.department,
         level: newPosition.level,

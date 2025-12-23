@@ -248,7 +248,7 @@ const EmployeeProfile = () => {
       formData.append('document', file);
       formData.append('type', documentType);
       
-      const response = await api.post('/profile/documents', formData, {
+      await api.post('/profile/documents', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -295,7 +295,7 @@ const EmployeeProfile = () => {
     }
   };
 
-  const documentTypes = ['CNIC', 'Passport', 'Education', 'Experience', 'Medical', 'Other'];
+  const _documentTypes = ['CNIC', 'Passport', 'Education', 'Experience', 'Medical', 'Other'];
 
   if (loading) {
     return (

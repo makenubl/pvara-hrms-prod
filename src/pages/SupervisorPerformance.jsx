@@ -19,7 +19,7 @@ const SupervisorPerformance = () => {
   const [loading, setLoading] = useState(true);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [_selectedEmployee, _setSelectedEmployee] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingGoal, setEditingGoal] = useState(null);
 

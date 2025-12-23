@@ -4,14 +4,13 @@ import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Table } from '../components/UI';
 import { RECRUITMENT_STATUS, APPLICANT_STATUS } from '../utils/constants';
 import api from '../services/api';
-import toast from 'react-hot-toast';
 
 const Recruitment = () => {
   const [activeTab, setActiveTab] = useState('jobs');
   const [jobs, setJobs] = useState([]);
   const [applicants, setApplicants] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState(null);
 
   useEffect(() => {
     fetchRecruitmentData();
