@@ -41,6 +41,7 @@ const TaskManagement = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
+  const [filterEmployee, setFilterEmployee] = useState('all');
   const [activeDetailTab, setActiveDetailTab] = useState('details');
   const [attachmentForm, setAttachmentForm] = useState({ name: '', url: '', type: 'document' });
   const [submitting, setSubmitting] = useState(false);
@@ -240,10 +241,14 @@ const TaskManagement = () => {
   // Filter tasks
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          task.project?.toLowerCase().includes(searchQuery.toLowerCase());
+                          task.project?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          task.assignedTo?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          task.assignedTo?.lastName?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || task.status === filterStatus;
     const matchesPriority = filterPriority === 'all' || task.priority === filterPriority;
-    return matchesSearch && matchesStatus && matchesPriority;
+    const taskAssigneeId = task.assignedTo?._id || task.assignedTo;
+    const matchesEmployee = filterEmployee === 'all' || taskAssigneeId === filterEmployee;
+    return matchesSearch && matchesStatus && matchesPriority && matchesEmployee;
   });
 
   // Get deadline status
@@ -364,6 +369,22 @@ const TaskManagement = () => {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+
+          {/* Employee Filter - only show for managers/admins */}
+          {canManageAllTasks && (
+            <select
+              value={filterEmployee}
+              onChange={(e) => setFilterEmployee(e.target.value)}
+              className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 min-w-[180px]"
+            >
+              <option value="all">All Employees</option>
+              {employees.map((emp) => (
+                <option key={emp._id} value={emp._id}>
+                  {emp.firstName} {emp.lastName}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Task Table */}
