@@ -1,35 +1,45 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
 import { useCompanyStore } from './store/companyStore';
 
-// Pages
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import EmployeeDashboard from './pages/EmployeeDashboard';
-import EmployeeProfile from './pages/EmployeeProfile';
-import EmployeePerformance from './pages/EmployeePerformance';
-import SupervisorPerformance from './pages/SupervisorPerformance';
-import Employees from './pages/Employees';
-import Attendance from './pages/Attendance';
-import LeaveManagement from './pages/LeaveManagement';
-import Payroll from './pages/Payroll';
-import Performance from './pages/Performance';
-import Recruitment from './pages/Recruitment';
-import Learning from './pages/Learning';
-import Compliance from './pages/Compliance';
-import Analytics from './pages/Analytics';
-import Settings from './pages/Settings';
-import OrganizationChart from './pages/OrganizationChart';
-import ChairmanOverview from './pages/ChairmanOverview';
-import ChairmanOverviewSimple from './pages/ChairmanOverviewSimple';
-import TasksABTesting from './pages/TasksABTesting';
-import ChangePassword from './pages/ChangePassword';
-import MyTasks from './pages/MyTasks';
-import Worklog from './pages/Worklog';
-import TaskManagement from './pages/TaskManagement';
-import Reports from './pages/Reports';
+// Loading spinner component for lazy loaded pages
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
+      <p className="text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
+
+// Lazy load all pages for code splitting
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const EmployeeDashboard = lazy(() => import('./pages/EmployeeDashboard'));
+const EmployeeProfile = lazy(() => import('./pages/EmployeeProfile'));
+const EmployeePerformance = lazy(() => import('./pages/EmployeePerformance'));
+const SupervisorPerformance = lazy(() => import('./pages/SupervisorPerformance'));
+const Employees = lazy(() => import('./pages/Employees'));
+const Attendance = lazy(() => import('./pages/Attendance'));
+const LeaveManagement = lazy(() => import('./pages/LeaveManagement'));
+const Payroll = lazy(() => import('./pages/Payroll'));
+const Performance = lazy(() => import('./pages/Performance'));
+const Recruitment = lazy(() => import('./pages/Recruitment'));
+const Learning = lazy(() => import('./pages/Learning'));
+const Compliance = lazy(() => import('./pages/Compliance'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Settings = lazy(() => import('./pages/Settings'));
+const OrganizationChart = lazy(() => import('./pages/OrganizationChart'));
+const ChairmanOverview = lazy(() => import('./pages/ChairmanOverview'));
+const ChairmanOverviewSimple = lazy(() => import('./pages/ChairmanOverviewSimple'));
+const TasksABTesting = lazy(() => import('./pages/TasksABTesting'));
+const ChangePassword = lazy(() => import('./pages/ChangePassword'));
+const MyTasks = lazy(() => import('./pages/MyTasks'));
+const Worklog = lazy(() => import('./pages/Worklog'));
+const TaskManagement = lazy(() => import('./pages/TaskManagement'));
+const Reports = lazy(() => import('./pages/Reports'));
 
 // Role-based Dashboard Router
 const DashboardRouter = () => {
@@ -100,10 +110,11 @@ function App() {
   return (
     <Router>
       <Toaster position="top-right" />
-      <Routes>
-        {/* Entry point - Login */}
-        <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Entry point - Login */}
+          <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
         {/* Protected HRMS Routes */}
         <Route
@@ -206,6 +217,7 @@ function App() {
         {/* Catch-all redirect to login */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      </Suspense>
     </Router>
   );
 }
