@@ -12,6 +12,7 @@ import {
   AlertCircle,
   TrendingUp,
   MessageSquare,
+  MessageCircle,
   Calendar,
   Activity,
   Paperclip,
@@ -23,6 +24,7 @@ import {
   Zap,
   Bell,
   AlertTriangle,
+  User,
   HelpCircle,
 } from 'lucide-react';
 
@@ -676,6 +678,7 @@ const MyTasks = () => {
               <div className="flex gap-1 mb-4 border-b border-white/10 overflow-x-auto">
                 {[
                   { id: 'updates', label: 'Updates', icon: MessageSquare, count: selectedTask.updates?.length || 0 },
+                  { id: 'comments', label: 'Comments', icon: MessageCircle, count: selectedTask.chairmanComments?.length || 0 },
                   { id: 'bottlenecks', label: 'Bottlenecks', icon: AlertTriangle, count: selectedTask.bottlenecks?.length || 0 },
                   { id: 'activities', label: 'Activities', icon: Activity, count: selectedTask.activities?.length || 0 },
                   { id: 'attachments', label: 'Attachments', icon: Paperclip, count: selectedTask.attachments?.length || 0 },
@@ -782,6 +785,43 @@ const MyTasks = () => {
                       {submitting ? 'Adding...' : 'Add Update'}
                     </Button>
                   </form>
+                </div>
+              )}
+
+              {/* Comments Tab */}
+              {activeTab === 'comments' && (
+                <div>
+                  <h4 className="text-white font-semibold mb-3 flex items-center gap-2">
+                    <MessageCircle size={16} className="text-purple-400" />
+                    Chairman Comments
+                  </h4>
+                  
+                  {/* Comments List */}
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {selectedTask.chairmanComments && selectedTask.chairmanComments.length > 0 ? (
+                      [...selectedTask.chairmanComments].reverse().map((comment, index) => (
+                        <div key={comment._id || index} className="bg-slate-700/50 rounded-lg p-4 border border-purple-500/20">
+                          <p className="text-white">{comment.comment}</p>
+                          <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                            <User size={12} />
+                            <span>
+                              {comment.addedBy?.firstName 
+                                ? `${comment.addedBy.firstName} ${comment.addedBy.lastName || ''}`.trim()
+                                : 'Chairman'}
+                            </span>
+                            <span>•</span>
+                            <span>{comment.addedAt && format(new Date(comment.addedAt), 'MMM d, yyyy h:mm a')}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12 text-slate-500">
+                        <MessageCircle size={48} className="mx-auto mb-4 opacity-50" />
+                        <p>No comments yet</p>
+                        <p className="text-sm mt-1">Comments from management will appear here</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

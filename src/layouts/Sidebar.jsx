@@ -19,6 +19,7 @@ import {
   CheckSquare,
   Clock,
   Target,
+  FileText,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
@@ -39,6 +40,7 @@ const Sidebar = () => {
     { icon: CheckSquare, label: 'My Tasks', path: '/my-tasks', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
     { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager', 'chairman'] },
     { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
+    { icon: FileText, label: 'Reports', path: '/reports', roles: ['admin', 'chairman'] },
     { icon: UserCircle, label: 'My Profile', path: '/profile', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
     { icon: Settings, label: 'Settings', path: '/settings', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
   ];

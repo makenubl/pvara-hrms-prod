@@ -29,6 +29,7 @@ import ChangePassword from './pages/ChangePassword';
 import MyTasks from './pages/MyTasks';
 import Worklog from './pages/Worklog';
 import TaskManagement from './pages/TaskManagement';
+import Reports from './pages/Reports';
 
 // Role-based Dashboard Router
 const DashboardRouter = () => {
@@ -196,6 +197,10 @@ function App() {
         <Route
           path="/settings"
           element={<ProtectedRoute><Settings /></ProtectedRoute>}
+        />
+        <Route
+          path="/reports"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman']}><Reports /></ProtectedRoute>}
         />
 
         {/* Catch-all redirect to login */}

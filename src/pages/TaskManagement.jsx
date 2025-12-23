@@ -26,6 +26,8 @@ import {
   Paperclip,
   MessageSquare,
   Upload,
+  Video,
+  MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -55,6 +57,11 @@ const TaskManagement = () => {
     priority: 'medium',
     deadline: '',
     status: 'pending',
+    category: 'task',
+    meetingDateTime: '',
+    meetingEndTime: '',
+    meetingLocation: '',
+    attendees: [],
   });
 
   // Check if user can manage all tasks (admin, chairman, managers)
@@ -108,8 +115,24 @@ const TaskManagement = () => {
     // For employees, automatically assign to themselves
     const assignedTo = isEmployee ? user?._id : taskForm.assignedTo;
     
-    if (!taskForm.title || !assignedTo || !taskForm.deadline) {
+    // For meetings, use meeting date as deadline if not set
+    const deadline = taskForm.deadline || (taskForm.category === 'meeting' && taskForm.meetingDateTime 
+      ? taskForm.meetingDateTime.split('T')[0] 
+      : null);
+    
+    if (!taskForm.title || !assignedTo) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+    
+    // Require deadline for tasks, meeting date for meetings
+    if (taskForm.category === 'task' && !deadline) {
+      toast.error('Please set a deadline');
+      return;
+    }
+    
+    if (taskForm.category === 'meeting' && !taskForm.meetingDateTime) {
+      toast.error('Please set meeting date and time');
       return;
     }
 
@@ -117,13 +140,14 @@ const TaskManagement = () => {
       const newTask = await taskService.create({
         ...taskForm,
         assignedTo,
+        deadline: deadline || taskForm.meetingDateTime?.split('T')[0],
         project: taskForm.project || generateTaskId(),
       });
       
       setTasks([newTask, ...tasks]);
       setShowCreateModal(false);
       resetForm();
-      toast.success('Task created successfully!');
+      toast.success(taskForm.category === 'meeting' ? 'Meeting scheduled successfully!' : 'Task created successfully!');
     } catch (error) {
       console.error('Error creating task:', error);
       toast.error(error.response?.data?.message || error.message || 'Failed to create task');
@@ -171,6 +195,11 @@ const TaskManagement = () => {
       priority: task.priority || 'medium',
       deadline: task.deadline ? format(new Date(task.deadline), 'yyyy-MM-dd') : '',
       status: task.status || 'pending',
+      category: task.category || 'task',
+      meetingDateTime: task.meetingDateTime ? format(new Date(task.meetingDateTime), "yyyy-MM-dd'T'HH:mm") : '',
+      meetingEndTime: task.meetingEndTime ? format(new Date(task.meetingEndTime), "yyyy-MM-dd'T'HH:mm") : '',
+      meetingLocation: task.meetingLocation || '',
+      attendees: task.attendees?.map(a => a.user?._id || a.user) || [],
     });
     setShowEditModal(true);
   };
@@ -184,6 +213,11 @@ const TaskManagement = () => {
       priority: 'medium',
       deadline: '',
       status: 'pending',
+      category: 'task',
+      meetingDateTime: '',
+      meetingEndTime: '',
+      meetingLocation: '',
+      attendees: [],
     });
   };
 
@@ -436,8 +470,22 @@ const TaskManagement = () => {
 
                     {/* Task Title & Description */}
                     <div className="col-span-3">
-                      <p className="text-white text-sm font-medium truncate">{task.title}</p>
-                      <p className="text-slate-500 text-xs truncate">{task.description || 'No description'}</p>
+                      <div className="flex items-center gap-2">
+                        {task.category === 'meeting' && (
+                          <span className="flex-shrink-0 px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded text-[10px] font-medium">
+                            <Video size={10} className="inline mr-0.5" />MTG
+                          </span>
+                        )}
+                        <p className="text-white text-sm font-medium truncate">{task.title}</p>
+                      </div>
+                      {task.category === 'meeting' && task.meetingDateTime ? (
+                        <p className="text-purple-400 text-xs truncate">
+                          📅 {format(new Date(task.meetingDateTime), 'MMM d, yyyy h:mm a')}
+                          {task.attendees?.length > 0 && ` • ${task.attendees.length} attendee(s)`}
+                        </p>
+                      ) : (
+                        <p className="text-slate-500 text-xs truncate">{task.description || 'No description'}</p>
+                      )}
                     </div>
 
                     {/* Assigned To */}
@@ -549,8 +597,12 @@ const TaskManagement = () => {
           <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-900">
               <div>
-                <h2 className="text-xl font-bold text-white">Assign New Task</h2>
-                <p className="text-slate-400 text-sm">Task ID: <span className="text-cyan-400 font-mono">{generateTaskId()}</span></p>
+                <h2 className="text-xl font-bold text-white">
+                  {taskForm.category === 'meeting' ? '📅 Schedule Meeting' : 'Assign New Task'}
+                </h2>
+                <p className="text-slate-400 text-sm">
+                  {taskForm.category === 'meeting' ? 'Meeting' : 'Task'} ID: <span className="text-cyan-400 font-mono">{taskForm.category === 'meeting' ? 'MTG-' : ''}{generateTaskId()}</span>
+                </p>
               </div>
               <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-800 rounded-lg">
                 <X size={20} className="text-slate-400" />
@@ -558,32 +610,154 @@ const TaskManagement = () => {
             </div>
             
             <form onSubmit={handleCreateTask} className="p-6 space-y-4">
+              {/* Category Selection */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Task Title *</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Category</label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setTaskForm({ ...taskForm, category: 'task' })}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
+                      taskForm.category === 'task'
+                        ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                  >
+                    <Target size={18} />
+                    Task
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaskForm({ ...taskForm, category: 'meeting' })}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-all ${
+                      taskForm.category === 'meeting'
+                        ? 'bg-purple-500/20 border-purple-500 text-purple-300'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                    }`}
+                  >
+                    <Video size={18} />
+                    Meeting
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  {taskForm.category === 'meeting' ? 'Meeting Title *' : 'Task Title *'}
+                </label>
                 <input
                   type="text"
                   value={taskForm.title}
                   onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                  placeholder="e.g., Complete API integration"
+                  placeholder={taskForm.category === 'meeting' ? 'e.g., Weekly Team Sync' : 'e.g., Complete API integration'}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  {taskForm.category === 'meeting' ? 'Agenda/Description' : 'Description'}
+                </label>
                 <textarea
                   value={taskForm.description}
                   onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
                   className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white resize-none focus:ring-2 focus:ring-cyan-500"
                   rows={3}
-                  placeholder="Detailed description of the task..."
+                  placeholder={taskForm.category === 'meeting' ? 'Meeting agenda and discussion points...' : 'Detailed description of the task...'}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Meeting-specific fields */}
+              {taskForm.category === 'meeting' && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">Start Date & Time *</label>
+                      <input
+                        type="datetime-local"
+                        value={taskForm.meetingDateTime}
+                        onChange={(e) => setTaskForm({ ...taskForm, meetingDateTime: e.target.value })}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-300 mb-1">End Date & Time</label>
+                      <input
+                        type="datetime-local"
+                        value={taskForm.meetingEndTime}
+                        onChange={(e) => setTaskForm({ ...taskForm, meetingEndTime: e.target.value })}
+                        className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                      <MapPin size={14} className="inline mr-1" />
+                      Location / Meeting Link
+                    </label>
+                    <input
+                      type="text"
+                      value={taskForm.meetingLocation}
+                      onChange={(e) => setTaskForm({ ...taskForm, meetingLocation: e.target.value })}
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500"
+                      placeholder="e.g., Conference Room A or https://meet.google.com/..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      <Users size={14} className="inline mr-1" />
+                      Attendees (select multiple)
+                    </label>
+                    <div className="max-h-40 overflow-y-auto bg-slate-800 border border-slate-700 rounded-lg p-2 space-y-1">
+                      {employees.map((emp) => (
+                        <label
+                          key={emp._id}
+                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${
+                            taskForm.attendees.includes(emp._id)
+                              ? 'bg-purple-500/20 border border-purple-500/50'
+                              : 'hover:bg-slate-700'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={taskForm.attendees.includes(emp._id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setTaskForm({ ...taskForm, attendees: [...taskForm.attendees, emp._id] });
+                              } else {
+                                setTaskForm({ ...taskForm, attendees: taskForm.attendees.filter(id => id !== emp._id) });
+                              }
+                            }}
+                            className="rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+                          />
+                          <div className="flex-1">
+                            <p className="text-white text-sm">{emp.firstName} {emp.lastName}</p>
+                            <p className="text-slate-500 text-xs">{emp.email}</p>
+                          </div>
+                          {emp.department && (
+                            <span className="text-xs px-2 py-0.5 bg-slate-700 text-slate-400 rounded">
+                              {emp.department}
+                            </span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                    {taskForm.attendees.length > 0 && (
+                      <p className="text-sm text-purple-300 mt-2">
+                        {taskForm.attendees.length} attendee(s) selected
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Assign To *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    {taskForm.category === 'meeting' ? 'Organizer/Owner *' : 'Assign To *'}
+                  </label>
                   {isEmployee ? (
                     // Employees can only assign tasks to themselves
                     <div className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white">
@@ -596,7 +770,7 @@ const TaskManagement = () => {
                       className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
                       required
                     >
-                      <option value="">Select Team Member</option>
+                      <option value="">{taskForm.category === 'meeting' ? 'Select Organizer' : 'Select Team Member'}</option>
                       {employees.map((emp) => (
                         <option key={emp._id} value={emp._id}>
                           {emp.firstName} {emp.lastName} - {emp.department || 'No Dept'}
@@ -607,13 +781,15 @@ const TaskManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Deadline *</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
+                    {taskForm.category === 'meeting' ? 'Follow-up Deadline' : 'Deadline *'}
+                  </label>
                   <input
                     type="date"
                     value={taskForm.deadline}
                     onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
                     className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500"
-                    required
+                    required={taskForm.category !== 'meeting'}
                   />
                 </div>
               </div>
@@ -655,10 +831,22 @@ const TaskManagement = () => {
                 </Button>
                 <Button
                   type="submit"
-                  className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                  className={taskForm.category === 'meeting' 
+                    ? "bg-gradient-to-r from-purple-500 to-pink-600"
+                    : "bg-gradient-to-r from-cyan-500 to-blue-600"
+                  }
                 >
-                  <Plus size={18} className="mr-2" />
-                  Assign Task
+                  {taskForm.category === 'meeting' ? (
+                    <>
+                      <Video size={18} className="mr-2" />
+                      Schedule Meeting
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={18} className="mr-2" />
+                      Assign Task
+                    </>
+                  )}
                 </Button>
               </div>
             </form>
@@ -807,7 +995,14 @@ const TaskManagement = () => {
           <div className="bg-slate-900 rounded-2xl border border-slate-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-700 flex items-center justify-between sticky top-0 bg-slate-900 z-10">
               <div>
-                <h2 className="text-xl font-bold text-white">{selectedTask.title}</h2>
+                <div className="flex items-center gap-3">
+                  {selectedTask.category === 'meeting' && (
+                    <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs font-medium">
+                      <Video size={12} className="inline mr-1" />MEETING
+                    </span>
+                  )}
+                  <h2 className="text-xl font-bold text-white">{selectedTask.title}</h2>
+                </div>
                 <div className="flex gap-2 mt-2">
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                     selectedTask.priority === 'critical' ? 'bg-red-500/20 text-red-400' :
@@ -831,6 +1026,71 @@ const TaskManagement = () => {
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
+
+            {/* Meeting Info Banner */}
+            {selectedTask.category === 'meeting' && (
+              <div className="mx-6 mt-4 p-4 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-purple-300 text-xs font-medium mb-1">📅 Date & Time</p>
+                    <p className="text-white text-sm">
+                      {selectedTask.meetingDateTime 
+                        ? format(new Date(selectedTask.meetingDateTime), 'EEEE, MMM d, yyyy')
+                        : 'Not set'}
+                    </p>
+                    <p className="text-purple-400 text-sm font-medium">
+                      {selectedTask.meetingDateTime 
+                        ? format(new Date(selectedTask.meetingDateTime), 'h:mm a')
+                        : ''}
+                      {selectedTask.meetingEndTime && (
+                        <> - {format(new Date(selectedTask.meetingEndTime), 'h:mm a')}</>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-purple-300 text-xs font-medium mb-1">📍 Location</p>
+                    <p className="text-white text-sm">
+                      {selectedTask.meetingLocation || 'Not specified'}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-purple-300 text-xs font-medium mb-1">👥 Attendees ({selectedTask.attendees?.length || 0})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedTask.attendees?.length > 0 ? (
+                        selectedTask.attendees.map((att, idx) => (
+                          <div key={att.user?._id || idx} className="flex items-center gap-2 px-2 py-1 bg-slate-800 rounded-lg">
+                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-[8px] font-bold">
+                              {att.user?.firstName?.[0]}{att.user?.lastName?.[0]}
+                            </div>
+                            <div>
+                              <p className="text-white text-xs">
+                                {att.user?.firstName} {att.user?.lastName}
+                              </p>
+                              <p className="text-slate-500 text-[10px]">{att.email}</p>
+                            </div>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                              att.status === 'accepted' ? 'bg-emerald-500/20 text-emerald-400' :
+                              att.status === 'declined' ? 'bg-red-500/20 text-red-400' :
+                              att.status === 'tentative' ? 'bg-yellow-500/20 text-yellow-400' :
+                              'bg-slate-600 text-slate-400'
+                            }`}>
+                              {att.status}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-slate-500 text-sm">No attendees</p>
+                      )}
+                    </div>
+                    {selectedTask.attendees?.some(a => a.notifiedAt) && (
+                      <p className="text-slate-500 text-[10px] mt-2">
+                        📧 Notifications sent: {format(new Date(selectedTask.attendees[0]?.notifiedAt), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tabs */}
             <div className="flex gap-1 px-6 pt-4 border-b border-slate-700">

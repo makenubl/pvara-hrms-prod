@@ -86,6 +86,11 @@ router.post('/', authenticate, async (req, res) => {
       status,
       deadline,
       capacity,
+      category,
+      meetingDateTime,
+      meetingEndTime,
+      meetingLocation,
+      attendees,
     } = req.body;
 
     // Check permissions: admins/managers can assign to anyone, employees can only assign to themselves
@@ -101,10 +106,27 @@ router.post('/', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Assigned user not found' });
     }
 
-    // Generate a task ID (e.g., TASK-2024-001)
+    // Generate a task ID (e.g., TASK-2024-001 or MTG-2024-001 for meetings)
     const taskCount = await Task.countDocuments({ company: req.user.company });
     const year = new Date().getFullYear();
-    const taskId = `TASK-${year}-${String(taskCount + 1).padStart(4, '0')}`;
+    const prefix = category === 'meeting' ? 'MTG' : 'TASK';
+    const taskId = `${prefix}-${year}-${String(taskCount + 1).padStart(4, '0')}`;
+
+    // Process attendees for meetings
+    let processedAttendees = [];
+    if (category === 'meeting' && attendees && attendees.length > 0) {
+      const attendeeUsers = await User.find({ 
+        _id: { $in: attendees }, 
+        company: req.user.company 
+      }).select('_id email');
+      
+      processedAttendees = attendeeUsers.map(u => ({
+        user: u._id,
+        email: u.email,
+        status: 'pending',
+        notifiedAt: new Date(),
+      }));
+    }
 
     const task = new Task({
       title,
@@ -118,12 +140,18 @@ router.post('/', authenticate, async (req, res) => {
       deadline,
       capacity: capacity || 0,
       company: req.user.company,
+      category: category || 'task',
+      meetingDateTime: category === 'meeting' ? meetingDateTime : undefined,
+      meetingEndTime: category === 'meeting' ? meetingEndTime : undefined,
+      meetingLocation: category === 'meeting' ? meetingLocation : undefined,
+      attendees: processedAttendees,
     });
 
     const savedTask = await task.save();
     const populatedTask = await Task.findById(savedTask._id)
       .populate('assignedTo', 'firstName lastName email designation department')
-      .populate('assignedBy', 'firstName lastName email');
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('attendees.user', 'firstName lastName email');
 
     res.status(201).json(populatedTask);
   } catch (error) {

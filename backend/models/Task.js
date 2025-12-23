@@ -9,6 +9,35 @@ const taskSchema = new mongoose.Schema(
     description: {
       type: String,
     },
+    category: {
+      type: String,
+      enum: ['task', 'meeting'],
+      default: 'task',
+    },
+    // Meeting-specific fields
+    meetingDateTime: {
+      type: Date,
+    },
+    meetingEndTime: {
+      type: Date,
+    },
+    meetingLocation: {
+      type: String,
+    },
+    attendees: [{
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      email: String,
+      status: {
+        type: String,
+        enum: ['pending', 'accepted', 'declined', 'tentative'],
+        default: 'pending',
+      },
+      notifiedAt: Date,
+      respondedAt: Date,
+    }],
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
