@@ -79,7 +79,7 @@ const EmployeeDashboard = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-fade-in">
           <div>
             <h1 className="text-4xl font-black bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Welcome Back, {employeeData.name.split(' ')[0]}!
+              Welcome Back, {(employeeData.name || 'Employee').split(' ')[0]}!
             </h1>
             <p className="text-slate-400 mt-2">
               {format(currentTime, 'EEEE, MMMM d, yyyy • h:mm:ss a')}

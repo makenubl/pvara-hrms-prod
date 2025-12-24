@@ -12,6 +12,18 @@ import {
   ChevronDown,
 } from 'lucide-react';
 
+// Safe date formatting helper to prevent crashes on invalid dates
+const safeFormat = (date, formatStr, fallback = '-') => {
+  try {
+    if (!date) return fallback;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return fallback;
+    return format(d, formatStr);
+  } catch {
+    return fallback;
+  }
+};
+
 // Executive/chairman roles for special styling
 const EXECUTIVE_ROLES = ['chairman', 'executive', 'director', 'admin'];
 
@@ -268,9 +280,17 @@ const ChatBox = () => {
 
   const isExecutive = (role) => EXECUTIVE_ROLES.includes(role);
 
+  // Escape HTML to prevent XSS
+  const escapeHtml = (text) => {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  };
+
   const formatMessageContent = (content) => {
-    // Highlight @mentions
-    return content.replace(/@(\S+)/g, '<span class="text-blue-400 font-semibold">@$1</span>');
+    // First escape HTML to prevent XSS, then highlight @mentions
+    const escaped = escapeHtml(content);
+    return escaped.replace(/@(\S+)/g, '<span class="text-blue-400 font-semibold">@$1</span>');
   };
 
   const toggleChat = () => {
@@ -406,7 +426,7 @@ const ChatBox = () => {
                       <div className={`text-xs mt-1 ${
                         isOwnMessage ? 'text-blue-200' : senderIsExecutive ? 'text-amber-600' : 'text-gray-500'
                       }`}>
-                        {format(new Date(message.createdAt), 'MMM d, h:mm a')}
+                        {safeFormat(message.createdAt, 'MMM d, h:mm a')}
                       </div>
                     </div>
                   </div>
