@@ -27,6 +27,7 @@ import {
   User,
   Users,
   HelpCircle,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 // Safe date formatting helper to prevent crashes on invalid dates
@@ -82,6 +83,12 @@ const MyTasks = () => {
     severity: 'medium',
   });
   const [raisingBottleneck, setRaisingBottleneck] = useState(false);
+
+  // Delegation state
+  const [delegationModal, setDelegationModal] = useState({ show: false, task: null });
+  const [delegationForm, setDelegationForm] = useState({ delegateTo: '', reason: '' });
+  const [employees, setEmployees] = useState([]);
+  const [delegating, setDelegating] = useState(false);
 
   // Count pending boosts across all tasks
   const pendingBoostsCount = tasks.reduce((count, task) => {
@@ -315,6 +322,58 @@ const MyTasks = () => {
       toast.error(error.message || 'Failed to raise bottleneck');
     } finally {
       setRaisingBottleneck(false);
+    }
+  };
+
+  // Open delegation modal
+  const openDelegationModal = async (task) => {
+    setDelegationModal({ show: true, task });
+    setDelegationForm({ delegateTo: '', reason: '' });
+    try {
+      const empList = await taskService.getEmployees();
+      // Filter out current user and already assigned users
+      const filtered = empList.filter(e => 
+        e._id !== user._id && 
+        e._id !== (task.assignedTo?._id || task.assignedTo)
+      );
+      setEmployees(filtered);
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+      toast.error('Failed to load employees');
+    }
+  };
+
+  // Handle delegation
+  const handleDelegate = async () => {
+    if (!delegationModal.task || !delegationForm.delegateTo) {
+      toast.error('Please select an employee to delegate to');
+      return;
+    }
+
+    setDelegating(true);
+    try {
+      const updatedTask = await taskService.delegate(
+        delegationModal.task._id,
+        delegationForm.delegateTo,
+        delegationForm.reason
+      );
+      
+      // Remove the task from our list since we're no longer the primary assignee
+      setTasks(prev => prev.filter(t => t._id !== updatedTask._id));
+      
+      // Clear selected task if it was this one
+      if (selectedTask?._id === updatedTask._id) {
+        setSelectedTask(null);
+      }
+      
+      toast.success('Task delegated successfully!');
+      setDelegationModal({ show: false, task: null });
+      setDelegationForm({ delegateTo: '', reason: '' });
+    } catch (error) {
+      console.error('Failed to delegate task:', error);
+      toast.error(error.message || 'Failed to delegate task');
+    } finally {
+      setDelegating(false);
     }
   };
 
@@ -638,12 +697,25 @@ const MyTasks = () => {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => { setSelectedTask(null); setActiveTab('updates'); }}
-                  className="text-slate-400 hover:text-white text-2xl font-bold"
-                >
-                  ×
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Delegate Button - only for primary assignee */}
+                  {getUserAssignmentType(selectedTask) === 'primary' && (
+                    <button
+                      onClick={() => openDelegationModal(selectedTask)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all text-sm"
+                      title="Delegate this task to another team member"
+                    >
+                      <ArrowRightLeft size={16} />
+                      Delegate
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setSelectedTask(null); setActiveTab('updates'); }}
+                    className="text-slate-400 hover:text-white text-2xl font-bold"
+                  >
+                    ×
+                  </button>
+                </div>
               </div>
 
               {/* Pending Boost Alert in Modal */}
@@ -1462,6 +1534,108 @@ const MyTasks = () => {
                     ) : (
                       <span className="flex items-center gap-2">
                         <AlertTriangle size={16} /> Raise Bottleneck
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delegation Modal */}
+        {delegationModal.show && delegationModal.task && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
+              <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-blue-500/20 to-cyan-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/30 rounded-lg">
+                    <ArrowRightLeft size={24} className="text-blue-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Delegate Task</h2>
+                    <p className="text-sm text-slate-400">Transfer this task to another team member</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setDelegationModal({ show: false, task: null });
+                      setDelegationForm({ delegateTo: '', reason: '' });
+                    }}
+                    className="ml-auto p-2 hover:bg-slate-700 rounded-lg"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-5 space-y-4">
+                <div>
+                  <p className="text-sm text-slate-400 mb-1">Task:</p>
+                  <p className="text-white font-medium">{delegationModal.task.title}</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Delegate To <span className="text-red-400">*</span>
+                  </label>
+                  <select
+                    value={delegationForm.delegateTo}
+                    onChange={(e) => setDelegationForm(prev => ({ ...prev, delegateTo: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                  >
+                    <option value="">Select an employee...</option>
+                    {employees.map(emp => (
+                      <option key={emp._id} value={emp._id}>
+                        {emp.firstName} {emp.lastName} {emp.designation ? `- ${emp.designation}` : ''} {emp.department ? `(${emp.department})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Reason (Optional)
+                  </label>
+                  <textarea
+                    value={delegationForm.reason}
+                    onChange={(e) => setDelegationForm(prev => ({ ...prev, reason: e.target.value }))}
+                    placeholder="Why are you delegating this task?"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                  <p className="text-amber-400 text-sm flex items-start gap-2">
+                    <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+                    <span>Once delegated, this task will be transferred to the selected person and removed from your task list.</span>
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={() => {
+                      setDelegationModal({ show: false, task: null });
+                      setDelegationForm({ delegateTo: '', reason: '' });
+                    }}
+                    variant="outline"
+                    className="flex-1 border-slate-600 text-slate-300"
+                    disabled={delegating}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleDelegate}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
+                    disabled={delegating || !delegationForm.delegateTo}
+                  >
+                    {delegating ? (
+                      <span className="flex items-center gap-2">
+                        <span className="animate-spin">⏳</span> Delegating...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <ArrowRightLeft size={16} /> Delegate Task
                       </span>
                     )}
                   </Button>

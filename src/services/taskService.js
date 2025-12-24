@@ -204,6 +204,26 @@ const taskService = {
       throw error.response?.data || { message: 'Failed to get bottlenecks' };
     }
   },
+
+  // Delegate task to another employee
+  delegate: async (taskId, delegateTo, reason = '') => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/delegate`, { delegateTo, reason });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to delegate task' };
+    }
+  },
+
+  // Get employees for delegation
+  getEmployees: async () => {
+    try {
+      const response = await api.get('/chat/users');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch employees' };
+    }
+  },
 };
 
 export default taskService;

@@ -266,6 +266,71 @@ router.put('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Delegate task - primary assignee can delegate to another employee
+router.post('/:id/delegate', authenticate, async (req, res) => {
+  try {
+    const { delegateTo, reason } = req.body;
+    
+    if (!delegateTo) {
+      return res.status(400).json({ message: 'Delegate to user is required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Only primary assignee can delegate
+    const isPrimaryAssignee = task.assignedTo.toString() === req.user._id.toString();
+    if (!isPrimaryAssignee) {
+      return res.status(403).json({ message: 'Only primary assignee can delegate tasks' });
+    }
+
+    // Verify the delegate user exists in the same company
+    const delegateUser = await User.findOne({ _id: delegateTo, company: req.user.company });
+    if (!delegateUser) {
+      return res.status(404).json({ message: 'Delegate user not found' });
+    }
+
+    // Store original assignee for the delegation record
+    const originalAssignee = task.assignedTo;
+
+    // Update the task assignment
+    task.assignedTo = delegateTo;
+    
+    // Add delegation record to updates
+    task.updates = task.updates || [];
+    task.updates.push({
+      message: `Task delegated from ${req.user.firstName} ${req.user.lastName} to ${delegateUser.firstName} ${delegateUser.lastName}${reason ? `. Reason: ${reason}` : ''}`,
+      updatedBy: req.user._id,
+      progress: task.progress,
+      status: task.status,
+      createdAt: new Date(),
+    });
+
+    // Track delegation history
+    task.delegationHistory = task.delegationHistory || [];
+    task.delegationHistory.push({
+      from: originalAssignee,
+      to: delegateTo,
+      delegatedBy: req.user._id,
+      reason: reason || '',
+      delegatedAt: new Date(),
+    });
+
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('secondaryAssignees', 'firstName lastName email designation department')
+      .populate('assignedBy', 'firstName lastName email');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // Add update to task
 router.post('/:id/updates', authenticate, async (req, res) => {
   try {
