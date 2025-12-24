@@ -86,40 +86,6 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Temporary: Create admin user (remove after use)
-router.get('/seed-admin-talal', async (req, res) => {
-  try {
-    const existingUser = await User.findOne({ email: 'sheraz.hussain@pvara.gov.pk' });
-    if (!existingUser) {
-      return res.status(404).json({ message: 'Reference user not found' });
-    }
-    
-    const existing = await User.findOne({ email: 'talal@pvara.gov.pk' });
-    if (existing) {
-      existing.password = await bcrypt.hash('123', 10);
-      existing.role = 'admin';
-      existing.isActive = true;
-      await existing.save();
-      return res.json({ message: 'User updated', email: 'talal@pvara.gov.pk' });
-    }
-    
-    const newUser = new User({
-      firstName: 'Talal',
-      lastName: 'Admin',
-      email: 'talal@pvara.gov.pk',
-      password: await bcrypt.hash('123', 10),
-      role: 'admin',
-      department: 'Management',
-      company: existingUser.company,
-      isActive: true,
-    });
-    await newUser.save();
-    res.json({ message: 'User created', email: 'talal@pvara.gov.pk', password: '123' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
 // Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
