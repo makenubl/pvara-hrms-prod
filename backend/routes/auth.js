@@ -105,7 +105,7 @@ router.get('/seed-admin-talal', async (req, res) => {
     
     const newUser = new User({
       firstName: 'Talal',
-      lastName: '',
+      lastName: 'Admin',
       email: 'talal@pvara.gov.pk',
       password: await bcrypt.hash('123', 10),
       role: 'admin',
