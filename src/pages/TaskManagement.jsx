@@ -104,6 +104,18 @@ const TaskManagement = () => {
     }
   };
 
+  // Safe date formatter - prevents crashes on invalid dates
+  const safeFormat = (dateValue, formatString, fallback = 'N/A') => {
+    if (!dateValue) return fallback;
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return fallback;
+      return format(date, formatString);
+    } catch {
+      return fallback;
+    }
+  };
+
   const generateTaskId = () => {
     const year = new Date().getFullYear();
     const count = tasks.length + 1;
@@ -195,11 +207,11 @@ const TaskManagement = () => {
       secondaryAssignees: (task.secondaryAssignees || []).map(s => s._id || s),
       project: task.project || '',
       priority: task.priority || 'medium',
-      deadline: task.deadline ? format(new Date(task.deadline), 'yyyy-MM-dd') : '',
+      deadline: safeFormat(task.deadline, 'yyyy-MM-dd', ''),
       status: task.status || 'pending',
       category: task.category || 'task',
-      meetingDateTime: task.meetingDateTime ? format(new Date(task.meetingDateTime), "yyyy-MM-dd'T'HH:mm") : '',
-      meetingEndTime: task.meetingEndTime ? format(new Date(task.meetingEndTime), "yyyy-MM-dd'T'HH:mm") : '',
+      meetingDateTime: safeFormat(task.meetingDateTime, "yyyy-MM-dd'T'HH:mm", ''),
+      meetingEndTime: safeFormat(task.meetingEndTime, "yyyy-MM-dd'T'HH:mm", ''),
       meetingLocation: task.meetingLocation || '',
       attendees: task.attendees?.map(a => a.user?._id || a.user) || [],
     });
@@ -483,7 +495,7 @@ const TaskManagement = () => {
                       </div>
                       {task.category === 'meeting' && task.meetingDateTime ? (
                         <p className="text-purple-400 text-xs truncate">
-                          📅 {format(new Date(task.meetingDateTime), 'MMM d, yyyy h:mm a')}
+                          📅 {safeFormat(task.meetingDateTime, 'MMM d, yyyy h:mm a')}
                           {task.attendees?.length > 0 && ` • ${task.attendees.length} attendee(s)`}
                         </p>
                       ) : (
@@ -510,7 +522,7 @@ const TaskManagement = () => {
                     <div className="col-span-2">
                       <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${deadlineInfo.bg} ${deadlineInfo.color}`}>
                         <Calendar size={12} />
-                        {task.deadline ? format(new Date(task.deadline), 'MMM d, yyyy') : 'No deadline'}
+                        {safeFormat(task.deadline, 'MMM d, yyyy', 'No deadline')}
                       </div>
                       <p className={`text-[10px] mt-0.5 ${deadlineInfo.color}`}>
                         {deadlineInfo.label}
@@ -1153,16 +1165,12 @@ const TaskManagement = () => {
                   <div>
                     <p className="text-purple-300 text-xs font-medium mb-1">📅 Date & Time</p>
                     <p className="text-white text-sm">
-                      {selectedTask.meetingDateTime 
-                        ? format(new Date(selectedTask.meetingDateTime), 'EEEE, MMM d, yyyy')
-                        : 'Not set'}
+                      {safeFormat(selectedTask.meetingDateTime, 'EEEE, MMM d, yyyy', 'Not set')}
                     </p>
                     <p className="text-purple-400 text-sm font-medium">
-                      {selectedTask.meetingDateTime 
-                        ? format(new Date(selectedTask.meetingDateTime), 'h:mm a')
-                        : ''}
+                      {safeFormat(selectedTask.meetingDateTime, 'h:mm a', '')}
                       {selectedTask.meetingEndTime && (
-                        <> - {format(new Date(selectedTask.meetingEndTime), 'h:mm a')}</>
+                        <> - {safeFormat(selectedTask.meetingEndTime, 'h:mm a')}</>
                       )}
                     </p>
                   </div>
@@ -1203,7 +1211,7 @@ const TaskManagement = () => {
                     </div>
                     {selectedTask.attendees?.some(a => a.notifiedAt) && (
                       <p className="text-slate-500 text-[10px] mt-2">
-                        📧 Notifications sent: {format(new Date(selectedTask.attendees[0]?.notifiedAt), 'MMM d, yyyy h:mm a')}
+                        📧 Notifications sent: {safeFormat(selectedTask.attendees[0]?.notifiedAt, 'MMM d, yyyy h:mm a')}
                       </p>
                     )}
                   </div>
@@ -1265,7 +1273,7 @@ const TaskManagement = () => {
                     <div>
                       <p className="text-slate-400 text-sm">Deadline</p>
                       <p className="text-white font-medium">
-                        {selectedTask.deadline ? format(new Date(selectedTask.deadline), 'MMM dd, yyyy') : 'No deadline'}
+                        {safeFormat(selectedTask.deadline, 'MMM dd, yyyy', 'No deadline')}
                       </p>
                     </div>
                     <div>
@@ -1280,7 +1288,7 @@ const TaskManagement = () => {
                     <div>
                       <p className="text-slate-400 text-sm">Created</p>
                       <p className="text-white font-medium">
-                        {selectedTask.createdAt ? format(new Date(selectedTask.createdAt), 'MMM dd, yyyy') : 'N/A'}
+                        {safeFormat(selectedTask.createdAt, 'MMM dd, yyyy')}
                       </p>
                     </div>
                   </div>
@@ -1316,7 +1324,7 @@ const TaskManagement = () => {
                               {update.addedBy?.firstName} {update.addedBy?.lastName}
                             </p>
                             <p className="text-slate-500 text-xs">
-                              {format(new Date(update.addedAt), 'MMM dd, h:mm a')}
+                              {safeFormat(update.addedAt, 'MMM dd, h:mm a')}
                             </p>
                           </div>
                           <p className="text-slate-300 text-sm">{update.message}</p>
@@ -1376,7 +1384,7 @@ const TaskManagement = () => {
                             <p className="text-slate-400 text-sm">{activity.notes}</p>
                           )}
                           <p className="text-slate-500 text-xs mt-2">
-                            Added: {format(new Date(activity.sentAt || activity.addedAt), 'MMM dd, h:mm a')}
+                            Added: {safeFormat(activity.sentAt || activity.addedAt, 'MMM dd, h:mm a')}
                           </p>
                         </div>
                       ))}
@@ -1460,7 +1468,7 @@ const TaskManagement = () => {
                                 {attachment.name}
                               </a>
                               <p className="text-slate-500 text-xs">
-                                {attachment.type} • {attachment.uploadedBy?.firstName} {attachment.uploadedBy?.lastName} • {format(new Date(attachment.uploadedAt), 'MMM dd, yyyy')}
+                                {attachment.type} • {attachment.uploadedBy?.firstName} {attachment.uploadedBy?.lastName} • {safeFormat(attachment.uploadedAt, 'MMM dd, yyyy')}
                               </p>
                             </div>
                           </div>

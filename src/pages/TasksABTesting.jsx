@@ -31,6 +31,7 @@ import {
   Zap,
   Hash,
   HelpCircle,
+  Flag,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -152,6 +153,18 @@ const TasksABTesting = () => {
   const _totalOpenBottlenecks = tasks.reduce((count, task) => {
     return count + getOpenBottlenecks(task).length;
   }, 0);
+
+  // Safe date formatter - prevents crashes on invalid dates
+  const safeFormat = (dateValue, formatString, fallback = 'N/A') => {
+    if (!dateValue) return fallback;
+    try {
+      const date = new Date(dateValue);
+      if (isNaN(date.getTime())) return fallback;
+      return format(date, formatString);
+    } catch {
+      return fallback;
+    }
+  };
 
   // Get short task ID
   const getTaskId = (task) => {
@@ -459,7 +472,7 @@ const TasksABTesting = () => {
 
                 {/* Dates */}
                 <div className="grid grid-cols-2 gap-4">
-                  {task.deadline && (
+                  {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
                     <div>
                       <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
                         <Calendar size={14} />
@@ -471,7 +484,7 @@ const TasksABTesting = () => {
                           : ''
                       }`}>
                         <p className="text-white font-medium">
-                          {format(new Date(task.deadline), 'EEEE, MMM d, yyyy')}
+                          {safeFormat(task.deadline, 'EEEE, MMM d, yyyy')}
                         </p>
                         {new Date(task.deadline) < new Date() && task.status !== 'completed' && (
                           <p className="text-red-400 text-sm mt-1">⚠️ Overdue</p>
@@ -479,7 +492,7 @@ const TasksABTesting = () => {
                       </div>
                     </div>
                   )}
-                  {task.createdAt && (
+                  {task.createdAt && !isNaN(new Date(task.createdAt).getTime()) && (
                     <div>
                       <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
                         <Calendar size={14} />
@@ -487,7 +500,7 @@ const TasksABTesting = () => {
                       </div>
                       <div className="bg-slate-700/50 p-3 rounded-lg">
                         <p className="text-white font-medium">
-                          {format(new Date(task.createdAt), 'MMM d, yyyy h:mm a')}
+                          {safeFormat(task.createdAt, 'MMM d, yyyy h:mm a')}
                         </p>
                       </div>
                     </div>
@@ -580,7 +593,7 @@ const TasksABTesting = () => {
                               </span>
                             </div>
                             <span className="text-xs text-slate-500">
-                              {boost.boostedAt && format(new Date(boost.boostedAt), 'MMM d, yyyy h:mm a')}
+                              {safeFormat(boost.boostedAt, 'MMM d, yyyy h:mm a')}
                             </span>
                           </div>
                           
@@ -594,7 +607,7 @@ const TasksABTesting = () => {
                           {boost.response ? (
                             <div className="p-2 bg-emerald-500/10 rounded border border-emerald-500/20">
                               <p className="text-xs text-emerald-500 mb-1">
-                                Response • {boost.respondedAt && format(new Date(boost.respondedAt), 'MMM d, h:mm a')}
+                                Response • {safeFormat(boost.respondedAt, 'MMM d, h:mm a')}
                               </p>
                               <p className="text-emerald-300 text-sm">{boost.response}</p>
                             </div>
@@ -666,7 +679,7 @@ const TasksABTesting = () => {
                                 </span>
                               </div>
                               <span className="text-xs text-slate-500">
-                                {bottleneck.raisedAt && format(new Date(bottleneck.raisedAt), 'MMM d, yyyy h:mm a')}
+                                {safeFormat(bottleneck.raisedAt, 'MMM d, yyyy h:mm a')}
                               </span>
                             </div>
                             
@@ -684,7 +697,7 @@ const TasksABTesting = () => {
                             {bottleneck.chairpersonResponse ? (
                               <div className="p-3 bg-emerald-500/10 rounded border border-emerald-500/20">
                                 <p className="text-xs text-emerald-500 mb-1">
-                                  Your Response • {bottleneck.respondedAt && format(new Date(bottleneck.respondedAt), 'MMM d, h:mm a')}
+                                  Your Response • {safeFormat(bottleneck.respondedAt, 'MMM d, h:mm a')}
                                 </p>
                                 <p className="text-emerald-300 text-sm">{bottleneck.chairpersonResponse}</p>
                               </div>
@@ -816,10 +829,10 @@ const TasksABTesting = () => {
                             <p className="text-sm text-slate-300 mt-2 italic">"{activity.notes}"</p>
                           )}
                           <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
-                            <span>Sent: {format(new Date(activity.sentAt || activity.addedAt), 'MMM d, yyyy h:mm a')}</span>
+                            <span>Sent: {safeFormat(activity.sentAt || activity.addedAt, 'MMM d, yyyy h:mm a')}</span>
                             {activity.responseReceivedAt && (
                               <span className="text-emerald-400">
-                                Received: {format(new Date(activity.responseReceivedAt), 'MMM d, yyyy h:mm a')}
+                                Received: {safeFormat(activity.responseReceivedAt, 'MMM d, yyyy h:mm a')}
                               </span>
                             )}
                           </div>
@@ -880,7 +893,7 @@ const TasksABTesting = () => {
                               : 'Chairman'}
                           </span>
                           <span>•</span>
-                          <span>{format(new Date(comment.addedAt), 'MMM d, yyyy h:mm a')}</span>
+                          <span>{safeFormat(comment.addedAt, 'MMM d, yyyy h:mm a')}</span>
                         </div>
                       </div>
                     ))
@@ -914,7 +927,7 @@ const TasksABTesting = () => {
                           <p className="text-white font-medium truncate">{attachment.name}</p>
                           <p className="text-xs text-slate-500">
                             {attachment.type && `${attachment.type} • `}
-                            {attachment.uploadedAt && format(new Date(attachment.uploadedAt), 'MMM d, yyyy')}
+                            {safeFormat(attachment.uploadedAt, 'MMM d, yyyy', '')}
                             {attachment.uploadedBy?.firstName && ` • by ${attachment.uploadedBy.firstName} ${attachment.uploadedBy.lastName || ''}`}
                           </p>
                         </div>
@@ -962,171 +975,275 @@ const TasksABTesting = () => {
     const latestBoost = getLatestBoost(task);
     const isPendingBoost = hasPendingBoost(task);
     const hasResponse = latestBoost?.response;
+    const openBottlenecks = getOpenBottlenecks(task);
+    const deadlineDate = task.deadline ? new Date(task.deadline) : null;
+    const isValidDeadline = deadlineDate && !isNaN(deadlineDate.getTime());
+    const isOverdue = isValidDeadline && deadlineDate < new Date() && task.status !== 'completed';
     
-    return (
+    // Desktop Grid Layout
+    const DesktopRow = () => (
       <div 
-        className={`p-3 sm:p-4 bg-slate-800/50 rounded-xl border transition-all cursor-pointer group ${
-          isPendingBoost 
-            ? 'border-yellow-500/50 bg-yellow-500/5' 
-            : 'border-slate-700/50 hover:border-cyan-500/50 hover:bg-slate-800'
+        className={`hidden sm:grid grid-cols-12 gap-2 px-4 py-3 items-center hover:bg-slate-800/30 transition-colors cursor-pointer group ${
+          isPendingBoost ? 'bg-yellow-500/5' :
+          isOverdue ? 'bg-red-500/5' :
+          openBottlenecks.length > 0 ? 'bg-orange-500/5' : ''
         }`}
         onClick={() => onClick(task)}
       >
-        {/* Mobile: Stack layout, Desktop: Row layout */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          {/* Top row on mobile: Boost + Status + Task ID */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Boost Button - Only show for users who can perform actions */}
-            {canPerformActions ? (
-              <Tooltip 
-                content={isPendingBoost ? '⏳ Boost sent - Awaiting response' : hasResponse ? '✅ Responded' : '⚡ Boost Task'}
-                position="top"
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onBoost(task);
-                  }}
-                  className={`flex-shrink-0 p-2 rounded-lg transition-all ${
-                    isPendingBoost
-                      ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
-                      : hasResponse
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
-                  }`}
-                >
-                  <Zap size={16} className={isPendingBoost ? 'animate-pulse' : ''} />
-                </button>
-              </Tooltip>
-            ) : (
-              // View-only indicator for employees
-              <Tooltip content={isPendingBoost ? '⏳ Boost pending' : hasResponse ? '✅ Responded' : '📋 View Only'} position="top">
-                <div className={`flex-shrink-0 p-2 rounded-lg ${
+        {/* Boost Button */}
+        <div className="col-span-1">
+          {canPerformActions ? (
+            <Tooltip 
+              content={isPendingBoost ? '⏳ Boost sent - Awaiting response' : hasResponse ? '✅ Responded' : '⚡ Boost Task'}
+              position="top"
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBoost(task);
+                }}
+                className={`p-2 rounded-lg transition-all ${
                   isPendingBoost
-                    ? 'bg-yellow-500/20 text-yellow-400'
+                    ? 'bg-yellow-500/20 text-yellow-400 animate-pulse'
                     : hasResponse
                     ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-slate-700/30 text-slate-500'
-                }`}>
-                  <Zap size={16} />
-                </div>
-              </Tooltip>
-            )}
-
-            {/* Status Icon - hidden on mobile, shown on desktop */}
-            <div className="hidden sm:block flex-shrink-0">
-              {getStatusIcon(task.status)}
+                    : 'bg-slate-700/50 text-slate-400 hover:bg-orange-500/20 hover:text-orange-400'
+                }`}
+              >
+                <Zap size={16} className={isPendingBoost ? 'animate-pulse' : ''} />
+              </button>
+            </Tooltip>
+          ) : (
+            <div className={`p-2 rounded-lg ${
+              isPendingBoost
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : hasResponse
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-slate-700/30 text-slate-500'
+            }`}>
+              <Zap size={16} />
             </div>
+          )}
+        </div>
 
-            {/* Task ID */}
-            <span 
-              className="flex-shrink-0 flex items-center gap-1 text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20"
-            >
-              <Hash size={10} />
+        {/* Task Title with ID badge */}
+        <div className="col-span-4">
+          <div className="flex items-start gap-2">
+            <span className="flex-shrink-0 text-[10px] font-mono text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded mt-0.5">
               {getTaskId(task).replace('#', '').replace('TASK-', '')}
             </span>
+            <p className="text-white text-sm font-medium group-hover:text-cyan-400 transition-colors line-clamp-2 leading-tight">
+              {task.title}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5 ml-0">
+            {openBottlenecks.length > 0 && (
+              <span className="flex items-center gap-1 text-red-400 flex-shrink-0">
+                <AlertTriangle size={10} />
+                {openBottlenecks.length} issue{openBottlenecks.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {task.status === 'completed' && (
+              <span className="flex items-center gap-1 text-emerald-400">
+                <CheckCircle2 size={10} />
+                Done
+              </span>
+            )}
+            {task.status === 'blocked' && (
+              <span className="flex items-center gap-1 text-red-400">
+                <AlertTriangle size={10} />
+                Blocked
+              </span>
+            )}
+          </div>
+        </div>
 
-            {/* Priority & Status Badges - Mobile only, inline with task ID */}
-            <div className="flex sm:hidden items-center gap-1 ml-auto">
-              <span 
-                className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getPriorityColor(task.priority)}`}
-              >
+        {/* Assigned To */}
+        <div className="col-span-2 flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+            {getEmployeeName(task).split(' ').filter(n => n).map(n => n[0]).join('').slice(0, 2) || '??'}
+          </div>
+          <div className="min-w-0">
+            <span className="text-slate-300 text-xs truncate block">
+              {getEmployeeName(task)}
+            </span>
+            {task.secondaryAssignees?.length > 0 && (
+              <span className="text-slate-500 text-[10px]">
+                +{task.secondaryAssignees.length} more
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Deadline */}
+        <div className="col-span-2">
+          {task.deadline && !isNaN(new Date(task.deadline).getTime()) ? (
+            <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+              isOverdue ? 'bg-red-500/20 text-red-400' :
+              new Date(task.deadline) - new Date() <= 3 * 24 * 60 * 60 * 1000 ? 'bg-amber-500/20 text-amber-400' :
+              'bg-slate-700/50 text-slate-400'
+            }`}>
+              <Calendar size={12} />
+              {safeFormat(task.deadline, 'MMM d')}
+              {isOverdue && <span className="ml-1">!</span>}
+            </div>
+          ) : (
+            <span className="text-slate-500 text-xs">-</span>
+          )}
+        </div>
+
+        {/* Progress */}
+        <div className="col-span-2">
+          <div className="flex items-center gap-1.5">
+            <div className="flex-1 h-2 bg-slate-700/50 rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all ${
+                  (task.progress || 0) === 100 
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500' 
+                    : (task.progress || 0) >= 75
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500'
+                    : (task.progress || 0) >= 50
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                    : (task.progress || 0) >= 25
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-500'
+                    : 'bg-gradient-to-r from-slate-500 to-slate-400'
+                }`}
+                style={{ width: `${task.progress || 0}%` }}
+              />
+            </div>
+            <span className={`text-[11px] font-bold min-w-[28px] text-right ${
+              (task.progress || 0) === 100 ? 'text-emerald-400' :
+              (task.progress || 0) >= 75 ? 'text-cyan-400' :
+              (task.progress || 0) >= 50 ? 'text-blue-400' :
+              'text-slate-400'
+            }`}>
+              {task.progress || 0}%
+            </span>
+          </div>
+        </div>
+
+        {/* Priority */}
+        <div className="col-span-1 text-center">
+          <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+            task.priority === 'critical' ? 'bg-red-500/20 text-red-400' :
+            task.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+            task.priority === 'medium' ? 'bg-blue-500/20 text-blue-400' :
+            'bg-slate-500/20 text-slate-400'
+          }`} title={task.priority || 'medium'}>
+            {task.priority === 'critical' ? '!!' : 
+             task.priority === 'high' ? '!' : 
+             task.priority === 'medium' ? 'M' : 'L'}
+          </span>
+        </div>
+      </div>
+    );
+
+    // Mobile Card Layout
+    const MobileRow = () => (
+      <div 
+        className={`sm:hidden p-3 border-b border-slate-700/30 transition-all cursor-pointer ${
+          isPendingBoost ? 'bg-yellow-500/5' :
+          isOverdue ? 'bg-red-500/5' :
+          openBottlenecks.length > 0 ? 'bg-orange-500/5' : ''
+        }`}
+        onClick={() => onClick(task)}
+      >
+        <div className="flex items-start gap-2">
+          {/* Boost Button */}
+          {canPerformActions ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onBoost(task);
+              }}
+              className={`flex-shrink-0 p-1.5 rounded-lg transition-all ${
+                isPendingBoost
+                  ? 'bg-yellow-500/20 text-yellow-400'
+                  : hasResponse
+                  ? 'bg-emerald-500/20 text-emerald-400'
+                  : 'bg-slate-700/50 text-slate-400'
+              }`}
+            >
+              <Zap size={14} />
+            </button>
+          ) : (
+            <div className={`flex-shrink-0 p-1.5 rounded-lg ${
+              isPendingBoost
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : hasResponse
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-slate-700/30 text-slate-500'
+            }`}>
+              <Zap size={14} />
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded">
+                {getTaskId(task).replace('#', '').replace('TASK-', '')}
+              </span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getPriorityColor(task.priority)}`}>
                 {(task.priority || 'med').slice(0, 3)}
               </span>
-              <span 
-                className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${getStatusColor(task.status)}`}
-              >
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${getStatusColor(task.status)}`}>
                 {(task.status || 'pend').slice(0, 4)}
               </span>
             </div>
-          </div>
-
-          {/* Task Title + Details */}
-          <div className="flex-1 min-w-0">
-            <h4 className="text-white font-medium truncate group-hover:text-cyan-400 transition-colors text-sm sm:text-base">
-              {task.title}
-            </h4>
-            <div className="flex items-center gap-2 sm:gap-3 mt-1 flex-wrap text-xs text-slate-400">
+            <h4 className="text-white font-medium text-sm truncate">{task.title}</h4>
+            <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
               <span className="flex items-center gap-1">
-                <User size={11} />
-                <span className="truncate max-w-[100px] sm:max-w-none">{getEmployeeName(task)}</span>
+                <User size={10} />
+                <span className="truncate max-w-[80px]">{getEmployeeName(task)}</span>
               </span>
-              {task.deadline && (
-                <span 
-                  className={`flex items-center gap-1 ${
-                    new Date(task.deadline) < new Date() && task.status !== 'completed'
-                      ? 'text-red-400'
-                      : ''
-                  }`}
-                >
-                  <Calendar size={11} />
-                  {format(new Date(task.deadline), 'MMM d')}
-                  {new Date(task.deadline) < new Date() && task.status !== 'completed' && (
-                    <span className="text-red-400">!</span>
-                  )}
+              {task.deadline && !isNaN(new Date(task.deadline).getTime()) && (
+                <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-400' : ''}`}>
+                  <Calendar size={10} />
+                  {safeFormat(task.deadline, 'MMM d')}
                 </span>
               )}
-              {task.boosts?.length > 0 && (
-                <span 
-                  className={`flex items-center gap-1 ${
-                    isPendingBoost ? 'text-yellow-400' : 'text-emerald-400'
-                  }`}
-                >
-                  <Zap size={10} />
-                  {isPendingBoost ? 'Awaiting' : 'Responded'}
-                </span>
-              )}
-              {/* Bottleneck indicator */}
-              {getOpenBottlenecks(task).length > 0 && (
+              {openBottlenecks.length > 0 && (
                 <span className="flex items-center gap-1 text-red-400">
                   <AlertTriangle size={10} />
-                  {getOpenBottlenecks(task).length} bottleneck{getOpenBottlenecks(task).length !== 1 ? 's' : ''}
+                  {openBottlenecks.length}
                 </span>
               )}
             </div>
+            
+            {/* Progress Bar - Mobile */}
+            <div className="flex items-center gap-2 mt-2">
+              <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full ${
+                    (task.progress || 0) === 100 
+                      ? 'bg-emerald-500' 
+                      : (task.progress || 0) >= 50
+                      ? 'bg-cyan-500'
+                      : 'bg-slate-500'
+                  }`}
+                  style={{ width: `${task.progress || 0}%` }}
+                />
+              </div>
+              <span className={`text-[10px] font-medium ${
+                (task.progress || 0) === 100 ? 'text-emerald-400' : 'text-slate-400'
+              }`}>
+                {task.progress || 0}%
+              </span>
+            </div>
           </div>
 
-          {/* Priority & Status Badges - Desktop only */}
-          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
-            <span 
-              className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(task.priority)}`}
-            >
-              {task.priority || 'medium'}
-            </span>
-            <span 
-              className={`px-2 py-1 rounded text-xs font-medium border ${getStatusColor(task.status)}`}
-            >
-              {task.status || 'pending'}
-            </span>
-          </div>
-
-          {/* Arrow - Desktop only */}
-          <ChevronRight 
-            size={20} 
-            className="hidden sm:block text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0" 
-          />
+          {/* Arrow */}
+          <ChevronRight size={18} className="text-slate-500 flex-shrink-0 mt-1" />
         </div>
-
-        {/* Blocker indicator */}
-        {task.blocker && (
-          <div 
-            className="mt-2 sm:mt-3 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-300 flex items-center gap-2"
-          >
-            <AlertTriangle size={12} className="flex-shrink-0" />
-            <span className="truncate">{task.blocker}</span>
-          </div>
-        )}
-
-        {/* Latest boost response preview */}
-        {latestBoost?.response && (
-          <div 
-            className="mt-2 sm:mt-3 p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs text-emerald-300 flex items-start gap-2"
-          >
-            <Zap size={12} className="mt-0.5 flex-shrink-0" />
-            <span className="truncate">Response: {latestBoost.response}</span>
-          </div>
-        )}
       </div>
+    );
+    
+    return (
+      <>
+        <DesktopRow />
+        <MobileRow />
+      </>
     );
   };
 
@@ -1184,20 +1301,32 @@ const TasksABTesting = () => {
         </div>
 
         {/* Task List */}
-        <Card className="bg-slate-800/30 border-slate-700/50 p-3 sm:p-6">
-          <div className="flex items-center gap-2 mb-3 sm:mb-4 pb-3 sm:pb-4 border-b border-slate-700">
+        <div className="bg-slate-900/50 rounded-xl border border-slate-700/50 overflow-hidden">
+          {/* Table Header - Desktop only */}
+          <div className="hidden sm:grid grid-cols-12 gap-2 px-4 py-3 bg-slate-800/50 border-b border-slate-700/50 text-xs font-medium text-slate-400 uppercase tracking-wider">
+            <div className="col-span-1">⚡</div>
+            <div className="col-span-4">Task</div>
+            <div className="col-span-2">Assigned To</div>
+            <div className="col-span-2">Deadline</div>
+            <div className="col-span-2">Progress</div>
+            <div className="col-span-1 text-center">Priority</div>
+          </div>
+          
+          {/* Mobile Header */}
+          <div className="sm:hidden flex items-center gap-2 px-3 py-2 bg-slate-800/50 border-b border-slate-700">
             <List size={18} className="text-cyan-400" />
-            <h3 className="text-base sm:text-lg font-semibold text-white">
+            <h3 className="text-base font-semibold text-white">
               {filter === 'all' ? 'All Tasks' : 
                filter === 'completed' ? 'Completed' :
                filter === 'pending' ? 'Pending' : 'Bottleneck'}
             </h3>
-            <span className="ml-auto text-slate-400 text-xs sm:text-sm">
+            <span className="ml-auto text-slate-400 text-xs">
               {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''}
             </span>
           </div>
 
-          <div className="space-y-2 sm:space-y-3 max-h-[500px] sm:max-h-[600px] overflow-y-auto">
+          {/* Task Rows */}
+          <div className="divide-y divide-slate-700/30 max-h-[500px] sm:max-h-[600px] overflow-y-auto">
             {filteredTasks.length > 0 ? (
               filteredTasks.map(task => (
                 <TaskRow 
@@ -1215,7 +1344,7 @@ const TasksABTesting = () => {
               </div>
             )}
           </div>
-        </Card>
+        </div>
 
         {/* Summary - Hidden on mobile, shown on larger screens */}
         <div className="hidden sm:block text-center text-slate-500 text-xs sm:text-sm">
@@ -1339,8 +1468,7 @@ const TasksABTesting = () => {
                       {bottleneckResponseModal.bottleneck.urgency?.toUpperCase() || 'MEDIUM'} URGENCY
                     </span>
                     <span className="text-xs text-slate-500">
-                      {bottleneckResponseModal.bottleneck.raisedAt && 
-                        format(new Date(bottleneckResponseModal.bottleneck.raisedAt), 'MMM d, h:mm a')}
+                      {safeFormat(bottleneckResponseModal.bottleneck.raisedAt, 'MMM d, h:mm a')}
                     </span>
                   </div>
                   <p className="text-white">{bottleneckResponseModal.bottleneck.issue}</p>
