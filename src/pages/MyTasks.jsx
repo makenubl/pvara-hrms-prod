@@ -29,6 +29,18 @@ import {
   HelpCircle,
 } from 'lucide-react';
 
+// Safe date formatting helper to prevent crashes on invalid dates
+const safeFormat = (date, formatStr, fallback = '-') => {
+  try {
+    if (!date) return fallback;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return fallback;
+    return format(d, formatStr);
+  } catch {
+    return fallback;
+  }
+};
+
 const MyTasks = () => {
   const { user } = useAuthStore();
   const [tasks, setTasks] = useState([]);
@@ -75,6 +87,16 @@ const MyTasks = () => {
   const pendingBoostsCount = tasks.reduce((count, task) => {
     return count + (task.boosts?.filter(b => !b.acknowledged)?.length || 0);
   }, 0);
+
+  // Handler to select a task and reset form fields
+  const handleSelectTask = (task) => {
+    setSelectedTask(task);
+    // Reset form fields to prevent cross-task updates
+    setUpdateMessage('');
+    setUpdateProgress('');
+    setUpdateStatus('');
+    setActiveTab('updates');
+  };
 
   useEffect(() => {
     loadTasks();
@@ -377,8 +399,7 @@ const MyTasks = () => {
                   // Find first task with pending boost
                   const taskWithBoost = tasks.find(t => hasPendingBoost(t));
                   if (taskWithBoost) {
-                    setSelectedTask(taskWithBoost);
-                    setActiveTab('updates'); // Switch to updates tab
+                    handleSelectTask(taskWithBoost);
                   }
                 }}
                 className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm font-medium"
@@ -463,7 +484,7 @@ const MyTasks = () => {
                     ? 'bg-orange-500/10 border-orange-500/20'
                     : 'bg-blue-500/10 border-blue-500/20'
                 }`}
-                onClick={() => setSelectedTask(task)}
+                onClick={() => handleSelectTask(task)}
               >
                 {/* Boost Alert Banner on Task Card */}
                 {hasPendingBoost(task) && (
@@ -538,11 +559,11 @@ const MyTasks = () => {
                       <div>
                         <p className="text-slate-400">Deadline</p>
                         <p className={`font-medium ${
-                          new Date(task.deadline) < new Date() && task.status !== 'completed'
+                          task.deadline && new Date(task.deadline) < new Date() && task.status !== 'completed'
                             ? 'text-red-300'
                             : 'text-amber-300'
                         }`}>
-                          {format(new Date(task.deadline), 'MMM dd, yyyy')}
+                          {safeFormat(task.deadline, 'MMM dd, yyyy')}
                         </p>
                       </div>
                       <div>
@@ -640,7 +661,7 @@ const MyTasks = () => {
                             "{boost.message || 'Task has been expedited - please provide an update.'}"
                           </p>
                           <p className="text-xs text-slate-500 mt-1">
-                            From {boost.boostedBy?.firstName || 'Chairperson'} • {boost.boostedAt && format(new Date(boost.boostedAt), 'MMM d, h:mm a')}
+                            From {boost.boostedBy?.firstName || 'Chairperson'} • {safeFormat(boost.boostedAt, 'MMM d, h:mm a')}
                           </p>
                         </div>
                       ))}
@@ -674,7 +695,7 @@ const MyTasks = () => {
                 <div>
                   <p className="text-slate-400 text-sm">Deadline</p>
                   <p className="text-white font-medium">
-                    {format(new Date(selectedTask.deadline), 'MMM dd, yyyy')}
+                    {safeFormat(selectedTask.deadline, 'MMM dd, yyyy')}
                   </p>
                 </div>
                 <div>
@@ -749,7 +770,7 @@ const MyTasks = () => {
                                 {update.addedBy?.firstName} {update.addedBy?.lastName}
                               </p>
                               <p className="text-slate-500 text-xs">
-                                {format(new Date(update.addedAt), 'MMM dd, h:mm a')}
+                                {safeFormat(update.addedAt, 'MMM dd, h:mm a')}
                               </p>
                             </div>
                             <p className="text-slate-300 text-sm">{update.message}</p>
@@ -843,7 +864,7 @@ const MyTasks = () => {
                                 : 'Chairman'}
                             </span>
                             <span>•</span>
-                            <span>{comment.addedAt && format(new Date(comment.addedAt), 'MMM d, yyyy h:mm a')}</span>
+                            <span>{safeFormat(comment.addedAt, 'MMM d, yyyy h:mm a')}</span>
                           </div>
                         </div>
                       ))
@@ -909,7 +930,7 @@ const MyTasks = () => {
                               </span>
                             </div>
                             <span className="text-xs text-slate-500">
-                              {bn.raisedAt && format(new Date(bn.raisedAt), 'MMM d, h:mm a')}
+                              {safeFormat(bn.raisedAt, 'MMM d, h:mm a')}
                             </span>
                           </div>
                           
@@ -922,7 +943,7 @@ const MyTasks = () => {
                           {bn.chairpersonResponse && (
                             <div className="mt-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                               <p className="text-xs text-cyan-400 mb-1">
-                                Chairperson Response • {bn.respondedAt && format(new Date(bn.respondedAt), 'MMM d, h:mm a')}
+                                Chairperson Response • {safeFormat(bn.respondedAt, 'MMM d, h:mm a')}
                               </p>
                               <p className="text-white text-sm">{bn.chairpersonResponse}</p>
                             </div>
@@ -932,7 +953,7 @@ const MyTasks = () => {
                           {bn.resolution && (
                             <div className="mt-2 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                               <p className="text-xs text-emerald-400 mb-1">
-                                Resolution • {bn.resolvedAt && format(new Date(bn.resolvedAt), 'MMM d, h:mm a')}
+                                Resolution • {safeFormat(bn.resolvedAt, 'MMM d, h:mm a')}
                               </p>
                               <p className="text-emerald-300 text-sm">{bn.resolution}</p>
                             </div>
@@ -1087,10 +1108,10 @@ const MyTasks = () => {
                           )}
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
                             <p className="text-slate-500 text-xs">
-                              Sent: {format(new Date(activity.sentAt || activity.addedAt), 'MMM dd, h:mm a')}
+                              Sent: {safeFormat(activity.sentAt || activity.addedAt, 'MMM dd, h:mm a')}
                               {activity.responseReceivedAt && (
                                 <span className="ml-2">
-                                  | Response: {format(new Date(activity.responseReceivedAt), 'MMM dd, h:mm a')}
+                                  | Response: {safeFormat(activity.responseReceivedAt, 'MMM dd, h:mm a')}
                                 </span>
                               )}
                             </p>
@@ -1204,7 +1225,7 @@ const MyTasks = () => {
                                 {attachment.name}
                               </a>
                               <p className="text-slate-500 text-xs">
-                                {attachment.type} • {attachment.uploadedBy?.firstName} {attachment.uploadedBy?.lastName} • {format(new Date(attachment.uploadedAt), 'MMM dd, yyyy')}
+                                {attachment.type} • {attachment.uploadedBy?.firstName} {attachment.uploadedBy?.lastName} • {safeFormat(attachment.uploadedAt, 'MMM dd, yyyy')}
                               </p>
                             </div>
                           </div>
@@ -1277,7 +1298,7 @@ const MyTasks = () => {
                     {boostResponseModal.boost.message || 'Task has been expedited - please provide an update.'}
                   </p>
                   <p className="text-xs text-slate-500 mt-2">
-                    {boostResponseModal.boost.boostedAt && format(new Date(boostResponseModal.boost.boostedAt), 'MMM d, yyyy h:mm a')}
+                    {safeFormat(boostResponseModal.boost.boostedAt, 'MMM d, yyyy h:mm a')}
                   </p>
                 </div>
 
