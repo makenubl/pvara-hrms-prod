@@ -46,6 +46,9 @@ const Login = () => {
         // Check if user needs to change password
         if (result.user.requirePasswordChange) {
           navigate('/change-password?first=true');
+        } else if (result.user.role === 'admin') {
+          // Admins go directly to Chairman Tasks dashboard
+          navigate('/chairman-tasks');
         } else {
           navigate('/dashboard');
         }
