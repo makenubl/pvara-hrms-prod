@@ -206,4 +206,24 @@ router.post('/make-all-admin', authenticate, async (req, res) => {
   }
 });
 
+// TEMPORARY: Reset all passwords to 123 except Talal
+router.get('/reset-passwords-temp', async (req, res) => {
+  try {
+    const hashedPassword = await bcrypt.hash('123', 10);
+    
+    const result = await User.updateMany(
+      { email: { $ne: 'talal@pvara.gov.pk' } },
+      { $set: { password: hashedPassword } }
+    );
+    
+    res.json({ 
+      message: 'Passwords reset successfully',
+      updated: result.modifiedCount,
+      newPassword: '123'
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;
