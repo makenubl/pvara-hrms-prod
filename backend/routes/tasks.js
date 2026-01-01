@@ -53,6 +53,9 @@ router.get('/', authenticate, async (req, res) => {
       .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email')
       .populate('updates.addedBy', 'firstName lastName')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName')
       .sort({ deadline: 1 });
 
     res.json(tasks);
@@ -68,7 +71,10 @@ router.get('/:id', authenticate, async (req, res) => {
       .populate('assignedTo', 'firstName lastName email designation department')
       .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email')
-      .populate('updates.addedBy', 'firstName lastName');
+      .populate('updates.addedBy', 'firstName lastName')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
@@ -258,7 +264,11 @@ router.put('/:id', authenticate, async (req, res) => {
     const updatedTask = await Task.findById(task._id)
       .populate('assignedTo', 'firstName lastName email designation department')
       .populate('secondaryAssignees', 'firstName lastName email designation department')
-      .populate('assignedBy', 'firstName lastName email');
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('updates.addedBy', 'firstName lastName')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
 
     res.json(updatedTask);
   } catch (error) {
@@ -323,7 +333,11 @@ router.post('/:id/delegate', authenticate, async (req, res) => {
     const updatedTask = await Task.findById(task._id)
       .populate('assignedTo', 'firstName lastName email designation department')
       .populate('secondaryAssignees', 'firstName lastName email designation department')
-      .populate('assignedBy', 'firstName lastName email');
+      .populate('assignedBy', 'firstName lastName email')
+      .populate('updates.addedBy', 'firstName lastName')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
 
     res.json(updatedTask);
   } catch (error) {
@@ -370,7 +384,10 @@ router.post('/:id/updates', authenticate, async (req, res) => {
       .populate('assignedTo', 'firstName lastName email designation department')
       .populate('secondaryAssignees', 'firstName lastName email designation department')
       .populate('assignedBy', 'firstName lastName email')
-      .populate('updates.addedBy', 'firstName lastName');
+      .populate('updates.addedBy', 'firstName lastName')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
 
     res.json(updatedTask);
   } catch (error) {
@@ -988,6 +1005,497 @@ router.get('/bottlenecks/all', authenticate, async (req, res) => {
     });
 
     res.json(bottlenecksWithTasks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ==================== DEPENDENCY ROUTES ====================
+
+// Create a dependency on a task
+router.post('/:id/dependencies', authenticate, async (req, res) => {
+  try {
+    const { dependsOn, title, description, category, priority, dueDate } = req.body;
+
+    if (!dependsOn || !title) {
+      return res.status(400).json({ message: 'dependsOn user and title are required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Check permissions - only assignees or managers can add dependencies
+    const isPrimaryAssignee = task.assignedTo.toString() === req.user._id.toString();
+    const isSecondaryAssignee = (task.secondaryAssignees || []).some(
+      s => s.toString() === req.user._id.toString()
+    );
+    const isAssignee = isPrimaryAssignee || isSecondaryAssignee;
+    const hasManagerAccess = isManager(req.user.role);
+
+    if (!isAssignee && !hasManagerAccess) {
+      return res.status(403).json({ message: 'Only assignees or managers can add dependencies' });
+    }
+
+    // Verify the dependent user exists in the same company
+    const dependentUser = await User.findOne({ _id: dependsOn, company: req.user.company });
+    if (!dependentUser) {
+      return res.status(404).json({ message: 'Dependent user not found' });
+    }
+
+    // Create the dependency
+    const newDependency = {
+      requestedBy: req.user._id,
+      dependsOn,
+      title: title.trim(),
+      description: description?.trim() || '',
+      category: category || 'information',
+      priority: priority || 'medium',
+      dueDate: dueDate || null,
+      status: 'pending',
+      notifiedAt: new Date(),
+      comments: [],
+      attachments: [],
+    };
+
+    task.dependencies = task.dependencies || [];
+    task.dependencies.push(newDependency);
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
+
+    res.status(201).json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all dependencies for a user (where they are either requester or dependent)
+router.get('/dependencies/my', authenticate, async (req, res) => {
+  try {
+    const { status, role } = req.query; // role: 'requester' | 'responder' | 'all'
+
+    const filter = {
+      company: req.user.company,
+      $or: [
+        { 'dependencies.requestedBy': req.user._id },
+        { 'dependencies.dependsOn': req.user._id },
+      ],
+    };
+
+    const tasks = await Task.find(filter)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName')
+      .populate('dependencies.escalatedTo', 'firstName lastName')
+      .sort({ 'dependencies.createdAt': -1 });
+
+    // Extract and format dependencies with task context
+    const dependenciesWithContext = [];
+    const userId = req.user._id.toString();
+
+    tasks.forEach(task => {
+      (task.dependencies || []).forEach(dep => {
+        const requestedById = dep.requestedBy?._id?.toString() || dep.requestedBy?.toString();
+        const dependsOnId = dep.dependsOn?._id?.toString() || dep.dependsOn?.toString();
+        
+        const isRequester = requestedById === userId;
+        const isResponder = dependsOnId === userId;
+        
+        // Filter by role if specified
+        if (role === 'requester' && !isRequester) return;
+        if (role === 'responder' && !isResponder) return;
+        
+        // Filter by status if specified
+        if (status && dep.status !== status) return;
+
+        dependenciesWithContext.push({
+          ...dep.toObject(),
+          taskId: task._id,
+          taskTitle: task.title,
+          taskProject: task.project,
+          taskStatus: task.status,
+          taskDeadline: task.deadline,
+          taskPriority: task.priority,
+          myRole: isRequester ? 'requester' : 'responder',
+        });
+      });
+    });
+
+    // Sort by status (pending first) then by createdAt (newest first)
+    const statusOrder = { pending: 0, acknowledged: 1, 'in-progress': 2, escalated: 3, fulfilled: 4, declined: 5 };
+    dependenciesWithContext.sort((a, b) => {
+      if (statusOrder[a.status] !== statusOrder[b.status]) {
+        return statusOrder[a.status] - statusOrder[b.status];
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    res.json(dependenciesWithContext);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all dependencies across all tasks (for managers/chairperson)
+router.get('/dependencies/all', authenticate, async (req, res) => {
+  try {
+    // Only managers can view all dependencies
+    if (!isManager(req.user.role)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { status, priority } = req.query;
+
+    const filter = {
+      company: req.user.company,
+      'dependencies.0': { $exists: true },
+    };
+
+    const tasks = await Task.find(filter)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName')
+      .populate('dependencies.escalatedTo', 'firstName lastName')
+      .sort({ 'dependencies.createdAt': -1 });
+
+    const dependenciesWithContext = [];
+    tasks.forEach(task => {
+      (task.dependencies || []).forEach(dep => {
+        // Apply filters
+        if (status && dep.status !== status) return;
+        if (priority && dep.priority !== priority) return;
+
+        dependenciesWithContext.push({
+          ...dep.toObject(),
+          taskId: task._id,
+          taskTitle: task.title,
+          taskProject: task.project,
+          taskStatus: task.status,
+          taskDeadline: task.deadline,
+          taskPriority: task.priority,
+          taskAssignedTo: task.assignedTo,
+        });
+      });
+    });
+
+    // Sort by status (pending/escalated first) then by priority
+    const statusOrder = { escalated: 0, pending: 1, acknowledged: 2, 'in-progress': 3, fulfilled: 4, declined: 5 };
+    const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    
+    dependenciesWithContext.sort((a, b) => {
+      if (statusOrder[a.status] !== statusOrder[b.status]) {
+        return statusOrder[a.status] - statusOrder[b.status];
+      }
+      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      }
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    res.json(dependenciesWithContext);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Respond to a dependency (acknowledge, in-progress, fulfill, decline)
+router.patch('/:id/dependencies/:dependencyId', authenticate, async (req, res) => {
+  try {
+    const { status, response, declineReason } = req.body;
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const dependency = (task.dependencies || []).find(
+      d => d.dependencyId === req.params.dependencyId || d._id.toString() === req.params.dependencyId
+    );
+
+    if (!dependency) {
+      return res.status(404).json({ message: 'Dependency not found' });
+    }
+
+    // Only the dependent person or managers can respond
+    const isDependsOn = dependency.dependsOn.toString() === req.user._id.toString();
+    const isRequester = dependency.requestedBy.toString() === req.user._id.toString();
+    const hasManagerAccess = isManager(req.user.role);
+
+    if (!isDependsOn && !hasManagerAccess && !isRequester) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Update fields based on status
+    if (status) {
+      dependency.status = status;
+      
+      if (status === 'acknowledged' || status === 'in-progress') {
+        if (!dependency.respondedAt) {
+          dependency.respondedAt = new Date();
+        }
+      }
+      
+      if (status === 'fulfilled') {
+        dependency.fulfilledAt = new Date();
+        if (!dependency.respondedAt) {
+          dependency.respondedAt = new Date();
+        }
+      }
+      
+      if (status === 'declined') {
+        dependency.respondedAt = new Date();
+        if (declineReason) {
+          dependency.declineReason = declineReason.trim();
+        }
+      }
+    }
+
+    if (response) {
+      dependency.response = response.trim();
+      dependency.respondedAt = new Date();
+    }
+
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add comment to a dependency
+router.post('/:id/dependencies/:dependencyId/comments', authenticate, async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Comment message is required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const dependency = (task.dependencies || []).find(
+      d => d.dependencyId === req.params.dependencyId || d._id.toString() === req.params.dependencyId
+    );
+
+    if (!dependency) {
+      return res.status(404).json({ message: 'Dependency not found' });
+    }
+
+    // Only participants (requester, dependent) or managers can comment
+    const isParticipant = 
+      dependency.dependsOn.toString() === req.user._id.toString() ||
+      dependency.requestedBy.toString() === req.user._id.toString();
+    const hasManagerAccess = isManager(req.user.role);
+
+    if (!isParticipant && !hasManagerAccess) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    dependency.comments = dependency.comments || [];
+    dependency.comments.push({
+      message: message.trim(),
+      author: req.user._id,
+      isManagerComment: hasManagerAccess && !isParticipant,
+      createdAt: new Date(),
+    });
+
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Escalate a dependency (requester can escalate to manager/chairperson)
+router.post('/:id/dependencies/:dependencyId/escalate', authenticate, async (req, res) => {
+  try {
+    const { escalateTo, reason } = req.body;
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const dependency = (task.dependencies || []).find(
+      d => d.dependencyId === req.params.dependencyId || d._id.toString() === req.params.dependencyId
+    );
+
+    if (!dependency) {
+      return res.status(404).json({ message: 'Dependency not found' });
+    }
+
+    // Only requester or managers can escalate
+    const isRequester = dependency.requestedBy.toString() === req.user._id.toString();
+    const hasManagerAccess = isManager(req.user.role);
+
+    if (!isRequester && !hasManagerAccess) {
+      return res.status(403).json({ message: 'Only the requester or managers can escalate' });
+    }
+
+    // Verify escalation target exists and is a manager
+    if (escalateTo) {
+      const escalateUser = await User.findOne({ _id: escalateTo, company: req.user.company });
+      if (!escalateUser) {
+        return res.status(404).json({ message: 'Escalation target user not found' });
+      }
+      dependency.escalatedTo = escalateTo;
+    }
+
+    dependency.status = 'escalated';
+    dependency.escalatedAt = new Date();
+    dependency.escalationReason = reason?.trim() || 'No response received';
+
+    // Add a comment about escalation
+    dependency.comments = dependency.comments || [];
+    dependency.comments.push({
+      message: `⚠️ Escalated: ${reason || 'No response received'}`,
+      author: req.user._id,
+      isManagerComment: false,
+      createdAt: new Date(),
+    });
+
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.escalatedTo', 'firstName lastName')
+      .populate('dependencies.comments.author', 'firstName lastName');
+
+    res.json(updatedTask);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Send reminder for a dependency
+router.post('/:id/dependencies/:dependencyId/remind', authenticate, async (req, res) => {
+  try {
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const dependency = (task.dependencies || []).find(
+      d => d.dependencyId === req.params.dependencyId || d._id.toString() === req.params.dependencyId
+    );
+
+    if (!dependency) {
+      return res.status(404).json({ message: 'Dependency not found' });
+    }
+
+    // Only requester or managers can send reminders
+    const isRequester = dependency.requestedBy.toString() === req.user._id.toString();
+    const hasManagerAccess = isManager(req.user.role);
+
+    if (!isRequester && !hasManagerAccess) {
+      return res.status(403).json({ message: 'Only the requester or managers can send reminders' });
+    }
+
+    // Update reminder tracking
+    dependency.remindersSent = (dependency.remindersSent || 0) + 1;
+    dependency.lastReminderAt = new Date();
+
+    // Add a comment about the reminder
+    dependency.comments = dependency.comments || [];
+    dependency.comments.push({
+      message: `🔔 Reminder sent (${dependency.remindersSent})`,
+      author: req.user._id,
+      isManagerComment: hasManagerAccess && !isRequester,
+      createdAt: new Date(),
+    });
+
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
+
+    res.json({ message: 'Reminder sent successfully', task: updatedTask });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add attachment to a dependency
+router.post('/:id/dependencies/:dependencyId/attachments', authenticate, async (req, res) => {
+  try {
+    const { name, url, type, size } = req.body;
+
+    if (!name || !url) {
+      return res.status(400).json({ message: 'Attachment name and url are required' });
+    }
+
+    const task = await Task.findById(req.params.id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const dependency = (task.dependencies || []).find(
+      d => d.dependencyId === req.params.dependencyId || d._id.toString() === req.params.dependencyId
+    );
+
+    if (!dependency) {
+      return res.status(404).json({ message: 'Dependency not found' });
+    }
+
+    // Only participants or managers can add attachments
+    const isParticipant = 
+      dependency.dependsOn.toString() === req.user._id.toString() ||
+      dependency.requestedBy.toString() === req.user._id.toString();
+    const hasManagerAccess = isManager(req.user.role);
+
+    if (!isParticipant && !hasManagerAccess) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    dependency.attachments = dependency.attachments || [];
+    dependency.attachments.push({
+      name,
+      url,
+      type: type || 'application/octet-stream',
+      size: size || 0,
+      uploadedBy: req.user._id,
+      uploadedAt: new Date(),
+    });
+
+    await task.save();
+
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'firstName lastName email designation department')
+      .populate('dependencies.requestedBy', 'firstName lastName email department')
+      .populate('dependencies.dependsOn', 'firstName lastName email department')
+      .populate('dependencies.comments.author', 'firstName lastName');
+
+    res.json(updatedTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

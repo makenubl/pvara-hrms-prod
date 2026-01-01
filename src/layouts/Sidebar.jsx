@@ -20,6 +20,7 @@ import {
   Clock,
   Target,
   FileText,
+  Link2,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
@@ -38,6 +39,7 @@ const Sidebar = () => {
     { icon: BarChart3, label: 'Chairperson Dashboard', path: '/tasks-ab', roles: ['admin', 'chairman'] },
     { icon: Target, label: 'Task Management', path: '/task-management', roles: ['admin', 'chairman', 'hr', 'manager', 'employee'] },
     { icon: CheckSquare, label: 'My Tasks', path: '/my-tasks', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
+    { icon: Link2, label: 'My Dependencies', path: '/my-dependencies', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
     { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager', 'chairman'] },
     { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
     { icon: FileText, label: 'Reports', path: '/reports', roles: ['admin', 'chairman'] },

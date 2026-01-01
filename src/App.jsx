@@ -39,6 +39,7 @@ const ChangePassword = lazy(() => import('./pages/ChangePassword'));
 const MyTasks = lazy(() => import('./pages/MyTasks'));
 const Worklog = lazy(() => import('./pages/Worklog'));
 const TaskManagement = lazy(() => import('./pages/TaskManagement'));
+const MyDependencies = lazy(() => import('./pages/MyDependencies'));
 const Reports = lazy(() => import('./pages/Reports'));
 
 // Role-based Dashboard Router
@@ -180,6 +181,10 @@ function App() {
         <Route
           path="/my-tasks"
           element={<ProtectedRoute><MyTasks /></ProtectedRoute>}
+        />
+        <Route
+          path="/my-dependencies"
+          element={<ProtectedRoute><MyDependencies /></ProtectedRoute>}
         />
         <Route
           path="/worklog"

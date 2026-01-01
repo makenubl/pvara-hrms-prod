@@ -219,6 +219,119 @@ const taskSchema = new mongoose.Schema(
       resolvedAt: Date,
       resolution: String, // How it was resolved
     }],
+    // Task Dependencies - for inter-employee collaboration
+    dependencies: [{
+      // Unique identifier for this dependency
+      dependencyId: {
+        type: String,
+        default: () => new mongoose.Types.ObjectId().toString(),
+      },
+      // Who is requesting the dependency (usually task assignee)
+      requestedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      // Who needs to fulfill the dependency
+      dependsOn: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+      },
+      // Description of what is needed
+      title: {
+        type: String,
+        required: true,
+      },
+      description: {
+        type: String,
+      },
+      // Category of dependency
+      category: {
+        type: String,
+        enum: ['information', 'document', 'approval', 'review', 'resource', 'action', 'other'],
+        default: 'information',
+      },
+      // Priority level
+      priority: {
+        type: String,
+        enum: ['low', 'medium', 'high', 'critical'],
+        default: 'medium',
+      },
+      // Expected deadline for the dependency
+      dueDate: {
+        type: Date,
+      },
+      // Current status
+      status: {
+        type: String,
+        enum: ['pending', 'acknowledged', 'in-progress', 'fulfilled', 'declined', 'escalated'],
+        default: 'pending',
+      },
+      // Response from the dependent person
+      response: {
+        type: String,
+      },
+      respondedAt: Date,
+      fulfilledAt: Date,
+      // Decline reason if declined
+      declineReason: String,
+      // Comment thread for discussion
+      comments: [{
+        message: {
+          type: String,
+          required: true,
+        },
+        author: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+        // Track if chairperson/manager made this comment
+        isManagerComment: {
+          type: Boolean,
+          default: false,
+        },
+      }],
+      // Attachments for this dependency
+      attachments: [{
+        name: String,
+        url: String,
+        type: String,
+        size: Number,
+        uploadedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        uploadedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }],
+      // Tracking
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+      // Notification tracking
+      notifiedAt: Date,
+      remindersSent: {
+        type: Number,
+        default: 0,
+      },
+      lastReminderAt: Date,
+      // Escalation tracking
+      escalatedAt: Date,
+      escalatedTo: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      escalationReason: String,
+    }],
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',
@@ -233,5 +346,8 @@ taskSchema.index({ assignedTo: 1, status: 1 });
 taskSchema.index({ secondaryAssignees: 1, status: 1 });
 taskSchema.index({ company: 1, status: 1 });
 taskSchema.index({ deadline: 1 });
+// Index for dependency queries
+taskSchema.index({ 'dependencies.requestedBy': 1, 'dependencies.status': 1 });
+taskSchema.index({ 'dependencies.dependsOn': 1, 'dependencies.status': 1 });
 
 export default mongoose.model('Task', taskSchema);

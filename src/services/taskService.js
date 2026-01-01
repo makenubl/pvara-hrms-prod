@@ -224,6 +224,90 @@ const taskService = {
       throw error.response?.data || { message: 'Failed to fetch employees' };
     }
   },
+
+  // ==================== DEPENDENCY METHODS ====================
+
+  // Create a dependency on a task
+  createDependency: async (taskId, dependencyData) => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/dependencies`, dependencyData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to create dependency' };
+    }
+  },
+
+  // Get all dependencies for current user
+  getMyDependencies: async (filters = {}) => {
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const response = await api.get(`/tasks/dependencies/my${queryParams ? `?${queryParams}` : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch dependencies' };
+    }
+  },
+
+  // Get all dependencies (for managers/chairperson)
+  getAllDependencies: async (filters = {}) => {
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const response = await api.get(`/tasks/dependencies/all${queryParams ? `?${queryParams}` : ''}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch all dependencies' };
+    }
+  },
+
+  // Respond to a dependency (acknowledge, in-progress, fulfill, decline)
+  respondToDependency: async (taskId, dependencyId, responseData) => {
+    try {
+      const response = await api.patch(`/tasks/${taskId}/dependencies/${dependencyId}`, responseData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to respond to dependency' };
+    }
+  },
+
+  // Add comment to a dependency
+  addDependencyComment: async (taskId, dependencyId, message) => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/dependencies/${dependencyId}/comments`, { message });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to add comment' };
+    }
+  },
+
+  // Escalate a dependency
+  escalateDependency: async (taskId, dependencyId, escalateTo, reason) => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/dependencies/${dependencyId}/escalate`, { escalateTo, reason });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to escalate dependency' };
+    }
+  },
+
+  // Send reminder for a dependency
+  sendDependencyReminder: async (taskId, dependencyId) => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/dependencies/${dependencyId}/remind`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send reminder' };
+    }
+  },
+
+  // Add attachment to a dependency
+  addDependencyAttachment: async (taskId, dependencyId, attachmentData) => {
+    try {
+      const response = await api.post(`/tasks/${taskId}/dependencies/${dependencyId}/attachments`, attachmentData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to add attachment' };
+    }
+  },
 };
 
 export default taskService;

@@ -28,7 +28,9 @@ import {
   Users,
   HelpCircle,
   ArrowRightLeft,
+  Link2,
 } from 'lucide-react';
+import DependencyManager from '../components/DependencyManager';
 
 // Safe date formatting helper to prevent crashes on invalid dates
 const safeFormat = (date, formatStr, fallback = '-') => {
@@ -96,18 +98,39 @@ const MyTasks = () => {
   }, 0);
 
   // Handler to select a task and reset form fields
-  const handleSelectTask = (task) => {
+  const handleSelectTask = async (task) => {
     setSelectedTask(task);
     // Reset form fields to prevent cross-task updates
     setUpdateMessage('');
     setUpdateProgress('');
     setUpdateStatus('');
     setActiveTab('updates');
+    
+    // Load employees for dependencies if not already loaded
+    if (employees.length === 0) {
+      try {
+        const empList = await taskService.getEmployees();
+        setEmployees(empList || []);
+      } catch (error) {
+        console.error('Failed to load employees:', error);
+      }
+    }
   };
 
   useEffect(() => {
     loadTasks();
+    // Load employees on mount
+    loadEmployees();
   }, [filter]);
+
+  const loadEmployees = async () => {
+    try {
+      const empList = await taskService.getEmployees();
+      setEmployees(empList || []);
+    } catch (error) {
+      console.error('Failed to load employees:', error);
+    }
+  };
 
   const loadTasks = async () => {
     setLoading(true);
@@ -804,6 +827,7 @@ const MyTasks = () => {
               <div className="flex gap-1 mb-4 border-b border-white/10 overflow-x-auto">
                 {[
                   { id: 'updates', label: 'Updates', icon: MessageSquare, count: selectedTask.updates?.length || 0 },
+                  { id: 'dependencies', label: 'Dependencies', icon: Link2, count: selectedTask.dependencies?.length || 0 },
                   { id: 'comments', label: 'Comments', icon: MessageCircle, count: selectedTask.chairmanComments?.length || 0 },
                   { id: 'bottlenecks', label: 'Bottlenecks', icon: AlertTriangle, count: selectedTask.bottlenecks?.length || 0 },
                   { id: 'activities', label: 'Activities', icon: Activity, count: selectedTask.activities?.length || 0 },
@@ -828,6 +852,20 @@ const MyTasks = () => {
                   </button>
                 ))}
               </div>
+
+              {/* Dependencies Tab */}
+              {activeTab === 'dependencies' && (
+                <DependencyManager
+                  taskId={selectedTask._id}
+                  dependencies={selectedTask.dependencies || []}
+                  employees={employees}
+                  onUpdate={async () => {
+                    const updatedTask = await taskService.getById(selectedTask._id);
+                    setSelectedTask(updatedTask);
+                    fetchTasks();
+                  }}
+                />
+              )}
 
               {/* Updates Tab */}
               {activeTab === 'updates' && (

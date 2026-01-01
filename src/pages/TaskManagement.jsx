@@ -4,6 +4,7 @@ import { Card, Button, Badge, Modal } from '../components/UI';
 import { useAuthStore } from '../store/authStore';
 import employeeService from '../services/employeeService';
 import taskService from '../services/taskService';
+import DependencyManager from '../components/DependencyManager';
 import { format, differenceInDays } from 'date-fns';
 import {
   Plus,
@@ -27,6 +28,7 @@ import {
   MessageSquare,
   Upload,
   Video,
+  Link2,
   MapPin,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -1223,6 +1225,7 @@ const TaskManagement = () => {
             <div className="flex gap-1 px-6 pt-4 border-b border-slate-700">
               {[
                 { id: 'details', label: 'Details', icon: Target },
+                { id: 'dependencies', label: 'Dependencies', icon: Link2, count: selectedTask.dependencies?.length || 0 },
                 { id: 'updates', label: 'Updates', icon: MessageSquare, count: selectedTask.updates?.length || 0 },
                 { id: 'activities', label: 'Activities', icon: Activity, count: selectedTask.activities?.length || 0 },
                 { id: 'attachments', label: 'Attachments', icon: Paperclip, count: selectedTask.attachments?.length || 0 },
@@ -1310,6 +1313,23 @@ const TaskManagement = () => {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Dependencies Tab */}
+              {activeDetailTab === 'dependencies' && (
+                <DependencyManager
+                  taskId={selectedTask._id}
+                  dependencies={selectedTask.dependencies || []}
+                  employees={employees}
+                  onUpdate={async () => {
+                    // Refresh the selected task
+                    const updatedTask = await taskService.getById(selectedTask._id);
+                    setSelectedTask(updatedTask);
+                    // Also refresh the tasks list
+                    const tasksRes = await taskService.getAll({ all: 'true' });
+                    setTasks(tasksRes || []);
+                  }}
+                />
               )}
 
               {/* Updates Tab */}

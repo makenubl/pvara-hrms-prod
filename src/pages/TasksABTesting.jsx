@@ -32,8 +32,10 @@ import {
   Hash,
   HelpCircle,
   Flag,
+  Link2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { DependencyList } from '../components/DependencyManager';
 
 const TasksABTesting = () => {
   const { user, role } = useAuthStore();
@@ -149,6 +151,22 @@ const TasksABTesting = () => {
     return task.bottlenecks?.filter(b => b.status !== 'resolved') || [];
   };
 
+  // Get pending dependencies for a task (those not fulfilled or declined)
+  const getPendingDependencies = (task) => {
+    return task.dependencies?.filter(d => 
+      ['pending', 'acknowledged', 'in-progress', 'escalated'].includes(d.status)
+    ) || [];
+  };
+
+  // Get who the task is waiting on (pending dependency targets)
+  const getWaitingOn = (task) => {
+    const pending = getPendingDependencies(task);
+    return pending.map(d => {
+      const emp = employees.find(e => e._id === d.dependsOn);
+      return emp ? `${emp.firstName} ${emp.lastName}` : 'Unknown';
+    });
+  };
+
   // Count total open bottlenecks
   const _totalOpenBottlenecks = tasks.reduce((count, task) => {
     return count + getOpenBottlenecks(task).length;
@@ -202,6 +220,10 @@ const TasksABTesting = () => {
   const bottleneckTasks = tasks.filter(t => 
     getOpenBottlenecks(t).length > 0
   );
+  // Dependency tasks - tasks that have any non-resolved dependencies
+  const dependencyTasks = tasks.filter(t => 
+    (t.dependencies || []).some(d => ['pending', 'acknowledged', 'in-progress', 'escalated'].includes(d.status))
+  );
 
   // Get filtered tasks based on selection
   const getFilteredTasks = () => {
@@ -215,6 +237,9 @@ const TasksABTesting = () => {
         break;
       case 'bottleneck':
         filtered = bottleneckTasks;
+        break;
+      case 'dependencies':
+        filtered = dependencyTasks;
         break;
       default:
         filtered = tasks;
@@ -278,6 +303,7 @@ const TasksABTesting = () => {
     { key: 'all', label: 'All Tasks', count: tasks.length, color: 'from-cyan-500 to-blue-500' },
     { key: 'completed', label: 'Completed', count: completedTasks.length, color: 'from-emerald-500 to-teal-500' },
     { key: 'pending', label: 'Pending', count: pendingTasks.length, color: 'from-amber-500 to-yellow-500' },
+    { key: 'dependencies', label: 'Dependencies', count: dependencyTasks.length, color: 'from-purple-500 to-violet-500' },
     { key: 'bottleneck', label: 'Bottlenecks', count: bottleneckTasks.length, color: 'from-red-500 to-rose-500' },
   ];
 
@@ -341,6 +367,8 @@ const TasksABTesting = () => {
 
     const tabs = [
       { key: 'details', label: 'Details', icon: FileText, tooltip: 'View task details including description, assignee, deadline and progress' },
+      { key: 'updates', label: 'Updates', icon: MessageSquare, count: task.updates?.length || 0, tooltip: 'View progress updates added by the assignee' },
+      { key: 'dependencies', label: 'Dependencies', icon: Link2, count: task.dependencies?.length || 0, tooltip: 'View dependencies and blockers - Track who this task depends on' },
       { key: 'boosts', label: 'Boosts', icon: Zap, count: task.boosts?.length || 0, tooltip: 'View and manage boost/expedite requests - Track responses from assignees' },
       { key: 'bottlenecks', label: 'Bottlenecks', icon: HelpCircle, count: task.bottlenecks?.length || 0, tooltip: 'View and respond to bottlenecks raised by assignees' },
       { key: 'activities', label: 'Activities', icon: Activity, count: task.activities?.length || 0, tooltip: 'View task journey/timeline - Track actions across departments' },
@@ -545,6 +573,111 @@ const TasksABTesting = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Updates Tab - Show progress trail from assignee */}
+            {activeTab === 'updates' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <MessageSquare size={18} className="text-cyan-400" />
+                  Progress Updates Trail
+                </h3>
+                {task.updates && task.updates.length > 0 ? (
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                    {task.updates.slice().reverse().map((update, idx) => (
+                      <div key={idx} className="p-4 bg-slate-700/50 rounded-lg border border-white/5">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-cyan-500/20 rounded-full flex items-center justify-center">
+                              <User size={14} className="text-cyan-400" />
+                            </div>
+                            <span className="text-cyan-300 font-medium">
+                              {update.addedBy?.firstName} {update.addedBy?.lastName}
+                            </span>
+                          </div>
+                          <span className="text-slate-500 text-xs">
+                            {update.addedAt ? format(new Date(update.addedAt), 'MMM dd, yyyy h:mm a') : '-'}
+                          </span>
+                        </div>
+                        <p className="text-white mb-2">{update.message}</p>
+                        {(update.progress !== undefined || update.status) && (
+                          <div className="flex gap-3 pt-2 border-t border-white/10">
+                            {update.progress !== undefined && (
+                              <span className="text-xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded">
+                                Progress: {update.progress}%
+                              </span>
+                            )}
+                            {update.status && (
+                              <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">
+                                Status: {update.status}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-400">
+                    <MessageSquare size={48} className="mx-auto mb-3 opacity-50" />
+                    <p>No progress updates yet</p>
+                    <p className="text-sm">Assignee will add updates as they work on this task</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dependencies Tab */}
+            {activeTab === 'dependencies' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Link2 size={18} className="text-purple-400" />
+                    Task Dependencies
+                  </h3>
+                  {(task.dependencies || []).filter(d => d.status === 'pending' || d.status === 'escalated').length > 0 && (
+                    <Badge variant="purple">
+                      {(task.dependencies || []).filter(d => d.status === 'pending' || d.status === 'escalated').length} Pending
+                    </Badge>
+                  )}
+                </div>
+                
+                {/* Dependency Summary */}
+                {task.dependencies && task.dependencies.length > 0 && (
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-amber-400">
+                        {task.dependencies.filter(d => d.status === 'pending').length}
+                      </div>
+                      <div className="text-xs text-slate-400">Pending</div>
+                    </div>
+                    <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-purple-400">
+                        {task.dependencies.filter(d => d.status === 'escalated').length}
+                      </div>
+                      <div className="text-xs text-slate-400">Escalated</div>
+                    </div>
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-emerald-400">
+                        {task.dependencies.filter(d => d.status === 'fulfilled').length}
+                      </div>
+                      <div className="text-xs text-slate-400">Fulfilled</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dependency List */}
+                <DependencyList
+                  taskId={task._id}
+                  dependencies={task.dependencies || []}
+                  onUpdate={() => {
+                    taskService.getById(task._id).then(updatedTask => {
+                      onTaskUpdate(updatedTask);
+                    });
+                  }}
+                  employees={[]}
+                />
               </div>
             )}
 
@@ -976,6 +1109,8 @@ const TasksABTesting = () => {
     const isPendingBoost = hasPendingBoost(task);
     const hasResponse = latestBoost?.response;
     const openBottlenecks = getOpenBottlenecks(task);
+    const pendingDeps = getPendingDependencies(task);
+    const waitingOn = getWaitingOn(task);
     const deadlineDate = task.deadline ? new Date(task.deadline) : null;
     const isValidDeadline = deadlineDate && !isNaN(deadlineDate.getTime());
     const isOverdue = isValidDeadline && deadlineDate < new Date() && task.status !== 'completed';
@@ -1042,6 +1177,14 @@ const TasksABTesting = () => {
                 <AlertTriangle size={10} />
                 {openBottlenecks.length} issue{openBottlenecks.length !== 1 ? 's' : ''}
               </span>
+            )}
+            {pendingDeps.length > 0 && (
+              <Tooltip content={`Waiting on: ${waitingOn.join(', ')}`} position="top">
+                <span className="flex items-center gap-1 text-amber-400 flex-shrink-0 cursor-help">
+                  <Link2 size={10} />
+                  {pendingDeps.length} dep{pendingDeps.length !== 1 ? 's' : ''}
+                </span>
+              </Tooltip>
             )}
             {task.status === 'completed' && (
               <span className="flex items-center gap-1 text-emerald-400">
@@ -1209,6 +1352,12 @@ const TasksABTesting = () => {
                   {openBottlenecks.length}
                 </span>
               )}
+              {pendingDeps.length > 0 && (
+                <span className="flex items-center gap-1 text-amber-400">
+                  <Link2 size={10} />
+                  {pendingDeps.length}
+                </span>
+              )}
             </div>
             
             {/* Progress Bar - Mobile */}
@@ -1281,7 +1430,7 @@ const TasksABTesting = () => {
         </div>
 
         {/* Filter Buttons */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
           {filterButtons.map(btn => (
             <button
               key={btn.key}
