@@ -57,6 +57,11 @@ class AIService {
       } catch (error) {
         logger.error('AI parsing failed, falling back to rule-based:', error);
       }
+    } else {
+      logger.warn('OpenAI not available, using rule-based parsing', {
+        initialized: this.initialize(),
+        hasApiKey: !!this.openaiApiKey,
+      });
     }
 
     // Fallback to rule-based patterns only if AI is not available
@@ -364,7 +369,7 @@ CONTEXT:
       const content = data.choices[0]?.message?.content;
 
       // Parse JSON from response
-      const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         
@@ -392,6 +397,7 @@ CONTEXT:
         return parsed;
       }
 
+      logger.warn('AI response did not contain valid JSON:', { content });
       return { action: 'unknown', originalMessage: message };
     } catch (error) {
       logger.error('AI parsing error:', error);

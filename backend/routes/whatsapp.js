@@ -763,4 +763,55 @@ router.post('/send-test', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/whatsapp/test-ai
+ * Test AI parsing directly (for debugging)
+ */
+router.post('/test-ai', async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ message: 'message is required' });
+    }
+
+    // Check API key status
+    const hasApiKey = !!whatsappConfig.openaiApiKey;
+    const apiKeyPrefix = hasApiKey ? whatsappConfig.openaiApiKey.substring(0, 10) + '...' : 'NOT SET';
+    
+    // Initialize AI service
+    const initialized = aiService.initialize();
+    
+    // Create mock user
+    const mockUser = {
+      _id: 'test',
+      firstName: 'Test',
+      lastName: 'User',
+      role: 'employee'
+    };
+    
+    // Parse the message
+    const result = await aiService.parseMessage(message, mockUser);
+    
+    res.json({
+      success: true,
+      debug: {
+        hasApiKey,
+        apiKeyPrefix,
+        initialized,
+        envKeys: Object.keys(process.env).filter(k => k.includes('OPENAI') || k.includes('API')),
+      },
+      input: message,
+      result
+    });
+  } catch (error) {
+    logger.error('AI test failed:', error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message,
+      stack: error.stack 
+    });
+  }
+});
+
 export default router;
