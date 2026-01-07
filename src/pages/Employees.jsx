@@ -301,7 +301,7 @@ const Employees = () => {
                       {selectedEmployee.status || 'Active'}
                     </Badge>
                   </div>
-                  <p className="text-blue-600 font-medium">{selectedEmployee.position || selectedEmployee.role || 'Employee'}</p>
+                  <p className="text-blue-600 font-medium">{typeof selectedEmployee.position === 'object' ? selectedEmployee.position?.title : selectedEmployee.position || selectedEmployee.role || 'Employee'}</p>
                   <p className="text-gray-500 text-sm mt-1">{selectedEmployee.department || 'No Department'}</p>
                 </div>
               </div>

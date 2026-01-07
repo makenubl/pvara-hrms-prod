@@ -734,7 +734,8 @@ const ChairmanOverview = () => {
                   } else if (emp.notes || emp.currentWork) {
                     detailsText = emp.notes || emp.currentWork;
                   } else {
-                    detailsText = emp.designation || emp.position || 'No current tasks assigned';
+                    const positionText = typeof emp.position === 'object' ? emp.position?.title : emp.position;
+                    detailsText = emp.designation || positionText || 'No current tasks assigned';
                   }
                   
                   const workStatus = blockedTasks > 0 ? 'blocked' : 

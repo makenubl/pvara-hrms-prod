@@ -424,7 +424,7 @@ const EmployeeProfile = () => {
                 <h3 className="text-xl font-bold text-white mt-4">
                   {profileData.firstName} {profileData.lastName}
                 </h3>
-                <p className="text-cyan-400 text-sm">{user?.position || 'Employee'}</p>
+                <p className="text-cyan-400 text-sm">{typeof user?.position === 'object' ? user?.position?.title : user?.position || 'Employee'}</p>
                 <p className="text-slate-400 text-xs mt-1">{user?.employeeId || 'EMP-001'}</p>
               </div>
 
