@@ -292,13 +292,13 @@ Only include fields that are relevant to the action.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-5.2',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: message }
           ],
           temperature: 0.3,
-          max_tokens: 500,
+          max_completion_tokens: 500,
         }),
       });
 
