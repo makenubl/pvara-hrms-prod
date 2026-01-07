@@ -63,7 +63,7 @@ router.post('/webhook', async (req, res) => {
       const transcription = await whatsappService.transcribeVoiceNote(mediaUrl);
       if (transcription) {
         messageText = transcription;
-        await whatsappService.sendMessage(from, `📝 Transcribed: "${transcription}"\n\nProcessing your request...`);
+        await whatsappService.sendMessage(from, `Voice note received. Transcription: "${transcription}"\n\nProcessing your request...`);
       } else {
         await whatsappService.sendErrorMessage(from, 
           'Could not transcribe your voice note. Please try again or type your message.');
@@ -151,10 +151,15 @@ async function processAction(action, user, phoneNumber) {
         await reportBlocker(user, phoneNumber, action.taskId, action.blocker);
         break;
 
+      case 'deleteTask':
+      case 'cancelTask':
+        await cancelTask(user, phoneNumber, action.taskId);
+        break;
+
       case 'unknown':
       default:
         await whatsappService.sendMessage(phoneNumber, 
-          `❓ I didn't understand that command.\n\nYou said: "${action.originalMessage || 'N/A'}"\n\nType *help* for available commands.`);
+          `PVARA HRMS - Command Not Recognized\n\nYour message: "${action.originalMessage || 'N/A'}"\n\nType "help" for available commands.`);
         break;
     }
   } catch (error) {
@@ -185,18 +190,18 @@ async function sendStatusSummary(user, phoneNumber) {
     overdue: tasks.filter(t => new Date(t.deadline) < new Date() && t.status !== 'completed').length,
   };
 
-  const message = `📊 *Your Task Summary*
+  const message = `PVARA HRMS - Task Summary
 
-👤 ${user.firstName} ${user.lastName}
+Employee: ${user.firstName} ${user.lastName}
 
-📋 Total Tasks: ${stats.total}
-⏸️ Pending: ${stats.pending}
-🔄 In Progress: ${stats.inProgress}
-✅ Completed: ${stats.completed}
-🚫 Blocked: ${stats.blocked}
-⚠️ Overdue: ${stats.overdue}
+Total Tasks: ${stats.total}
+Pending: ${stats.pending}
+In Progress: ${stats.inProgress}
+Completed: ${stats.completed}
+Blocked: ${stats.blocked}
+Overdue: ${stats.overdue}
 
-Type *show my tasks* to see the full list.`;
+Type "show my tasks" to see the full list.`;
 
   await whatsappService.sendMessage(phoneNumber, message);
 }
@@ -247,19 +252,19 @@ async function listUpcomingDeadlines(user, phoneNumber) {
 
   if (tasks.length === 0) {
     await whatsappService.sendMessage(phoneNumber, 
-      '📅 *Upcoming Deadlines*\n\nNo deadlines in the next 7 days! 🎉');
+      'PVARA HRMS - Upcoming Deadlines\n\nNo deadlines in the next 7 days.');
     return;
   }
 
-  let message = `📅 *Upcoming Deadlines (Next 7 Days)*\n\n`;
+  let message = `PVARA HRMS - Upcoming Deadlines (Next 7 Days)\n\n`;
   tasks.forEach((task, i) => {
     const deadline = new Date(task.deadline);
     const daysLeft = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
     
-    message += `${i + 1}. *${task.title}*\n`;
-    message += `   🆔 ${task.project}\n`;
-    message += `   📅 ${deadline.toLocaleDateString()} (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)\n`;
-    message += `   📈 ${task.progress}%\n\n`;
+    message += `${i + 1}. ${task.title}\n`;
+    message += `   Ref: ${task.project}\n`;
+    message += `   Deadline: ${deadline.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} (${daysLeft} day${daysLeft !== 1 ? 's' : ''} left)\n`;
+    message += `   Progress: ${task.progress}%\n\n`;
   });
 
   await whatsappService.sendMessage(phoneNumber, message);
@@ -292,34 +297,28 @@ async function viewTaskDetails(user, phoneNumber, taskId) {
     return;
   }
 
-  const statusEmoji = {
-    'pending': '⏸️',
-    'in-progress': '🔄',
-    'completed': '✅',
-    'blocked': '🚫',
-    'cancelled': '❌'
-  }[task.status] || '📌';
+  const statusLabel = task.status?.toUpperCase() || 'PENDING';
 
-  let message = `📋 *Task Details*
+  let message = `PVARA HRMS - Task Details
 
-🆔 *ID:* ${task.project}
-📝 *Title:* ${task.title}
-${task.description ? `📄 *Description:* ${task.description}\n` : ''}
-${statusEmoji} *Status:* ${task.status}
-📊 *Priority:* ${task.priority}
-📈 *Progress:* ${task.progress}%
-📅 *Deadline:* ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'Not set'}
+Reference: ${task.project}
+Title: ${task.title}
+${task.description ? `Description: ${task.description}\n` : ''}
+Status: ${statusLabel}
+Priority: ${task.priority?.toUpperCase()}
+Progress: ${task.progress}%
+Deadline: ${task.deadline ? new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not set'}
 
-👤 *Assigned to:* ${task.assignedTo?.firstName || 'N/A'} ${task.assignedTo?.lastName || ''}
-👥 *Assigned by:* ${task.assignedBy?.firstName || 'N/A'} ${task.assignedBy?.lastName || ''}
-${task.secondaryAssignees?.length ? `👥 *Secondary:* ${task.secondaryAssignees.map(s => `${s.firstName} ${s.lastName}`).join(', ')}\n` : ''}
-${task.blocker ? `\n🚨 *Blocker:* ${task.blocker}` : ''}`;
+Assigned to: ${task.assignedTo?.firstName || 'N/A'} ${task.assignedTo?.lastName || ''}
+Assigned by: ${task.assignedBy?.firstName || 'N/A'} ${task.assignedBy?.lastName || ''}
+${task.secondaryAssignees?.length ? `Secondary: ${task.secondaryAssignees.map(s => `${s.firstName} ${s.lastName}`).join(', ')}\n` : ''}
+${task.blocker ? `\nBlocker: ${task.blocker}` : ''}`;
 
   // Show recent updates
   if (task.updates?.length > 0) {
-    message += `\n\n📝 *Recent Updates:*\n`;
+    message += `\n\nRecent Updates:\n`;
     task.updates.slice(-3).forEach(update => {
-      message += `• ${update.message} (${new Date(update.addedAt).toLocaleDateString()})\n`;
+      message += `- ${update.message} (${new Date(update.addedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })})\n`;
     });
   }
 
@@ -418,13 +417,13 @@ async function assignTask(user, phoneNumber, action) {
 
   // Notify the creator
   await whatsappService.sendMessage(phoneNumber, 
-    `✅ *Task Assigned Successfully!*
+    `PVARA HRMS - Task Assigned
 
-📋 *${task.title}*
-🆔 ID: ${taskId}
-👤 Assigned to: ${assignee.firstName} ${assignee.lastName}
-📊 Priority: ${task.priority}
-📅 Deadline: ${task.deadline.toLocaleDateString()}`);
+Title: ${task.title}
+Reference: ${taskId}
+Assigned to: ${assignee.firstName} ${assignee.lastName}
+Priority: ${task.priority?.toUpperCase()}
+Deadline: ${task.deadline.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`);
 
   // Notify the assignee if they have WhatsApp enabled
   if (assignee.whatsappNumber || assignee.phone) {
@@ -630,12 +629,56 @@ async function addTaskUpdate(user, phoneNumber, taskId, message) {
   logger.info('Task update added via WhatsApp', { taskId, userId: user._id });
 
   await whatsappService.sendMessage(phoneNumber, 
-    `✅ *Update Added to Task*
+    `PVARA HRMS - Update Added
 
-🆔 ${taskId}
-📝 "${message}"
+Reference: ${taskId}
+Update: "${message}"
 
 The update has been recorded.`);
+}
+
+/**
+ * Cancel/Delete a task
+ */
+async function cancelTask(user, phoneNumber, taskId) {
+  const task = await Task.findOne({
+    project: taskId,
+    company: user.company
+  });
+
+  if (!task) {
+    await whatsappService.sendMessage(phoneNumber, 
+      `PVARA HRMS - Task Not Found\n\nTask ${taskId} was not found in the system.`);
+    return;
+  }
+
+  // Check if user has permission (task owner, assignee, or admin/manager)
+  const isAssignee = task.assignedTo?.toString() === user._id.toString() ||
+                     task.secondaryAssignees?.some(a => a.toString() === user._id.toString());
+  const isCreator = task.createdBy?.toString() === user._id.toString();
+  const isAdmin = ['admin', 'manager', 'chairman'].includes(user.role);
+
+  if (!isAssignee && !isCreator && !isAdmin) {
+    await whatsappService.sendMessage(phoneNumber, 
+      `PVARA HRMS - Permission Denied\n\nYou do not have permission to cancel task ${taskId}.`);
+    return;
+  }
+
+  // Update task status to cancelled
+  task.status = 'cancelled';
+  task.updates.push({
+    message: `Task cancelled via WhatsApp`,
+    addedBy: user._id,
+    addedAt: new Date(),
+    status: 'cancelled',
+  });
+
+  await task.save();
+
+  logger.info('Task cancelled via WhatsApp', { taskId, userId: user._id });
+
+  await whatsappService.sendMessage(phoneNumber, 
+    `PVARA HRMS - Task Cancelled\n\nReference: ${taskId}\nTitle: ${task.title}\n\nThis task has been cancelled successfully.`);
 }
 
 /**
@@ -678,12 +721,12 @@ async function reportBlocker(user, phoneNumber, taskId, blocker) {
   logger.info('Blocker reported via WhatsApp', { taskId, userId: user._id });
 
   await whatsappService.sendMessage(phoneNumber, 
-    `🚨 *Blocker Reported*
+    `PVARA HRMS - Blocker Reported
 
-🆔 ${taskId}
-📝 "${blocker}"
+Reference: ${taskId}
+Issue: "${blocker}"
 
-Task status changed to *blocked*. The chairman will be notified.`);
+Task status has been changed to BLOCKED. Management will be notified.`);
 }
 
 /**
