@@ -26,6 +26,12 @@ const EmployeeProfile = () => {
     email: '',
     phone: '',
     whatsappNumber: '',
+    whatsappPreferences: {
+      enabled: true,
+      taskAssigned: true,
+      taskUpdates: true,
+      reminders: true,
+    },
     dateOfBirth: '',
     gender: '',
     maritalStatus: '',
@@ -71,6 +77,13 @@ const EmployeeProfile = () => {
     try {
       const response = await api.get('/profile');
       const userData = response.data;
+
+      const whatsappPreferences = {
+        enabled: userData?.whatsappPreferences?.enabled ?? true,
+        taskAssigned: userData?.whatsappPreferences?.taskAssigned ?? true,
+        taskUpdates: userData?.whatsappPreferences?.taskUpdates ?? true,
+        reminders: userData?.whatsappPreferences?.reminders ?? true,
+      };
       
       // Update profile data
       setProfileData({
@@ -79,6 +92,7 @@ const EmployeeProfile = () => {
         email: userData.email || '',
         phone: userData.phone || '',
         whatsappNumber: userData.whatsappNumber || '',
+        whatsappPreferences,
         dateOfBirth: userData.dateOfBirth ? userData.dateOfBirth.split('T')[0] : '',
         gender: userData.gender || '',
         maritalStatus: userData.maritalStatus || '',
@@ -116,6 +130,22 @@ const EmployeeProfile = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleWhatsAppPreferenceToggle = (key) => {
+    setProfileData(prev => {
+      const current = prev.whatsappPreferences || {};
+      return {
+        ...prev,
+        whatsappPreferences: {
+          enabled: current.enabled ?? true,
+          taskAssigned: current.taskAssigned ?? true,
+          taskUpdates: current.taskUpdates ?? true,
+          reminders: current.reminders ?? true,
+          [key]: !(current[key] ?? false),
+        },
+      };
+    });
   };
 
   const validateProfile = () => {
@@ -574,6 +604,75 @@ const EmployeeProfile = () => {
                     <option value="AB-">AB-</option>
                   </select>
                 </div>
+              </div>
+            </Card>
+
+            {/* WhatsApp Preferences */}
+            <Card className="backdrop-blur-xl bg-slate-900/50 border-white/10">
+              <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                <Phone size={22} className="text-cyan-400" />
+                WhatsApp Preferences
+              </h2>
+              <p className="text-sm text-slate-400 mb-4">
+                Control which WhatsApp notifications you receive.
+              </p>
+
+              <div className="space-y-3">
+                <label className={`flex items-center justify-between gap-4 bg-white/5 border border-white/10 rounded-xl px-4 py-3 ${!isEditing ? 'opacity-60' : ''}`}>
+                  <div>
+                    <div className="text-white font-semibold">Enable WhatsApp notifications</div>
+                    <div className="text-xs text-slate-400">Turn WhatsApp alerts on/off for your account</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!profileData.whatsappPreferences?.enabled}
+                    onChange={() => handleWhatsAppPreferenceToggle('enabled')}
+                    disabled={!isEditing}
+                    className="h-5 w-5 accent-cyan-500"
+                  />
+                </label>
+
+                <label className={`flex items-center justify-between gap-4 bg-white/5 border border-white/10 rounded-xl px-4 py-3 ${(!isEditing || !profileData.whatsappPreferences?.enabled) ? 'opacity-60' : ''}`}>
+                  <div>
+                    <div className="text-white font-semibold">Task assignments</div>
+                    <div className="text-xs text-slate-400">Get notified when a task is assigned</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!profileData.whatsappPreferences?.taskAssigned}
+                    onChange={() => handleWhatsAppPreferenceToggle('taskAssigned')}
+                    disabled={!isEditing || !profileData.whatsappPreferences?.enabled}
+                    className="h-5 w-5 accent-cyan-500"
+                  />
+                </label>
+
+                <label className={`flex items-center justify-between gap-4 bg-white/5 border border-white/10 rounded-xl px-4 py-3 ${(!isEditing || !profileData.whatsappPreferences?.enabled) ? 'opacity-60' : ''}`}>
+                  <div>
+                    <div className="text-white font-semibold">Task updates</div>
+                    <div className="text-xs text-slate-400">Get notified when tasks are updated</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!profileData.whatsappPreferences?.taskUpdates}
+                    onChange={() => handleWhatsAppPreferenceToggle('taskUpdates')}
+                    disabled={!isEditing || !profileData.whatsappPreferences?.enabled}
+                    className="h-5 w-5 accent-cyan-500"
+                  />
+                </label>
+
+                <label className={`flex items-center justify-between gap-4 bg-white/5 border border-white/10 rounded-xl px-4 py-3 ${(!isEditing || !profileData.whatsappPreferences?.enabled) ? 'opacity-60' : ''}`}>
+                  <div>
+                    <div className="text-white font-semibold">Deadline reminders</div>
+                    <div className="text-xs text-slate-400">Receive reminder notifications before deadlines</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!profileData.whatsappPreferences?.reminders}
+                    onChange={() => handleWhatsAppPreferenceToggle('reminders')}
+                    disabled={!isEditing || !profileData.whatsappPreferences?.enabled}
+                    className="h-5 w-5 accent-cyan-500"
+                  />
+                </label>
               </div>
             </Card>
 
