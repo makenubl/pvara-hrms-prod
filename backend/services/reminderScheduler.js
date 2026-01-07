@@ -1,6 +1,6 @@
 /**
  * Reminder Scheduler Service
- * Sends WhatsApp notifications for task deadlines
+ * Sends WhatsApp notifications for task deadlines and daily digests
  */
 
 import Task from '../models/Task.js';
@@ -12,8 +12,10 @@ import logger from '../config/logger.js';
 class ReminderScheduler {
   constructor() {
     this.intervalId = null;
+    this.dailyDigestIntervalId = null;
     this.checkIntervalMs = 60 * 1000; // Check every minute
     this.isRunning = false;
+    this.lastDigestDate = null; // Track when last digest was sent
   }
 
   /**
@@ -32,7 +34,7 @@ class ReminderScheduler {
     }
 
     this.isRunning = true;
-    logger.info('🔔 Reminder scheduler started');
+    logger.info('Reminder scheduler started');
 
     // Run immediately on start
     this.checkAndSendReminders();
@@ -40,6 +42,7 @@ class ReminderScheduler {
     // Then run periodically
     this.intervalId = setInterval(() => {
       this.checkAndSendReminders();
+      this.checkDailyDigest(); // Check if it's time for daily digest
     }, this.checkIntervalMs);
   }
 
@@ -212,16 +215,8 @@ class ReminderScheduler {
 
         if (assignee.whatsappPreferences?.enabled === false) continue;
 
-        const message = `🚨 *TASK OVERDUE!*
-
-📋 *${task.title}*
-🆔 ID: ${task.project}
-📅 Deadline was: ${new Date(task.deadline).toLocaleDateString()}
-
-📊 Current Progress: ${task.progress}%
-📌 Status: ${task.status}
-
-Please update this task immediately or contact your manager.`;
+        // Use professional template
+        const message = whatsappConfig.templates.taskOverdue(task);
 
         try {
           await whatsappService.sendMessage(phoneNumber, message);
@@ -269,6 +264,142 @@ Please update this task immediately or contact your manager.`;
   }
 
   /**
+   * Check if it's time to send daily digest (10:30 AM PKT)
+   */
+  async checkDailyDigest() {
+    try {
+      const digestConfig = whatsappConfig.dailyDigest;
+      if (!digestConfig?.enabled) return;
+
+      // Get current time in Pakistan timezone
+      const now = new Date();
+      const pakistanTime = new Date(now.toLocaleString('en-US', { timeZone: digestConfig.timezone || 'Asia/Karachi' }));
+      
+      const currentHour = pakistanTime.getHours();
+      const currentMinute = pakistanTime.getMinutes();
+      const [targetHour, targetMinute] = (digestConfig.time || '10:30').split(':').map(Number);
+      
+      // Check if it's the right time (within 1 minute window)
+      const isDigestTime = currentHour === targetHour && currentMinute === targetMinute;
+      
+      // Check if we already sent digest today
+      const today = pakistanTime.toDateString();
+      if (this.lastDigestDate === today) return;
+      
+      if (isDigestTime) {
+        logger.info('Starting daily digest at 10:30 AM PKT');
+        await this.sendDailyDigestToAll();
+        this.lastDigestDate = today;
+      }
+    } catch (error) {
+      logger.error('Failed to check daily digest:', error);
+    }
+  }
+
+  /**
+   * Send daily digest to all users with open tasks
+   */
+  async sendDailyDigestToAll() {
+    try {
+      // Get all active users with WhatsApp enabled
+      const users = await User.find({
+        status: 'active',
+        'whatsappPreferences.enabled': { $ne: false },
+        $or: [
+          { whatsappNumber: { $exists: true, $ne: '' } },
+          { phone: { $exists: true, $ne: '' } }
+        ]
+      });
+
+      logger.info(`Sending daily digest to ${users.length} users`);
+      let sentCount = 0;
+      let skipCount = 0;
+
+      for (const user of users) {
+        try {
+          const sent = await this.sendDailyDigestToUser(user);
+          if (sent) sentCount++;
+          else skipCount++;
+        } catch (error) {
+          logger.error(`Failed to send digest to ${user.email}:`, error.message);
+        }
+      }
+
+      logger.info(`Daily digest complete: ${sentCount} sent, ${skipCount} skipped`);
+    } catch (error) {
+      logger.error('Failed to send daily digests:', error);
+    }
+  }
+
+  /**
+   * Send daily digest to a specific user
+   * @param {object} user - User document
+   * @returns {boolean} - Whether message was sent
+   */
+  async sendDailyDigestToUser(user) {
+    try {
+      const phoneNumber = user.whatsappNumber || user.phone;
+      if (!phoneNumber) return false;
+
+      // Get user's open tasks
+      const now = new Date();
+      const today = new Date(now);
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const tasks = await Task.find({
+        $or: [
+          { assignedTo: user._id },
+          { secondaryAssignees: user._id }
+        ],
+        status: { $nin: ['completed', 'cancelled'] }
+      }).sort({ deadline: 1 });
+
+      // Calculate stats
+      const stats = {
+        open: tasks.length,
+        inProgress: tasks.filter(t => t.status === 'in-progress').length,
+        dueToday: tasks.filter(t => {
+          if (!t.deadline) return false;
+          const deadline = new Date(t.deadline);
+          return deadline >= today && deadline < tomorrow;
+        }).length,
+        overdue: tasks.filter(t => {
+          if (!t.deadline) return false;
+          return new Date(t.deadline) < now;
+        }).length,
+      };
+
+      // Skip if user has no open tasks
+      if (stats.open === 0) return false;
+
+      // Generate and send message
+      const message = whatsappConfig.templates.dailyDigest(user, tasks, stats);
+      await whatsappService.sendMessage(phoneNumber, message);
+      
+      logger.info(`Daily digest sent to ${user.firstName} ${user.lastName}`, {
+        userId: user._id,
+        openTasks: stats.open,
+        overdue: stats.overdue
+      });
+
+      return true;
+    } catch (error) {
+      logger.error(`Failed to send daily digest to user ${user._id}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Manually trigger daily digest (for testing or admin use)
+   */
+  async triggerDailyDigest() {
+    logger.info('Manually triggering daily digest');
+    await this.sendDailyDigestToAll();
+  }
+
+  /**
    * Get scheduler status
    */
   getStatus() {
@@ -276,6 +407,12 @@ Please update this task immediately or contact your manager.`;
       isRunning: this.isRunning,
       checkInterval: `${this.checkIntervalMs / 1000} seconds`,
       reminderIntervals: whatsappConfig.reminderIntervals.map(i => i.label),
+      dailyDigest: {
+        enabled: whatsappConfig.dailyDigest?.enabled || false,
+        time: whatsappConfig.dailyDigest?.time || '10:30',
+        timezone: whatsappConfig.dailyDigest?.timezone || 'Asia/Karachi',
+        lastSent: this.lastDigestDate || 'Never',
+      },
     };
   }
 }

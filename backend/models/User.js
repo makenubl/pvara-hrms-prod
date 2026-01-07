@@ -2,21 +2,26 @@ import mongoose from 'mongoose';
 
 function normalizeWhatsAppNumber(value) {
   if (typeof value !== 'string') return value;
-  let normalized = value.trim();
+  let normalized = value.trim().replace(/[\s-]/g, ''); // Remove spaces and dashes
   if (normalized.length === 0) return normalized;
 
+  // Strip whatsapp: prefix if present
   if (normalized.toLowerCase().startsWith('whatsapp:')) {
     normalized = normalized.slice('whatsapp:'.length);
   }
 
-  // Convert international dial prefix
+  // Convert international dial prefix (00 → +)
   if (normalized.startsWith('00')) {
     normalized = `+${normalized.slice(2)}`;
   }
 
-  // Ensure leading + for E.164-like storage
+  // Handle Pakistan local format: 03xx → +923xx
+  if (normalized.startsWith('03') && normalized.length === 11) {
+    normalized = `+92${normalized.slice(1)}`; // 03001234567 → +923001234567
+  }
+
+  // Ensure leading + for E.164 format
   if (!normalized.startsWith('+')) {
-    // If user entered digits only, assume it's a country-code number
     if (/^\d+$/.test(normalized)) {
       normalized = `+${normalized}`;
     }
@@ -49,6 +54,7 @@ const userSchema = new mongoose.Schema(
     // Contact Information
     phone: {
       type: String,
+      set: normalizeWhatsAppNumber, // Normalize phone for WhatsApp matching
     },
     dateOfBirth: {
       type: Date,

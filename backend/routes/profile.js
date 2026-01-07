@@ -13,19 +13,28 @@ const router = express.Router();
 
 function normalizeWhatsAppNumber(value) {
   if (typeof value !== 'string') return value;
-  let normalized = value.trim();
+  let normalized = value.trim().replace(/[\s-]/g, ''); // Remove spaces and dashes
   if (normalized.length === 0) return '';
 
+  // Strip whatsapp: prefix if present
   if (normalized.toLowerCase().startsWith('whatsapp:')) {
     normalized = normalized.slice('whatsapp:'.length);
   }
 
+  // Convert international dial prefix (00 → +)
   if (normalized.startsWith('00')) {
     normalized = `+${normalized.slice(2)}`;
   }
 
+  // Handle Pakistan local format: 03xx → +923xx
+  if (normalized.startsWith('03') && normalized.length === 11) {
+    normalized = `+92${normalized.slice(1)}`; // 03001234567 → +923001234567
+  }
+
+  // Ensure leading + for E.164 format
   if (!normalized.startsWith('+')) {
     if (/^\d+$/.test(normalized)) {
+      // If it's 10+ digits starting with country code, add +
       normalized = `+${normalized}`;
     }
   }
