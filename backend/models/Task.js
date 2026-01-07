@@ -337,6 +337,12 @@ const taskSchema = new mongoose.Schema(
       ref: 'Company',
       required: true,
     },
+    // WhatsApp reminder tracking - stores which reminders have been sent
+    reminders: {
+      type: Map,
+      of: Boolean,
+      default: {},
+    },
   },
   { timestamps: true }
 );

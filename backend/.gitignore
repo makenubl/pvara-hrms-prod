@@ -9,3 +9,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 logs/
+
+# Local test outputs
+test-output.txt
+test-error.txt

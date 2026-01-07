@@ -92,6 +92,17 @@ const MyTasks = () => {
   const [employees, setEmployees] = useState([]);
   const [delegating, setDelegating] = useState(false);
 
+  // Create task state
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [createTaskForm, setCreateTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    deadline: '',
+    project: '',
+  });
+  const [creatingTask, setCreatingTask] = useState(false);
+
   // Count pending boosts across all tasks
   const pendingBoostsCount = tasks.reduce((count, task) => {
     return count + (task.boosts?.filter(b => !b.acknowledged)?.length || 0);
@@ -420,6 +431,45 @@ const MyTasks = () => {
     return task.bottlenecks?.filter(b => b.status !== 'resolved') || [];
   };
 
+  // Handle creating a new task
+  const handleCreateTask = async () => {
+    if (!createTaskForm.title.trim()) {
+      toast.error('Please enter a task title');
+      return;
+    }
+
+    setCreatingTask(true);
+    try {
+      const newTask = await taskService.create({
+        title: createTaskForm.title.trim(),
+        description: createTaskForm.description.trim(),
+        priority: createTaskForm.priority,
+        deadline: createTaskForm.deadline || undefined,
+        project: createTaskForm.project.trim() || undefined,
+        assignedTo: user._id, // Assign to self
+        status: 'pending',
+      });
+      
+      // Add the new task to the list
+      setTasks(prev => [newTask, ...prev]);
+      
+      toast.success('Task created successfully!');
+      setShowCreateTaskModal(false);
+      setCreateTaskForm({
+        title: '',
+        description: '',
+        priority: 'medium',
+        deadline: '',
+        project: '',
+      });
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      toast.error(error.message || 'Failed to create task');
+    } finally {
+      setCreatingTask(false);
+    }
+  };
+
   const stats = {
     total: tasks.length,
     pending: tasks.filter(t => t.status === 'pending').length,
@@ -453,11 +503,20 @@ const MyTasks = () => {
     <MainLayout>
       <div className="space-y-6 pb-6">
         {/* Header */}
-        <div>
-          <h1 className="text-4xl font-black bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
-            My Tasks
-          </h1>
-          <p className="text-slate-400 mt-2">View and manage your assigned tasks</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-4xl font-black bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text text-transparent">
+              My Tasks
+            </h1>
+            <p className="text-slate-400 mt-2">View and manage your assigned tasks</p>
+          </div>
+          <Button
+            onClick={() => setShowCreateTaskModal(true)}
+            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white flex items-center gap-2"
+          >
+            <Plus size={18} />
+            Create Task
+          </Button>
         </div>
 
         {/* Boost Notification Banner */}
@@ -1674,6 +1733,146 @@ const MyTasks = () => {
                     ) : (
                       <span className="flex items-center gap-2">
                         <ArrowRightLeft size={16} /> Delegate Task
+                      </span>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Task Modal */}
+        {showCreateTaskModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl">
+              <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-cyan-500/20 to-blue-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-cyan-500/30 rounded-lg">
+                    <Plus size={24} className="text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Create New Task</h2>
+                    <p className="text-sm text-slate-400">Add a personal task to your list</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowCreateTaskModal(false);
+                      setCreateTaskForm({
+                        title: '',
+                        description: '',
+                        priority: 'medium',
+                        deadline: '',
+                        project: '',
+                      });
+                    }}
+                    className="ml-auto p-2 hover:bg-slate-700 rounded-lg"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Task Title <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={createTaskForm.title}
+                    onChange={(e) => setCreateTaskForm(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Enter task title"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={createTaskForm.description}
+                    onChange={(e) => setCreateTaskForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Enter task description"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none resize-none"
+                    rows={3}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">
+                      Priority
+                    </label>
+                    <select
+                      value={createTaskForm.priority}
+                      onChange={(e) => setCreateTaskForm(prev => ({ ...prev, priority: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-slate-400 mb-2">
+                      Deadline
+                    </label>
+                    <input
+                      type="date"
+                      value={createTaskForm.deadline}
+                      onChange={(e) => setCreateTaskForm(prev => ({ ...prev, deadline: e.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-400 mb-2">
+                    Project/Category
+                  </label>
+                  <input
+                    type="text"
+                    value={createTaskForm.project}
+                    onChange={(e) => setCreateTaskForm(prev => ({ ...prev, project: e.target.value }))}
+                    placeholder="e.g., Personal, Development, Research"
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={() => {
+                      setShowCreateTaskModal(false);
+                      setCreateTaskForm({
+                        title: '',
+                        description: '',
+                        priority: 'medium',
+                        deadline: '',
+                        project: '',
+                      });
+                    }}
+                    variant="outline"
+                    className="flex-1 border-slate-600 text-slate-300"
+                    disabled={creatingTask}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleCreateTask}
+                    className="flex-1 bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
+                    disabled={creatingTask || !createTaskForm.title.trim()}
+                  >
+                    {creatingTask ? (
+                      <span className="flex items-center gap-2">
+                        <span className="animate-spin">⏳</span> Creating...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Plus size={16} /> Create Task
                       </span>
                     )}
                   </Button>

@@ -1,5 +1,30 @@
 import mongoose from 'mongoose';
 
+function normalizeWhatsAppNumber(value) {
+  if (typeof value !== 'string') return value;
+  let normalized = value.trim();
+  if (normalized.length === 0) return normalized;
+
+  if (normalized.toLowerCase().startsWith('whatsapp:')) {
+    normalized = normalized.slice('whatsapp:'.length);
+  }
+
+  // Convert international dial prefix
+  if (normalized.startsWith('00')) {
+    normalized = `+${normalized.slice(2)}`;
+  }
+
+  // Ensure leading + for E.164-like storage
+  if (!normalized.startsWith('+')) {
+    // If user entered digits only, assume it's a country-code number
+    if (/^\d+$/.test(normalized)) {
+      normalized = `+${normalized}`;
+    }
+  }
+
+  return normalized;
+}
+
 const userSchema = new mongoose.Schema(
   {
     firstName: {
@@ -170,6 +195,38 @@ const userSchema = new mongoose.Schema(
       size: String,
     }],
     
+    // WhatsApp Integration
+    whatsappNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      set: normalizeWhatsAppNumber,
+    },
+    whatsappPreferences: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+      // Notification preferences
+      taskAssigned: {
+        type: Boolean,
+        default: true,
+      },
+      taskUpdates: {
+        type: Boolean,
+        default: true,
+      },
+      reminders: {
+        type: Boolean,
+        default: true,
+      },
+      // Custom reminder intervals (in minutes before deadline)
+      reminderIntervals: {
+        type: [Number],
+        default: [1440, 240, 60, 30], // 1 day, 4 hours, 1 hour, 30 min
+      },
+    },
+    
     company: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Company',
@@ -178,5 +235,8 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Ensure a real unique index exists in MongoDB (sparse allows multiple nulls)
+userSchema.index({ whatsappNumber: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model('User', userSchema);
