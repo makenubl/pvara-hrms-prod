@@ -11,6 +11,28 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+function normalizeWhatsAppNumber(value) {
+  if (typeof value !== 'string') return value;
+  let normalized = value.trim();
+  if (normalized.length === 0) return '';
+
+  if (normalized.toLowerCase().startsWith('whatsapp:')) {
+    normalized = normalized.slice('whatsapp:'.length);
+  }
+
+  if (normalized.startsWith('00')) {
+    normalized = `+${normalized.slice(2)}`;
+  }
+
+  if (!normalized.startsWith('+')) {
+    if (/^\d+$/.test(normalized)) {
+      normalized = `+${normalized}`;
+    }
+  }
+
+  return normalized;
+}
+
 // Configure multer for profile photo uploads (memory storage for serverless)
 const photoUpload = multer({
   storage: multer.memoryStorage(),
@@ -96,6 +118,8 @@ router.put('/', authenticate, async (req, res) => {
       firstName,
       lastName,
       phone,
+      whatsappNumber,
+      whatsappPreferences,
       dateOfBirth,
       gender,
       maritalStatus,
@@ -138,6 +162,14 @@ router.put('/', authenticate, async (req, res) => {
     if (phone && !/^\+?[0-9\s-]{10,20}$/.test(phone)) {
       errors.push('Invalid phone number format');
     }
+
+    // WhatsApp number validation
+    if (whatsappNumber !== undefined) {
+      const normalized = normalizeWhatsAppNumber(whatsappNumber);
+      if (normalized && !/^\+?[0-9]{10,15}$/.test(normalized.replace(/[\s-]/g, ''))) {
+        errors.push('Invalid WhatsApp number format');
+      }
+    }
     
     // Date validation
     if (dateOfBirth && new Date(dateOfBirth) > new Date()) {
@@ -166,10 +198,28 @@ router.put('/', authenticate, async (req, res) => {
     
     // Build update object
     const updateFields = {};
+    const unsetFields = {};
     
     if (firstName) updateFields.firstName = firstName;
     if (lastName) updateFields.lastName = lastName;
     if (phone) updateFields.phone = phone;
+    if (whatsappNumber !== undefined) {
+      const normalized = normalizeWhatsAppNumber(whatsappNumber);
+      if (!normalized) {
+        unsetFields.whatsappNumber = 1;
+      } else {
+        updateFields.whatsappNumber = normalized;
+      }
+    }
+    if (whatsappPreferences !== undefined && whatsappPreferences && typeof whatsappPreferences === 'object') {
+      // Only allow specific subfields to be updated
+      const allowedKeys = ['enabled', 'taskAssigned', 'taskUpdates', 'reminders', 'reminderIntervals'];
+      for (const key of allowedKeys) {
+        if (Object.prototype.hasOwnProperty.call(whatsappPreferences, key)) {
+          updateFields[`whatsappPreferences.${key}`] = whatsappPreferences[key];
+        }
+      }
+    }
     if (dateOfBirth) updateFields.dateOfBirth = dateOfBirth;
     if (gender) updateFields.gender = gender;
     if (maritalStatus) updateFields.maritalStatus = maritalStatus;
@@ -191,9 +241,13 @@ router.put('/', authenticate, async (req, res) => {
     if (accountNumber) updateFields.accountNumber = accountNumber;
     if (iban) updateFields.iban = iban;
     
+    const updateOp = {};
+    if (Object.keys(updateFields).length > 0) updateOp.$set = updateFields;
+    if (Object.keys(unsetFields).length > 0) updateOp.$unset = unsetFields;
+
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { $set: updateFields },
+      updateOp,
       { new: true, runValidators: true }
     ).select('-password');
     
@@ -208,6 +262,11 @@ router.put('/', authenticate, async (req, res) => {
     // Handle duplicate CNIC error
     if (error.code === 11000 && error.keyPattern && error.keyPattern.cnic) {
       return res.status(400).json({ message: 'CNIC already exists' });
+    }
+
+    // Handle duplicate WhatsApp number error
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.whatsappNumber) {
+      return res.status(400).json({ message: 'WhatsApp number already exists' });
     }
     
     res.status(500).json({ message: 'Server error', error: error.message });

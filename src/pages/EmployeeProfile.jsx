@@ -25,6 +25,7 @@ const EmployeeProfile = () => {
     lastName: '',
     email: '',
     phone: '',
+    whatsappNumber: '',
     dateOfBirth: '',
     gender: '',
     maritalStatus: '',
@@ -77,6 +78,7 @@ const EmployeeProfile = () => {
         lastName: userData.lastName || '',
         email: userData.email || '',
         phone: userData.phone || '',
+        whatsappNumber: userData.whatsappNumber || '',
         dateOfBirth: userData.dateOfBirth ? userData.dateOfBirth.split('T')[0] : '',
         gender: userData.gender || '',
         maritalStatus: userData.maritalStatus || '',
@@ -126,6 +128,11 @@ const EmployeeProfile = () => {
     // Phone validation (if provided)
     if (profileData.phone && !/^\+?[0-9]{10,15}$/.test(profileData.phone.replace(/[\s-]/g, ''))) {
       errors.push('Phone number must be 10-15 digits');
+    }
+
+    // WhatsApp number validation (if provided)
+    if (profileData.whatsappNumber && !/^\+?[0-9]{10,15}$/.test(profileData.whatsappNumber.replace(/[\s-]/g, ''))) {
+      errors.push('WhatsApp number must be 10-15 digits');
     }
     
     // CNIC validation (if provided) - Pakistan format
@@ -497,6 +504,15 @@ const EmployeeProfile = () => {
                   disabled={!isEditing}
                   icon={Phone}
                   placeholder="+92 300 1234567"
+                />
+                <Input
+                  label="WhatsApp Number"
+                  name="whatsappNumber"
+                  value={profileData.whatsappNumber}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                  icon={Phone}
+                  placeholder="+923001234567"
                 />
                 <Input
                   label="Date of Birth"

@@ -21,6 +21,7 @@ import projectRoutes from '../routes/projects.js';
 import worklogRoutes from '../routes/worklogs.js';
 import highlightRoutes from '../routes/highlights.js';
 import chatRoutes from '../routes/chat.js';
+import whatsappRoutes from '../routes/whatsapp.js';
 
 const app = express();
 
@@ -81,6 +82,8 @@ app.use((req, res, next) => {
 // HTTP request logging
 app.use(morgan('combined'));
 
+// Twilio sends application/x-www-form-urlencoded
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Apply database middleware to API routes
@@ -100,6 +103,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/worklogs', worklogRoutes);
 app.use('/api/highlights', highlightRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
