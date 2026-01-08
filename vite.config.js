@@ -4,6 +4,13 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/setupTests.js'],
+    globals: true,
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
+    exclude: ['backend/**', 'node_modules/**', 'dist/**'],
+  },
   build: {
     // Enable source maps for debugging (optional, remove in production if not needed)
     sourcemap: false,
