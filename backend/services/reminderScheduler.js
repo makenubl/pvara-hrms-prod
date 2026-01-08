@@ -39,6 +39,7 @@ class ReminderScheduler {
 
     // Run immediately on start
     this.checkAndSendReminders();
+    this.checkPersonalReminders(); // Also check personal reminders on start
 
     // Then run periodically
     this.intervalId = setInterval(() => {
@@ -408,13 +409,13 @@ class ReminderScheduler {
   async checkPersonalReminders() {
     try {
       const now = new Date();
-      // Find reminders due within the last minute (to account for check interval)
-      const windowStart = new Date(now.getTime() - 60 * 1000);
+      // Find reminders due within the last 2 minutes (to account for check interval and timing)
+      const windowStart = new Date(now.getTime() - 2 * 60 * 1000);
       const windowEnd = now;
 
       const dueReminders = await Reminder.find({
         status: 'pending',
-        sent: false,
+        sent: { $ne: true },
         reminderTime: { $gte: windowStart, $lte: windowEnd }
       }).populate('user', 'firstName lastName phone whatsappNumber whatsappPreferences');
 
@@ -454,14 +455,25 @@ class ReminderScheduler {
         return;
       }
 
-      const message = `PVARA HRMS - Reminder
-
-${reminder.title}
-
-${reminder.message !== reminder.title ? reminder.message : ''}
-
-Reference: ${reminder.reminderId}
-Time: ${reminder.reminderTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+      // Build message based on type (meeting vs reminder)
+      const isMeeting = reminder.reminderType === 'meeting';
+      const headerType = isMeeting ? 'Meeting Reminder' : 'Reminder';
+      
+      let message = `PVARA HRMS - ${headerType}\n\n${reminder.title}`;
+      
+      if (reminder.message && reminder.message !== reminder.title) {
+        message += `\n\n${reminder.message}`;
+      }
+      
+      if (isMeeting) {
+        if (reminder.meetingWith) message += `\n\nWith: ${reminder.meetingWith}`;
+        if (reminder.meetingLocation) message += `\nLocation: ${reminder.meetingLocation}`;
+      }
+      
+      message += `\n\nReference: ${reminder.reminderId}`;
+      message += `\nTime: ${reminder.reminderTime.toLocaleTimeString('en-GB', { 
+        hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' 
+      })}`;
 
       await whatsappService.sendMessage(phoneNumber, message.trim());
 

@@ -54,6 +54,19 @@ const reminderSchema = new mongoose.Schema(
       enum: ['whatsapp', 'web', 'api'],
       default: 'whatsapp',
     },
+    // Type of reminder (meeting vs general reminder)
+    reminderType: {
+      type: String,
+      enum: ['reminder', 'meeting'],
+      default: 'reminder',
+    },
+    // Meeting-specific fields
+    meetingWith: {
+      type: String, // Names or description of attendees
+    },
+    meetingLocation: {
+      type: String, // Physical location or meeting link
+    },
     // Recurrence settings (optional)
     recurrence: {
       type: String,

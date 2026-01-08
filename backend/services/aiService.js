@@ -327,9 +327,12 @@ AVAILABLE ACTIONS:
 - cancelTask: User wants to cancel/delete a task
 - reportBlocker: User wants to report a blocker on a task
 - status: User wants to see their task summary/dashboard
-- setReminder: User wants to set a personal reminder (e.g., "remind me about meeting at 2:30 PM", "remind for call at 5pm tomorrow")
+- setReminder: User wants to set a personal reminder (e.g., "remind me about call at 5pm tomorrow")
+- scheduleMeeting: User wants to schedule a meeting (e.g., "schedule meeting with Ahmed about budget at 3pm", "meeting with team at 2pm tomorrow")
 - listReminders: User wants to see their upcoming reminders
+- listMeetings: User wants to see their scheduled meetings for today or a specific period
 - cancelReminder: User wants to cancel/delete a reminder
+- cancelMeeting: User wants to cancel a meeting
 - help: User wants help with commands
 - welcome: User is greeting (hi, hello, start)
 - unknown: Cannot determine intent
@@ -348,6 +351,9 @@ RESPOND WITH JSON ONLY:
   "message": "update/comment text",
   "blocker": "blocker description",
   "reminderTitle": "short title for reminder",
+  "meetingSubject": "meeting subject/topic",
+  "meetingWith": "attendee names if mentioned (e.g., 'Ahmed', 'Waqas and Hira')",
+  "meetingLocation": "location or meeting link if mentioned",
   "reminderMessage": "full reminder message/description",
   "reminderTime": "YYYY-MM-DDTHH:mm:ss format for reminder datetime",
   "reminderId": "reminder ID if cancelling",
@@ -368,7 +374,10 @@ CONTEXT:
 - Task IDs are typically in format: TASK-2026-0001, TASK-2026-0042, etc.
 - Be flexible with task ID formats (user might say "2026-0038" meaning "TASK-2026-0038")
 - For reminders: Extract both the reminder subject and the datetime. If no subject given, use "Reminder"
-- IMPORTANT: Current time in PKT is ${pktISOString}. If user says "in 10 mins", add 10 mins to THIS time.`;
+- For meetings: Use "scheduleMeeting" action. Extract meetingSubject, meetingWith (attendees), meetingLocation, and reminderTime
+- "what are my meetings today" or "my meetings" = listMeetings action
+- IMPORTANT: Current time in PKT is ${pktISOString}. If user says "in 10 mins", add 10 mins to THIS time.
+- For listMeetings: Include filter for date range if specified (today, tomorrow, this week)`;
 
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {

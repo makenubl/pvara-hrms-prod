@@ -12,6 +12,10 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let isConnected = false;
 
 async function connectDB() {
+  if (!MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is not set');
+  }
+  
   if (isConnected) return;
   
   try {
@@ -37,6 +41,9 @@ const reminderSchema = new mongoose.Schema({
   sent: { type: Boolean, default: false },
   sentAt: Date,
   source: String,
+  reminderType: { type: String, enum: ['reminder', 'meeting'], default: 'reminder' },
+  meetingWith: String,
+  meetingLocation: String,
   recurrence: String,
   recurring: {
     recurType: String,
@@ -137,17 +144,25 @@ export default async function handler(req, res) {
           continue;
         }
 
-        // Build message
-        const message = `PVARA HRMS - Reminder
+        // Build message based on type (meeting vs reminder)
+        const isMeeting = reminder.reminderType === 'meeting';
+        const headerType = isMeeting ? 'Meeting Reminder' : 'Reminder';
+        
+        let message = `PVARA HRMS - ${headerType}\n\n${reminder.title}`;
+        
+        if (reminder.message && reminder.message !== reminder.title) {
+          message += `\n\n${reminder.message}`;
+        }
+        
+        if (isMeeting) {
+          if (reminder.meetingWith) message += `\n\nWith: ${reminder.meetingWith}`;
+          if (reminder.meetingLocation) message += `\nLocation: ${reminder.meetingLocation}`;
+        }
+        
+        message += `\n\nReference: ${reminder.reminderId}`;
+        message += `\nTime: ${reminder.reminderTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' })}`;
 
-${reminder.title}
-
-${reminder.message && reminder.message !== reminder.title ? reminder.message : ''}
-
-Reference: ${reminder.reminderId}
-Time: ${reminder.reminderTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' })}`.trim();
-
-        await sendWhatsAppMessage(phoneNumber, message);
+        await sendWhatsAppMessage(phoneNumber, message.trim());
 
         // Mark reminder as sent
         reminder.sent = true;

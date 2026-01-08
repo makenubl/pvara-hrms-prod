@@ -6,6 +6,7 @@
 import express from 'express';
 import whatsappService from '../services/whatsappService.js';
 import aiService from '../services/aiService.js';
+import conversationService from '../services/conversationService.js';
 import User from '../models/User.js';
 import Task from '../models/Task.js';
 import Reminder from '../models/Reminder.js';
@@ -127,11 +128,88 @@ router.post('/webhook', async (req, res) => {
       return res.status(200).send('OK');
     }
 
-    // Parse the message to extract action
+    // Check for cancel command
+    if (messageText.toLowerCase().trim() === 'cancel') {
+      await conversationService.clearPendingState(from);
+      await whatsappService.sendMessage(from, 'PVARA HRMS\n\nAction cancelled. How can I help you?');
+      return res.status(200).send('OK');
+    }
+
+    // Check if there's a pending conversation that needs more info
+    const pendingState = await conversationService.getPendingState(from);
+    
+    if (pendingState && pendingState.pendingAction) {
+      // User is continuing a multi-turn conversation
+      logger.info('Continuing pending conversation', { 
+        action: pendingState.pendingAction, 
+        missingFields: pendingState.missingFields 
+      });
+
+      // Merge user's reply with pending data
+      const mergedData = conversationService.mergeUserReply(
+        pendingState.pendingAction,
+        pendingState.pendingData,
+        pendingState.missingFields,
+        messageText
+      );
+
+      // Check if we now have all required fields
+      const check = conversationService.checkRequiredFields(pendingState.pendingAction, mergedData);
+      
+      if (check.isComplete) {
+        // Clear pending state and process the complete action
+        await conversationService.clearPendingState(from);
+        
+        const completeAction = {
+          action: pendingState.pendingAction,
+          ...mergedData
+        };
+        
+        logger.info('Multi-turn conversation complete, processing action', { action: completeAction.action });
+        await processAction(completeAction, user, from);
+      } else {
+        // Still missing fields, update state and prompt for next field
+        await conversationService.setPendingState(
+          from,
+          user._id,
+          pendingState.pendingAction,
+          mergedData,
+          check.missingFields,
+          check.prompt
+        );
+        await whatsappService.sendMessage(from, check.prompt);
+      }
+      
+      return res.status(200).send('OK');
+    }
+
+    // Parse the message to extract action (new conversation)
     const parsedAction = await aiService.parseMessage(messageText, user);
     logger.info('Parsed action', { action: parsedAction.action, userId: user._id });
 
-    // Process the action
+    // Check if action has required fields
+    const fieldCheck = conversationService.checkRequiredFields(parsedAction.action, parsedAction);
+    
+    if (!fieldCheck.isComplete) {
+      // Missing required fields - start multi-turn conversation
+      logger.info('Starting multi-turn conversation', { 
+        action: parsedAction.action, 
+        missingFields: fieldCheck.missingFields 
+      });
+      
+      await conversationService.setPendingState(
+        from,
+        user._id,
+        parsedAction.action,
+        parsedAction,
+        fieldCheck.missingFields,
+        fieldCheck.prompt
+      );
+      await whatsappService.sendMessage(from, fieldCheck.prompt);
+      return res.status(200).send('OK');
+    }
+
+    // Process the action (all fields present)
     await processAction(parsedAction, user, from);
 
     res.status(200).send('OK');
@@ -227,14 +305,28 @@ async function processAction(action, user, phoneNumber) {
         await setReminder(user, phoneNumber, action);
         break;
 
+      case 'scheduleMeeting':
+        await scheduleMeeting(user, phoneNumber, action);
+        break;
+
       case 'listReminders':
       case 'viewReminders':
         await listReminders(user, phoneNumber);
         break;
 
+      case 'listMeetings':
+      case 'viewMeetings':
+        await listMeetings(user, phoneNumber, action.filters);
+        break;
+
       case 'cancelReminder':
       case 'deleteReminder':
         await cancelReminder(user, phoneNumber, action.reminderId);
+        break;
+
+      case 'cancelMeeting':
+      case 'deleteMeeting':
+        await cancelReminder(user, phoneNumber, action.reminderId); // Reuse cancel logic
         break;
 
       case 'unknown':
@@ -1131,6 +1223,192 @@ async function cancelReminder(user, phoneNumber, reminderId) {
 }
 
 /**
+ * Schedule a meeting (creates a reminder with type='meeting')
+ */
+async function scheduleMeeting(user, phoneNumber, parsed) {
+  try {
+    const { meetingSubject, meetingWith, meetingLocation, reminderTime, reminderTitle } = parsed;
+    
+    const subject = meetingSubject || reminderTitle;
+    
+    if (!reminderTime) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Meeting Time Required\n\nPlease specify when the meeting is.\n\nExample: "Schedule meeting with Ahmed about budget at 3pm tomorrow"`);
+      return;
+    }
+
+    if (!subject) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Meeting Subject Required\n\nPlease specify what the meeting is about.\n\nExample: "Meeting with team about project update at 2pm"`);
+      return;
+    }
+
+    // Parse the meeting time - AI returns PKT time, convert to UTC for storage
+    let meetingDate;
+    try {
+      const pktDate = new Date(reminderTime);
+      if (isNaN(pktDate.getTime())) {
+        throw new Error('Invalid date');
+      }
+      // Subtract 5 hours to convert PKT → UTC
+      const pktOffsetMs = 5 * 60 * 60 * 1000;
+      meetingDate = new Date(pktDate.getTime() - pktOffsetMs);
+    } catch (err) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Meeting Error\n\nCould not understand the date/time. Please try again.\n\nExample: "Meeting with client at 3pm on Monday"`);
+      return;
+    }
+
+    // Check if meeting time is in the future
+    if (meetingDate <= new Date()) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Meeting Error\n\nThe meeting time must be in the future. Please try again.`);
+      return;
+    }
+
+    // Generate meeting ID (using MTG prefix)
+    const count = await Reminder.countDocuments({ user: user._id, reminderType: 'meeting' });
+    const meetingId = `MTG-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+
+    // Build meeting title
+    let title = subject;
+    if (meetingWith) {
+      title = `Meeting with ${meetingWith}: ${subject}`;
+    }
+
+    // Create the meeting as a reminder
+    const meeting = new Reminder({
+      reminderId: meetingId,
+      user: user._id,
+      company: getCompanyId(user),
+      title: title,
+      message: `Meeting: ${subject}${meetingWith ? `\nWith: ${meetingWith}` : ''}${meetingLocation ? `\nLocation: ${meetingLocation}` : ''}`,
+      reminderTime: meetingDate,
+      status: 'pending',
+      source: 'whatsapp',
+      reminderType: 'meeting',
+      meetingWith: meetingWith || null,
+      meetingLocation: meetingLocation || null,
+    });
+
+    await meeting.save();
+
+    logger.info('Meeting scheduled via WhatsApp', { meetingId, userId: user._id, meetingTime: meetingDate });
+
+    // Format the date nicely in PKT timezone for display
+    const formattedDate = meetingDate.toLocaleDateString('en-GB', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric',
+      timeZone: 'Asia/Karachi'
+    });
+    const formattedTime = meetingDate.toLocaleTimeString('en-GB', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Karachi'
+    });
+
+    let confirmMsg = `PVARA HRMS - Meeting Scheduled\n\nReference: ${meetingId}\nSubject: ${subject}`;
+    if (meetingWith) confirmMsg += `\nWith: ${meetingWith}`;
+    if (meetingLocation) confirmMsg += `\nLocation: ${meetingLocation}`;
+    confirmMsg += `\nWhen: ${formattedDate} at ${formattedTime}`;
+    confirmMsg += `\n\nYou will receive a WhatsApp reminder at the scheduled time.`;
+
+    await whatsappService.sendMessage(phoneNumber, confirmMsg);
+
+  } catch (error) {
+    logger.error('Error scheduling meeting:', error);
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Error\n\nFailed to schedule meeting. Please try again later.`);
+  }
+}
+
+/**
+ * List user's scheduled meetings
+ */
+async function listMeetings(user, phoneNumber, filters = {}) {
+  try {
+    // Determine date range - default to today
+    const now = new Date();
+    let startDate = new Date(now);
+    startDate.setHours(0, 0, 0, 0);
+    let endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1); // Tomorrow at midnight
+    
+    let periodLabel = 'Today';
+    
+    // Check for date filters
+    if (filters?.period === 'tomorrow') {
+      startDate.setDate(startDate.getDate() + 1);
+      endDate.setDate(endDate.getDate() + 1);
+      periodLabel = 'Tomorrow';
+    } else if (filters?.period === 'week' || filters?.period === 'this week') {
+      endDate.setDate(startDate.getDate() + 7);
+      periodLabel = 'This Week';
+    } else if (filters?.period === 'all') {
+      endDate = null; // No end date
+      periodLabel = 'All Upcoming';
+    }
+
+    const query = {
+      user: user._id,
+      reminderType: 'meeting',
+      status: 'pending',
+      reminderTime: { $gte: startDate }
+    };
+    
+    if (endDate) {
+      query.reminderTime.$lt = endDate;
+    }
+
+    const meetings = await Reminder.find(query)
+      .sort({ reminderTime: 1 })
+      .limit(15);
+
+    if (meetings.length === 0) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - No Meetings ${periodLabel}\n\nYou have no scheduled meetings for ${periodLabel.toLowerCase()}.\n\nTo schedule a meeting, say: "Schedule meeting with [person] about [subject] at [time]"`);
+      return;
+    }
+
+    let message = `PVARA HRMS - Your Meetings (${periodLabel})\n\n`;
+
+    meetings.forEach((meeting, index) => {
+      const date = meeting.reminderTime.toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'Asia/Karachi'
+      });
+      const time = meeting.reminderTime.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Karachi'
+      });
+      
+      message += `${index + 1}. ${meeting.title}\n`;
+      message += `   ID: ${meeting.reminderId}\n`;
+      message += `   When: ${date} at ${time}\n`;
+      if (meeting.meetingWith) message += `   With: ${meeting.meetingWith}\n`;
+      if (meeting.meetingLocation) message += `   Location: ${meeting.meetingLocation}\n`;
+      message += `\n`;
+    });
+
+    message += `To cancel a meeting, say: "Cancel meeting [ID]"`;
+
+    await whatsappService.sendMessage(phoneNumber, message);
+
+  } catch (error) {
+    logger.error('Error listing meetings:', error);
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Error\n\nFailed to retrieve meetings. Please try again later.`);
+  }
+}
+
+/**
  * GET /api/whatsapp/status
  * Check WhatsApp service status
  */
@@ -1229,6 +1507,129 @@ router.post('/trigger-digest', async (req, res) => {
     res.json({ success: true, message: 'Daily digest triggered successfully' });
   } catch (error) {
     logger.error('Failed to trigger daily digest:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * POST /api/whatsapp/trigger-reminders
+ * Manually check and send due reminders (for admin/testing)
+ */
+router.post('/trigger-reminders', async (req, res) => {
+  try {
+    logger.info('Manually triggering reminder check via API');
+    
+    const now = new Date();
+    const windowStart = new Date(now.getTime() - 5 * 60 * 1000); // Last 5 minutes
+    const windowEnd = now;
+
+    const dueReminders = await Reminder.find({
+      status: 'pending',
+      sent: { $ne: true },
+      reminderTime: { $gte: windowStart, $lte: windowEnd }
+    }).populate('user', 'firstName lastName phone whatsappNumber whatsappPreferences');
+
+    logger.info(`Found ${dueReminders.length} due reminders`);
+
+    let sentCount = 0;
+    let errorCount = 0;
+    const results = [];
+
+    for (const reminder of dueReminders) {
+      try {
+        const user = reminder.user;
+        if (!user) {
+          results.push({ id: reminder.reminderId, status: 'skipped', reason: 'No user' });
+          continue;
+        }
+
+        const phoneNumber = user.whatsappNumber || user.phone;
+        if (!phoneNumber) {
+          results.push({ id: reminder.reminderId, status: 'skipped', reason: 'No phone' });
+          continue;
+        }
+
+        if (user.whatsappPreferences?.enabled === false) {
+          results.push({ id: reminder.reminderId, status: 'skipped', reason: 'WhatsApp disabled' });
+          continue;
+        }
+
+        // Build message
+        const isMeeting = reminder.reminderType === 'meeting';
+        const headerType = isMeeting ? 'Meeting Reminder' : 'Reminder';
+        
+        let message = `PVARA HRMS - ${headerType}\n\n${reminder.title}`;
+        if (reminder.message && reminder.message !== reminder.title) {
+          message += `\n\n${reminder.message}`;
+        }
+        if (isMeeting && reminder.meetingWith) {
+          message += `\n\nWith: ${reminder.meetingWith}`;
+        }
+        message += `\n\nReference: ${reminder.reminderId}`;
+        message += `\nTime: ${reminder.reminderTime.toLocaleTimeString('en-GB', { 
+          hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' 
+        })}`;
+
+        await whatsappService.sendMessage(phoneNumber, message.trim());
+
+        // Mark as sent
+        reminder.sent = true;
+        reminder.sentAt = new Date();
+        reminder.status = 'completed';
+        await reminder.save();
+
+        results.push({ id: reminder.reminderId, status: 'sent', to: user.firstName });
+        sentCount++;
+      } catch (error) {
+        results.push({ id: reminder.reminderId, status: 'error', error: error.message });
+        errorCount++;
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      checked: dueReminders.length,
+      sent: sentCount, 
+      errors: errorCount,
+      results 
+    });
+  } catch (error) {
+    logger.error('Failed to trigger reminder check:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+/**
+ * GET /api/whatsapp/pending-reminders
+ * List all pending reminders (for debugging)
+ */
+router.get('/pending-reminders', async (req, res) => {
+  try {
+    const reminders = await Reminder.find({
+      status: 'pending',
+      sent: { $ne: true }
+    })
+    .populate('user', 'firstName lastName phone whatsappNumber')
+    .sort({ reminderTime: 1 })
+    .limit(50);
+
+    res.json({
+      success: true,
+      count: reminders.length,
+      currentTime: new Date().toISOString(),
+      currentTimePKT: new Date().toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }),
+      reminders: reminders.map(r => ({
+        id: r.reminderId,
+        title: r.title,
+        type: r.reminderType || 'reminder',
+        time: r.reminderTime,
+        timePKT: r.reminderTime.toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }),
+        user: r.user ? `${r.user.firstName} ${r.user.lastName}` : 'Unknown',
+        phone: r.user?.whatsappNumber || r.user?.phone || 'No phone',
+      }))
+    });
+  } catch (error) {
+    logger.error('Failed to list pending reminders:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
