@@ -343,15 +343,17 @@ RESPOND WITH JSON ONLY:
 }
 
 CONTEXT:
+- Current DateTime: ${today.toISOString()}
 - User Role: ${user?.role || 'employee'}
 - User Name: ${user?.firstName || 'User'} ${user?.lastName || ''}
 - Only include fields relevant to the action
 - For dates: Convert to YYYY-MM-DD format. "tomorrow" = ${new Date(today.getTime() + 24*60*60*1000).toISOString().split('T')[0]}, "today" = ${currentDate}
 - For times: Use 24-hour format. "2:30 PM" = "14:30:00", "5pm" = "17:00:00"
-- For reminderTime: Combine date and time as YYYY-MM-DDTHH:mm:ss (e.g., "remind at 2:30 PM on 8th Jan 2026" = "2026-01-08T14:30:00")
+- For RELATIVE times: "in 2 minutes" / "after 5 mins" = add minutes to current time. Example: if now is ${today.toISOString()}, "in 2 minutes" = ${new Date(today.getTime() + 2*60*1000).toISOString().slice(0,19)}
+- For reminderTime: Always output as YYYY-MM-DDTHH:mm:ss. Calculate from current time for relative expressions.
 - Task IDs are typically in format: TASK-2026-0001, TASK-2026-0042, etc.
 - Be flexible with task ID formats (user might say "2026-0038" meaning "TASK-2026-0038")
-- For reminders: Extract both the reminder subject and the datetime`;
+- For reminders: Extract both the reminder subject and the datetime. If no subject given, use "Reminder"`;
 
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {

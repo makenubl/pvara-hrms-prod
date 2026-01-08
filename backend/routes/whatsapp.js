@@ -25,6 +25,49 @@ const MANAGER_ROLES = ['admin', 'manager', 'hr', 'chairman', 'executive', 'direc
 const getCompanyId = (user) => user.company?._id || user.company;
 
 /**
+ * Normalize status string to valid task status
+ * @param {string} status - Status string from user
+ * @returns {string|null} - Normalized status or null if invalid
+ */
+const normalizeStatus = (status) => {
+  if (!status) return null;
+  const lower = status.toLowerCase().trim();
+  const statusMap = {
+    'completed': 'completed',
+    'done': 'completed',
+    'finished': 'completed',
+    'complete': 'completed',
+    'in-progress': 'in-progress',
+    'inprogress': 'in-progress',
+    'in progress': 'in-progress',
+    'started': 'in-progress',
+    'working': 'in-progress',
+    'pending': 'pending',
+    'todo': 'pending',
+    'blocked': 'blocked',
+    'stuck': 'blocked',
+    'cancelled': 'cancelled',
+    'canceled': 'cancelled',
+    'cancel': 'cancelled',
+  };
+  return statusMap[lower] || null;
+};
+
+/**
+ * Normalize task ID to proper format
+ * @param {string} taskId - Task ID from user
+ * @returns {string} - Normalized task ID
+ */
+const normalizeTaskId = (taskId) => {
+  if (!taskId) return null;
+  let normalized = taskId.toUpperCase().trim();
+  if (!normalized.startsWith('TASK-')) {
+    normalized = `TASK-${normalized}`;
+  }
+  return normalized;
+};
+
+/**
  * POST /api/whatsapp/webhook
  * Twilio webhook endpoint for incoming WhatsApp messages
  */
@@ -476,13 +519,35 @@ Deadline: ${task.deadline.toLocaleDateString('en-GB', { day: '2-digit', month: '
  * Update task status
  */
 async function updateTaskStatus(user, phoneNumber, taskId, status) {
+  // Validate status is provided
+  if (!status) {
+    await whatsappService.sendMessage(phoneNumber, 
+      `PVARA HRMS - Status Required\n\nPlease specify the new status.\n\nExample: "Task ${taskId} completed"\n\nValid statuses: pending, in-progress, completed, blocked, cancelled`);
+    return;
+  }
+
+  // Normalize the status
+  const normalizedStatus = normalizeStatus(status);
+  if (!normalizedStatus) {
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Invalid Status\n\n"${status}" is not a valid status.\n\nValid statuses: pending, in-progress, completed, blocked, cancelled`);
+    return;
+  }
+
+  // Normalize task ID (add TASK- prefix if missing)
+  let normalizedTaskId = taskId;
+  if (taskId && !taskId.toUpperCase().startsWith('TASK-')) {
+    normalizedTaskId = `TASK-${taskId}`;
+  }
+  normalizedTaskId = normalizedTaskId.toUpperCase();
+
   const task = await Task.findOne({
-    project: taskId,
+    project: normalizedTaskId,
     company: getCompanyId(user)
   });
 
   if (!task) {
-    await whatsappService.sendErrorMessage(phoneNumber, `Task ${taskId} not found`);
+    await whatsappService.sendErrorMessage(phoneNumber, `Task ${normalizedTaskId} not found`);
     return;
   }
 
@@ -501,19 +566,19 @@ async function updateTaskStatus(user, phoneNumber, taskId, status) {
   
   // Build atomic update
   const updateData = {
-    status: status,
+    status: normalizedStatus,
     $push: {
       updates: {
-        message: `Status changed from ${oldStatus} to ${status} via WhatsApp`,
+        message: `Status changed from ${oldStatus} to ${normalizedStatus} via WhatsApp`,
         addedBy: user._id,
         addedAt: new Date(),
-        status: status,
+        status: normalizedStatus,
       }
     }
   };
 
   // Auto-set progress for completed status
-  if (status === 'completed' && oldProgress < 100) {
+  if (normalizedStatus === 'completed' && oldProgress < 100) {
     updateData.progress = 100;
   }
 
@@ -524,14 +589,14 @@ async function updateTaskStatus(user, phoneNumber, taskId, status) {
     { new: true, runValidators: true }
   ).populate('assignedTo', 'firstName lastName');
 
-  if (!updatedTask || updatedTask.status !== status) {
-    logger.error('Task status update failed', { taskId, expected: status, actual: updatedTask?.status, userId: user._id });
-    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${taskId}. Please try again.`);
+  if (!updatedTask || updatedTask.status !== normalizedStatus) {
+    logger.error('Task status update failed', { taskId: normalizedTaskId, expected: normalizedStatus, actual: updatedTask?.status, userId: user._id });
+    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${normalizedTaskId}. Please try again.`);
     return;
   }
 
   logger.info('Task status updated via WhatsApp', { 
-    taskId, 
+    taskId: normalizedTaskId, 
     oldStatus, 
     newStatus: updatedTask.status, 
     userId: user._id,
@@ -625,13 +690,35 @@ async function updateTaskStatusAndProgress(user, phoneNumber, taskId, status, pr
  * Update task progress
  */
 async function updateTaskProgress(user, phoneNumber, taskId, progress) {
+  // Validate progress
+  if (progress === undefined || progress === null) {
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Progress Required\n\nPlease specify the progress percentage.\n\nExample: "Task ${taskId} progress 50%"`);
+    return;
+  }
+
+  const progressNum = parseInt(progress, 10);
+  if (isNaN(progressNum) || progressNum < 0 || progressNum > 100) {
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Invalid Progress\n\n"${progress}" is not valid. Please use a number between 0-100.\n\nExample: "Task ${taskId} progress 75%"`);
+    return;
+  }
+
+  // Normalize task ID
+  const normalizedTaskId = normalizeTaskId(taskId);
+  if (!normalizedTaskId) {
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Task ID Required\n\nPlease specify a task ID.\n\nExample: "TASK-2026-0001 progress 50%"`);
+    return;
+  }
+
   const task = await Task.findOne({
-    project: taskId,
+    project: normalizedTaskId,
     company: getCompanyId(user)
   });
 
   if (!task) {
-    await whatsappService.sendErrorMessage(phoneNumber, `Task ${taskId} not found`);
+    await whatsappService.sendErrorMessage(phoneNumber, `Task ${normalizedTaskId} not found`);
     return;
   }
 
@@ -649,19 +736,19 @@ async function updateTaskProgress(user, phoneNumber, taskId, progress) {
   
   // Use findOneAndUpdate for atomic operation to ensure database persistence
   const updateData = {
-    progress: progress,
+    progress: progressNum,
     $push: {
       updates: {
-        message: `Progress updated from ${oldProgress}% to ${progress}% via WhatsApp`,
+        message: `Progress updated from ${oldProgress}% to ${progressNum}% via WhatsApp`,
         addedBy: user._id,
         addedAt: new Date(),
-        progress: progress,
+        progress: progressNum,
       }
     }
   };
 
   // Auto-complete if progress is 100%
-  if (progress === 100 && task.status !== 'completed') {
+  if (progressNum === 100 && task.status !== 'completed') {
     updateData.status = 'completed';
   }
 
@@ -673,16 +760,16 @@ async function updateTaskProgress(user, phoneNumber, taskId, progress) {
   ).populate('assignedTo', 'firstName lastName');
 
   if (!updatedTask) {
-    logger.error('Task update failed - document not found after update', { taskId, userId: user._id });
-    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${taskId}. Please try again.`);
+    logger.error('Task update failed - document not found after update', { taskId: normalizedTaskId, userId: user._id });
+    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${normalizedTaskId}. Please try again.`);
     return;
   }
 
   // Verify the update actually persisted by checking the returned document
-  if (updatedTask.progress !== progress) {
+  if (updatedTask.progress !== progressNum) {
     logger.error('Task progress mismatch after save', { 
-      taskId, 
-      expected: progress, 
+      taskId: normalizedTaskId, 
+      expected: progressNum, 
       actual: updatedTask.progress,
       userId: user._id 
     });
@@ -691,7 +778,7 @@ async function updateTaskProgress(user, phoneNumber, taskId, progress) {
   }
 
   logger.info('Task progress updated via WhatsApp', { 
-    taskId, 
+    taskId: normalizedTaskId, 
     oldProgress, 
     newProgress: updatedTask.progress, 
     userId: user._id,
