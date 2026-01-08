@@ -26,7 +26,7 @@ const EmployeeDashboard = () => {
     name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Employee',
     employeeId: user?.employeeId || 'EMP-001',
     department: user?.department || 'Engineering',
-    position: user?.position || 'Software Developer',
+    position: typeof user?.position === 'object' ? user?.position?.title : user?.position || 'Software Developer',
     email: user?.email || '',
     joinDate: user?.joinDate || '2024-01-15',
     manager: 'Sarah Johnson',

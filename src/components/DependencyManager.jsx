@@ -16,7 +16,7 @@ import {
   ChevronUp,
   Paperclip,
 } from 'lucide-react';
-import { Card, Button, Badge, Modal, Input, Select } from './UI';
+import { Card, Button, Badge, Modal, Input, Select, SmartInput, SmartTextarea } from './UI';
 import taskService from '../services/taskService';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
@@ -115,27 +115,22 @@ export const CreateDependencyModal = ({ isOpen, onClose, taskId, employees, onCr
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            What do you need? <span className="text-red-400">*</span>
-          </label>
-          <Input
+          <SmartInput
+            label="What do you need?"
+            required
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="e.g., Budget approval document"
-            required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Details (Optional)
-          </label>
-          <textarea
+          <SmartTextarea
+            label="Details (Optional)"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Provide more context about what you need..."
             rows={3}
-            className="w-full bg-slate-800/50 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:ring-2 focus:ring-cyan-400/50 focus:border-cyan-400/50 resize-none"
           />
         </div>
 

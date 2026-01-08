@@ -123,6 +123,14 @@ textarea:focus {
   outline-offset: 2px;
 }
 
+/* Enable spell checking on all text inputs and textareas */
+input[type="text"],
+input[type="search"],
+input:not([type]),
+textarea {
+  -webkit-spellcheck: true;
+}
+
 /* Animation */
 @keyframes slideIn {
   from {

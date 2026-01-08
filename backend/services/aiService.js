@@ -26,16 +26,24 @@ class AIService {
    * @returns {Promise<object>} - Parsed action object
    */
   async parseMessage(message, user) {
-    // Fast-path trivial commands without spending OpenAI tokens
-    const quickRuleBased = this.ruleBasedParse(message, user);
-    if (['help', 'welcome', 'status'].includes(quickRuleBased.action)) {
-      return quickRuleBased;
+    // Fast-path: Only handle trivial commands without spending OpenAI tokens
+    const lowerMessage = message.toLowerCase().trim();
+    
+    // Trivial commands - don't need AI
+    if (['help', 'commands', '?', 'menu'].includes(lowerMessage)) {
+      return { action: 'help' };
+    }
+    if (['hi', 'hello', 'start', 'hey'].includes(lowerMessage)) {
+      return { action: 'welcome' };
+    }
+    if (['status', 'summary', 'dashboard'].includes(lowerMessage)) {
+      return { action: 'status' };
     }
 
-    // Prefer OpenAI for more robust parsing when available
+    // For everything else, use AI (preferred) or fallback to rule-based
     if (this.initialize() && this.openaiApiKey) {
       try {
-        logger.info('🧠 Using OpenAI for WhatsApp message parsing', {
+        logger.info('Using GPT-5.2 for WhatsApp message parsing', {
           userId: user?._id?.toString?.() || undefined,
           role: user?.role,
           messageLength: message?.length,
@@ -44,13 +52,20 @@ class AIService {
         if (aiResult?.action && aiResult.action !== 'unknown') {
           return aiResult;
         }
+        // If AI returned unknown, still return it with original message for feedback
+        return { action: 'unknown', originalMessage: message };
       } catch (error) {
         logger.error('AI parsing failed, falling back to rule-based:', error);
       }
+    } else {
+      logger.warn('OpenAI not available, using rule-based parsing', {
+        initialized: this.initialize(),
+        hasApiKey: !!this.openaiApiKey,
+      });
     }
 
-    // Fallback to rule-based patterns
-    return quickRuleBased;
+    // Fallback to rule-based patterns only if AI is not available
+    return this.ruleBasedParse(message, user);
   }
 
   /**
@@ -178,6 +193,23 @@ class AIService {
       /^(?:complete|finish|start|block)\s+(?:task\s+)?([A-Z]{2,4}-\d{4}-\d+)/i,
     ];
 
+    // Delete/Cancel task patterns
+    const deletePatterns = [
+      /^(?:delete|remove|cancel)\s+(?:task\s+)?([A-Z]{2,4}-\d{4}-\d+)/i,
+      /^(?:task\s+)?([A-Z]{2,4}-\d{4}-\d+)\s+(?:delete|remove|cancel)(?:\s+(?:this\s+)?task)?/i,
+      /^([A-Z]{2,4}-\d{4}-\d+)\s+delete\s+(?:this\s+)?task/i,
+    ];
+
+    for (const pattern of deletePatterns) {
+      const deleteMatch = message.match(pattern);
+      if (deleteMatch) {
+        return {
+          action: 'cancelTask',
+          taskId: deleteMatch[1].toUpperCase()
+        };
+      }
+    }
+
     for (const pattern of statusPatterns) {
       const statusMatch = message.match(pattern);
       if (statusMatch) {
@@ -262,27 +294,54 @@ class AIService {
    * @returns {Promise<object>} - Parsed action
    */
   async aiParse(message, user) {
-    const systemPrompt = `You are a task management assistant. Parse the user's message and extract the intended action.
+    const today = new Date();
+    const currentDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const currentDateFormatted = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-Return a JSON object with the following structure:
+    const systemPrompt = `You are a professional task management assistant for PVARA HRMS. Parse the user's WhatsApp message and extract the intended action.
+
+CURRENT DATE: ${currentDateFormatted} (${currentDate})
+
+AVAILABLE ACTIONS:
+- createTask: User wants to create a new task
+- assignTask: User wants to assign a task to someone else (managers only)
+- updateTaskStatus: User wants to change task status
+- updateTaskProgress: User wants to update task progress percentage
+- updateTaskStatusAndProgress: User wants to update both status and progress
+- addTaskUpdate: User wants to add a comment/update to a task
+- viewTask: User wants to see task details
+- listTasks: User wants to see their tasks
+- listDeadlines: User wants to see upcoming deadlines
+- cancelTask: User wants to cancel/delete a task
+- reportBlocker: User wants to report a blocker on a task
+- status: User wants to see their task summary/dashboard
+- help: User wants help with commands
+- welcome: User is greeting (hi, hello, start)
+- unknown: Cannot determine intent
+
+RESPOND WITH JSON ONLY:
 {
-  "action": "createTask" | "assignTask" | "updateTaskStatus" | "updateTaskProgress" | "addTaskUpdate" | "listTasks" | "viewTask" | "help" | "welcome" | "unknown",
-  "taskId": "TASK-2026-XXXX" (if updating existing task),
-  "title": "task title" (if creating task),
-  "description": "task description" (if provided),
-  "priority": "low" | "medium" | "high" | "critical",
-  "deadline": "ISO date string or null",
-  "status": "pending" | "in-progress" | "completed" | "blocked",
-  "progress": 0-100 (number),
-  "assigneeName": "name or email" (if assigning to someone),
-  "message": "update message" (if adding an update),
-  "blocker": "blocker description" (if reporting blocker)
+  "action": "<action from list above>",
+  "taskId": "TASK-YYYY-NNNN or similar format if mentioned",
+  "title": "task title if creating",
+  "description": "task description if provided",
+  "priority": "low|medium|high|critical",
+  "deadline": "YYYY-MM-DD format, calculate from relative dates like 'tomorrow', 'next Friday', '8th Jan 2026'",
+  "status": "pending|in-progress|completed|blocked|cancelled",
+  "progress": 0-100 as number,
+  "assigneeName": "name or email if assigning",
+  "message": "update/comment text",
+  "blocker": "blocker description",
+  "filters": { "status": "...", "priority": "..." } for listTasks
 }
 
-User's role: ${user?.role || 'employee'}
-User's name: ${user?.firstName || 'User'} ${user?.lastName || ''}
-
-Only include fields that are relevant to the action.`;
+CONTEXT:
+- User Role: ${user?.role || 'employee'}
+- User Name: ${user?.firstName || 'User'} ${user?.lastName || ''}
+- Only include fields relevant to the action
+- For dates: Convert to YYYY-MM-DD format. "tomorrow" = ${new Date(today.getTime() + 24*60*60*1000).toISOString().split('T')[0]}, "today" = ${currentDate}
+- Task IDs are typically in format: TASK-2026-0001, TASK-2026-0042, etc.
+- Be flexible with task ID formats (user might say "2026-0038" meaning "TASK-2026-0038")`;
 
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -292,13 +351,13 @@ Only include fields that are relevant to the action.`;
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-5.2',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: message }
           ],
-          temperature: 0.3,
-          max_tokens: 500,
+          temperature: 0.2,
+          max_completion_tokens: 500,
         }),
       });
 
@@ -313,17 +372,32 @@ Only include fields that are relevant to the action.`;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
+        
+        // Normalize task ID if partial
+        if (parsed.taskId && !parsed.taskId.startsWith('TASK-')) {
+          parsed.taskId = `TASK-${parsed.taskId}`;
+        }
+        
         // If model produced both status and progress for a task, handle as a combined update
         if (parsed?.taskId && parsed?.status && typeof parsed?.progress === 'number') {
           parsed.action = 'updateTaskStatusAndProgress';
           parsed.status = this.normalizeStatus(parsed.status);
           parsed.progress = Math.min(100, Math.max(0, parsed.progress));
         }
+        
+        // Convert deadline string to Date if present
+        if (parsed.deadline && typeof parsed.deadline === 'string') {
+          const deadlineDate = new Date(parsed.deadline);
+          if (!isNaN(deadlineDate.getTime())) {
+            parsed.deadline = deadlineDate;
+          }
+        }
 
-        logger.info('AI parsed message:', { action: parsed.action });
+        logger.info('AI parsed message:', { action: parsed.action, taskId: parsed.taskId });
         return parsed;
       }
 
+      logger.warn('AI response did not contain valid JSON:', { content });
       return { action: 'unknown', originalMessage: message };
     } catch (error) {
       logger.error('AI parsing error:', error);
@@ -353,10 +427,19 @@ Only include fields that are relevant to the action.`;
       result.title = result.title.replace(priorityMatch[0], '').trim();
     }
 
-    // Extract deadline
+    // Extract deadline - multiple patterns
     const deadlinePatterns = [
+      // "deadline 8th Jan 2026" or "deadline 8th Jan,2026"
+      { pattern: /(?:due|by|deadline)[:\s,]*\s*(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[,\s]*(\d{4})/i, type: 'dmy-text' },
+      // "8th Jan 2026" or "8 January 2026" anywhere in text
+      { pattern: /(\d{1,2})(?:st|nd|rd|th)?\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)[,\s]*(\d{4})/i, type: 'dmy-text' },
+      // "Jan 8, 2026" or "January 8th, 2026"
+      { pattern: /(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?[,\s]*(\d{4})/i, type: 'mdy-text' },
+      // "due 08/01/2026" or "by 8-1-2026"
       { pattern: /(?:due|by|deadline)[:\s]?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i, type: 'date' },
+      // Relative: today, tomorrow, next week
       { pattern: /(?:due|by|deadline)[:\s]?\s*(today|tomorrow|next week|next month)/i, type: 'relative' },
+      // Day names: by Friday
       { pattern: /(?:due|by|deadline)[:\s]?\s*(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i, type: 'day' },
       { pattern: /(?:by|due)\s+(today|tomorrow)/i, type: 'relative' },
     ];
@@ -364,7 +447,15 @@ Only include fields that are relevant to the action.`;
     for (const { pattern, type } of deadlinePatterns) {
       const match = text.match(pattern);
       if (match) {
-        result.deadline = this.parseDeadline(match[1], type);
+        if (type === 'dmy-text') {
+          // Parse "8th Jan 2026" format - match[1]=day, match[2]=month, match[3]=year
+          result.deadline = this.parseTextDate(match[1], match[2], match[3]);
+        } else if (type === 'mdy-text') {
+          // Parse "Jan 8, 2026" format - match[1]=month, match[2]=day, match[3]=year
+          result.deadline = this.parseTextDate(match[2], match[1], match[3]);
+        } else {
+          result.deadline = this.parseDeadline(match[1], type);
+        }
         result.title = result.title.replace(match[0], '').trim();
         break;
       }
@@ -428,6 +519,41 @@ Only include fields that are relevant to the action.`;
     }
 
     return null;
+  }
+
+  /**
+   * Parse text-based date like "8th Jan 2026"
+   * @param {string} day - Day number (e.g., "8" or "8th")
+   * @param {string} month - Month name (e.g., "Jan" or "January")
+   * @param {string} year - Year (e.g., "2026")
+   * @returns {Date|null} - Parsed date
+   */
+  parseTextDate(day, month, year) {
+    const monthMap = {
+      'jan': 0, 'january': 0,
+      'feb': 1, 'february': 1,
+      'mar': 2, 'march': 2,
+      'apr': 3, 'april': 3,
+      'may': 4,
+      'jun': 5, 'june': 5,
+      'jul': 6, 'july': 6,
+      'aug': 7, 'august': 7,
+      'sep': 8, 'september': 8,
+      'oct': 9, 'october': 9,
+      'nov': 10, 'november': 10,
+      'dec': 11, 'december': 11,
+    };
+
+    const dayNum = parseInt(day.replace(/\D/g, ''), 10);
+    const monthNum = monthMap[month.toLowerCase()];
+    const yearNum = parseInt(year, 10);
+
+    if (isNaN(dayNum) || monthNum === undefined || isNaN(yearNum)) {
+      return null;
+    }
+
+    const date = new Date(yearNum, monthNum, dayNum, 23, 59, 59);
+    return isNaN(date.getTime()) ? null : date;
   }
 
   /**

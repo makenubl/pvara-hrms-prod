@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 
+// Re-export Smart Text components for convenience
+export { SmartInput, SmartTextarea } from './SmartTextInput';
+
 // Tooltip Component with 1-second delay
 export const Tooltip = ({ children, content, delay = 1000, position = 'top' }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -204,6 +207,7 @@ export const Input = ({
   error,
   required = false,
   className = '',
+  spellCheck = true,
   ...props
 }) => (
   <div className="space-y-2">
@@ -214,7 +218,36 @@ export const Input = ({
       </label>
     )}
     <input
+      spellCheck={spellCheck}
       className={`w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-slate-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/60 focus:border-cyan-300/50 transition ${
+        error ? 'border-rose-400/60 focus:ring-rose-400/70' : ''
+      } ${className}`}
+      {...props}
+    />
+    {error && <p className="text-sm text-rose-300">{error}</p>}
+  </div>
+);
+
+export const Textarea = ({
+  label,
+  error,
+  required = false,
+  className = '',
+  rows = 3,
+  spellCheck = true,
+  ...props
+}) => (
+  <div className="space-y-2">
+    {label && (
+      <label className="block text-sm font-semibold text-slate-200">
+        {label}
+        {required && <span className="text-rose-400">*</span>}
+      </label>
+    )}
+    <textarea
+      rows={rows}
+      spellCheck={spellCheck}
+      className={`w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-slate-400 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-cyan-400/60 focus:border-cyan-300/50 transition resize-none ${
         error ? 'border-rose-400/60 focus:ring-rose-400/70' : ''
       } ${className}`}
       {...props}

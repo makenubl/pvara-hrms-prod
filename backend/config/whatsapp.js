@@ -33,143 +33,178 @@ const whatsappConfig = {
     return process.env.OPENAI_API_KEY;
   },
   
-  // Message templates
+  // Message templates - Professional formatting
   templates: {
-    welcome: `🎉 Welcome to PVARA HRMS WhatsApp Bot!
+    welcome: `PVARA HRMS - WhatsApp Integration
 
-You can manage your tasks using natural language. Here are some examples:
+Your account is now connected. You can manage tasks using simple commands:
 
-📝 *Create Task:*
+CREATE TASK:
 "Create task: Review budget report by Friday"
 "New task: Prepare presentation, high priority, due tomorrow"
 
-✏️ *Update Task:*
+UPDATE TASK:
 "Update task TASK-2026-0001: progress 50%"
 "Task TASK-2026-0001 is completed"
-"Mark TASK-2026-0001 as in-progress"
 
-📋 *View Tasks:*
+VIEW TASKS:
 "Show my tasks"
 "List pending tasks"
-"What are my deadlines?"
 
-🎤 *Voice Notes:*
-Send a voice note describing your task update!
+VOICE NOTES:
+Send a voice note describing your task update.
 
-Type *help* for more commands.`,
+Type "help" for the complete command list.`,
 
-    help: `📚 *PVARA HRMS WhatsApp Commands*
+    help: `PVARA HRMS - Command Reference
 
-*Task Management:*
-• "Create task: [title]" - Create a new task
-• "Create task: [title], priority [low/medium/high/critical], due [date]"
-• "Update task [ID]: [status/progress]"
-• "Show my tasks" - List your tasks
-• "Show task [ID]" - View task details
+TASK MANAGEMENT:
+- "Create task: [title]" - Create a new task
+- "Create task: [title], priority [low/medium/high/critical], due [date]"
+- "Update task [ID]: [status/progress]"
+- "Show my tasks" - List your tasks
+- "Show task [ID]" - View task details
 
-*For Admins/Managers:*
-• "Assign task: [title] to [name/email]"
-• "Create task for [name]: [title]"
+FOR MANAGERS:
+- "Assign task: [title] to [name/email]"
+- "Create task for [name]: [title]"
 
-*Status Updates:*
-• "Task [ID] progress 50%"
-• "Task [ID] is completed"
-• "Task [ID] blocked: [reason]"
+STATUS UPDATES:
+- "Task [ID] progress 50%"
+- "Task [ID] is completed"
+- "Task [ID] blocked: [reason]"
 
-*Voice Notes:*
-Send a voice message and I'll process it as a task update!
+VOICE NOTES:
+Send a voice message and it will be processed as a task update.
 
-*Other:*
-• "help" - Show this help
-• "status" - Check your task summary`,
+OTHER:
+- "help" - Show this reference
+- "status" - View your task summary`,
 
-    taskCreated: (task) => `✅ *Task Created Successfully!*
+    taskCreated: (task) => `PVARA HRMS - Task Created
 
-📋 *${task.title}*
-🆔 ID: ${task.project}
-📊 Priority: ${task.priority}
-📅 Deadline: ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'Not set'}
-👤 Assigned to: ${task.assignedTo?.firstName || 'You'} ${task.assignedTo?.lastName || ''}
+Title: ${task.title}
+Reference: ${task.project}
+Priority: ${task.priority?.toUpperCase() || 'MEDIUM'}
+Deadline: ${task.deadline ? new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not specified'}
+Assigned to: ${task.assignedTo?.firstName || 'You'} ${task.assignedTo?.lastName || ''}
 
-You'll receive reminders before the deadline.`,
+You will receive reminders before the deadline.`,
 
-    taskAssigned: (task, assignee) => `📋 *New Task Assigned to You!*
+    taskAssigned: (task, assignee) => `PVARA HRMS - New Task Assignment
 
-📝 *${task.title}*
-🆔 ID: ${task.project}
-📊 Priority: ${task.priority}
-📅 Deadline: ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'Not set'}
-👤 Assigned by: ${task.assignedBy?.firstName || 'Admin'} ${task.assignedBy?.lastName || ''}
+Title: ${task.title}
+Reference: ${task.project}
+Priority: ${task.priority?.toUpperCase() || 'MEDIUM'}
+Deadline: ${task.deadline ? new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not specified'}
+Assigned by: ${task.assignedBy?.firstName || 'Management'} ${task.assignedBy?.lastName || ''}
+${task.description ? `\nDescription:\n${task.description}` : ''}
 
-${task.description ? `📄 Description: ${task.description}` : ''}
+Please acknowledge receipt and provide updates as you progress.`,
 
-Reply with updates anytime!`,
+    taskUpdated: (task, updateType) => `PVARA HRMS - Task Updated
 
-    taskUpdated: (task, updateType) => `✅ *Task Updated!*
+Title: ${task.title}
+Reference: ${task.project}
+Status: ${task.status?.toUpperCase()}
+Progress: ${task.progress}%
+${updateType === 'status' ? `\nStatus changed to: ${task.status}` : ''}
+${updateType === 'progress' ? `\nProgress updated to: ${task.progress}%` : ''}`,
 
-📋 *${task.title}*
-🆔 ID: ${task.project}
-📊 Status: ${task.status}
-📈 Progress: ${task.progress}%
+    taskReminder: (task, timeLeft) => `PVARA HRMS - Deadline Reminder
 
-${updateType === 'status' ? `Status changed to: ${task.status}` : ''}
-${updateType === 'progress' ? `Progress updated to: ${task.progress}%` : ''}`,
+Title: ${task.title}
+Reference: ${task.project}
+Deadline: ${new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} at ${new Date(task.deadline).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+Time Remaining: ${timeLeft}
 
-    taskReminder: (task, timeLeft) => `⏰ *Task Deadline Reminder!*
+Current Status: ${task.status}
+Progress: ${task.progress}%
 
-📋 *${task.title}*
-🆔 ID: ${task.project}
-📅 Deadline: ${new Date(task.deadline).toLocaleDateString()} at ${new Date(task.deadline).toLocaleTimeString()}
-⏳ Time left: ${timeLeft}
-
-📊 Current Progress: ${task.progress}%
-📌 Status: ${task.status}
-
-Reply with an update or type "help" for commands.`,
+Please update your progress or contact your supervisor if assistance is required.`,
 
     taskList: (tasks) => {
       if (!tasks || tasks.length === 0) {
-        return `📋 *Your Tasks*\n\nNo tasks found! 🎉`;
+        return `PVARA HRMS - Your Tasks\n\nNo open tasks at this time.`;
       }
       
-      let message = `📋 *Your Tasks (${tasks.length})*\n\n`;
+      let message = `PVARA HRMS - Your Tasks (${tasks.length})\n\n`;
       tasks.slice(0, 10).forEach((task, index) => {
-        const statusEmoji = {
-          'pending': '⏸️',
-          'in-progress': '🔄',
-          'completed': '✅',
-          'blocked': '🚫',
-          'cancelled': '❌'
-        }[task.status] || '📌';
+        const status = task.status?.toUpperCase() || 'PENDING';
+        const priority = task.priority?.toUpperCase() || 'MEDIUM';
         
-        const priorityEmoji = {
-          'critical': '🔴',
-          'high': '🟠',
-          'medium': '🟡',
-          'low': '🟢'
-        }[task.priority] || '⚪';
-        
-        message += `${index + 1}. ${statusEmoji} *${task.title}*\n`;
-        message += `   🆔 ${task.project} | ${priorityEmoji} ${task.priority}\n`;
-        message += `   📈 ${task.progress}% | 📅 ${task.deadline ? new Date(task.deadline).toLocaleDateString() : 'No deadline'}\n\n`;
+        message += `${index + 1}. ${task.title}\n`;
+        message += `   Ref: ${task.project} | Priority: ${priority}\n`;
+        message += `   Status: ${status} | Progress: ${task.progress}%\n`;
+        message += `   Deadline: ${task.deadline ? new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Not set'}\n\n`;
       });
       
       if (tasks.length > 10) {
-        message += `_...and ${tasks.length - 10} more tasks_`;
+        message += `...and ${tasks.length - 10} additional tasks. Log in to view all.`;
       }
       
       return message;
     },
 
-    error: (message) => `❌ *Error*\n\n${message}\n\nType *help* for available commands.`,
+    dailyDigest: (user, tasks, stats) => {
+      const date = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+      
+      let message = `PVARA HRMS - Daily Task Summary\n${date}\n\nGood morning, ${user.firstName}.\n\n`;
+      
+      message += `TASK OVERVIEW:\n`;
+      message += `- Open Tasks: ${stats.open}\n`;
+      message += `- In Progress: ${stats.inProgress}\n`;
+      message += `- Due Today: ${stats.dueToday}\n`;
+      message += `- Overdue: ${stats.overdue}\n\n`;
+      
+      if (stats.dueToday > 0 || stats.overdue > 0) {
+        message += `PRIORITY ITEMS:\n`;
+        const priorityTasks = tasks.filter(t => {
+          const deadline = t.deadline ? new Date(t.deadline) : null;
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          return deadline && deadline < tomorrow;
+        }).slice(0, 5);
+        
+        priorityTasks.forEach((task, i) => {
+          const isOverdue = new Date(task.deadline) < new Date();
+          message += `${i + 1}. ${task.title}\n`;
+          message += `   Ref: ${task.project} | ${isOverdue ? 'OVERDUE' : 'Due Today'}\n`;
+        });
+        message += '\n';
+      }
+      
+      if (stats.open === 0 && stats.overdue === 0) {
+        message += `All tasks are up to date. Have a productive day.`;
+      } else {
+        message += `Log in to the HRMS portal for complete details.`;
+      }
+      
+      return message;
+    },
+
+    error: (message) => `PVARA HRMS - Error\n\n${message}\n\nType "help" for available commands.`,
     
-    notRegistered: `❌ *Phone Number Not Registered*
+    notRegistered: `PVARA HRMS - Registration Required
 
-Your WhatsApp number is not linked to any PVARA HRMS account.
+Your WhatsApp number is not linked to an HRMS account.
 
-Please update your profile in the HRMS system with your WhatsApp number to use this feature.`,
+Please update your profile in the PVARA HRMS system with your WhatsApp number to use this service.`,
 
-    processing: `⏳ Processing your request...`,
+    processing: `Processing your request...`,
+    
+    taskOverdue: (task) => `PVARA HRMS - Overdue Task Notice
+
+Title: ${task.title}
+Reference: ${task.project}
+Original Deadline: ${new Date(task.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+
+Current Status: ${task.status}
+Progress: ${task.progress}%
+
+This task requires immediate attention. Please update your progress or escalate to your supervisor.`,
   },
   
   // Reminder intervals (in minutes before deadline)
@@ -179,6 +214,13 @@ Please update your profile in the HRMS system with your WhatsApp number to use t
     { minutes: 60, label: '1 hour' },               // 1 hour before
     { minutes: 30, label: '30 minutes' },           // 30 minutes before
   ],
+  
+  // Daily digest settings
+  dailyDigest: {
+    enabled: true,
+    time: '10:30', // 24-hour format, Pakistan time (PKT)
+    timezone: 'Asia/Karachi',
+  },
 };
 
 export default whatsappConfig;
