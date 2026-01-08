@@ -459,27 +459,48 @@ async function updateTaskStatus(user, phoneNumber, taskId, status) {
   }
 
   const oldStatus = task.status;
-  task.status = status;
+  const oldProgress = task.progress;
+  
+  // Build atomic update
+  const updateData = {
+    status: status,
+    $push: {
+      updates: {
+        message: `Status changed from ${oldStatus} to ${status} via WhatsApp`,
+        addedBy: user._id,
+        addedAt: new Date(),
+        status: status,
+      }
+    }
+  };
 
   // Auto-set progress for completed status
-  if (status === 'completed' && task.progress < 100) {
-    task.progress = 100;
+  if (status === 'completed' && oldProgress < 100) {
+    updateData.progress = 100;
   }
 
-  // Add update entry
-  task.updates.push({
-    message: `Status changed from ${oldStatus} to ${status} via WhatsApp`,
-    addedBy: user._id,
-    addedAt: new Date(),
-    status: status,
+  // Atomic update with verification
+  const updatedTask = await Task.findOneAndUpdate(
+    { _id: task._id },
+    updateData,
+    { new: true, runValidators: true }
+  ).populate('assignedTo', 'firstName lastName');
+
+  if (!updatedTask || updatedTask.status !== status) {
+    logger.error('Task status update failed', { taskId, expected: status, actual: updatedTask?.status, userId: user._id });
+    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${taskId}. Please try again.`);
+    return;
+  }
+
+  logger.info('Task status updated via WhatsApp', { 
+    taskId, 
+    oldStatus, 
+    newStatus: updatedTask.status, 
+    userId: user._id,
+    verified: true 
   });
 
-  await task.save();
-  await task.populate('assignedTo', 'firstName lastName');
-
-  logger.info('Task status updated via WhatsApp', { taskId, oldStatus, newStatus: status, userId: user._id });
-
-  await whatsappService.sendTaskUpdateConfirmation(phoneNumber, task, 'status');
+  await whatsappService.sendTaskUpdateConfirmation(phoneNumber, updatedTask, 'status');
 }
 
 /**
@@ -510,40 +531,56 @@ async function updateTaskStatusAndProgress(user, phoneNumber, taskId, status, pr
   const oldStatus = task.status;
   const oldProgress = task.progress;
 
-  task.status = status;
-
   const normalizedProgress = Math.min(100, Math.max(0, parseInt(progress, 10)));
-  if (!Number.isNaN(normalizedProgress)) {
-    task.progress = normalizedProgress;
+  const newProgress = !Number.isNaN(normalizedProgress) ? normalizedProgress : 
+    (status === 'completed' ? 100 : oldProgress);
+
+  // Build atomic update
+  const updateData = {
+    status: status,
+    progress: newProgress,
+    $push: {
+      updates: {
+        message: `Status/progress updated via WhatsApp (status: ${oldStatus} → ${status}, progress: ${oldProgress}% → ${newProgress}%)`,
+        addedBy: user._id,
+        addedAt: new Date(),
+        status: status,
+        progress: newProgress,
+      }
+    }
+  };
+
+  // Atomic update with verification
+  const updatedTask = await Task.findOneAndUpdate(
+    { _id: task._id },
+    updateData,
+    { new: true, runValidators: true }
+  ).populate('assignedTo', 'firstName lastName');
+
+  if (!updatedTask || updatedTask.status !== status) {
+    logger.error('Task status+progress update failed', { 
+      taskId, 
+      expectedStatus: status, 
+      actualStatus: updatedTask?.status,
+      expectedProgress: newProgress,
+      actualProgress: updatedTask?.progress,
+      userId: user._id 
+    });
+    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${taskId}. Please try again.`);
+    return;
   }
-
-  // If user did NOT provide a usable progress, then apply completion default
-  if ((progress === undefined || progress === null || Number.isNaN(normalizedProgress)) && status === 'completed') {
-    task.progress = 100;
-  }
-
-  // Add update entry
-  task.updates.push({
-    message: `Status/progress updated via WhatsApp (status: ${oldStatus} → ${task.status}, progress: ${oldProgress}% → ${task.progress}%)`,
-    addedBy: user._id,
-    addedAt: new Date(),
-    status: task.status,
-    progress: task.progress,
-  });
-
-  await task.save();
-  await task.populate('assignedTo', 'firstName lastName');
 
   logger.info('Task status+progress updated via WhatsApp', {
     taskId,
     oldStatus,
-    newStatus: task.status,
+    newStatus: updatedTask.status,
     oldProgress,
-    newProgress: task.progress,
+    newProgress: updatedTask.progress,
     userId: user._id,
+    verified: true,
   });
 
-  await whatsappService.sendTaskUpdateConfirmation(phoneNumber, task, 'status');
+  await whatsappService.sendTaskUpdateConfirmation(phoneNumber, updatedTask, 'status');
 }
 
 /**
@@ -571,27 +608,59 @@ async function updateTaskProgress(user, phoneNumber, taskId, progress) {
   }
 
   const oldProgress = task.progress;
-  task.progress = progress;
+  
+  // Use findOneAndUpdate for atomic operation to ensure database persistence
+  const updateData = {
+    progress: progress,
+    $push: {
+      updates: {
+        message: `Progress updated from ${oldProgress}% to ${progress}% via WhatsApp`,
+        addedBy: user._id,
+        addedAt: new Date(),
+        progress: progress,
+      }
+    }
+  };
 
   // Auto-complete if progress is 100%
   if (progress === 100 && task.status !== 'completed') {
-    task.status = 'completed';
+    updateData.status = 'completed';
   }
 
-  // Add update entry
-  task.updates.push({
-    message: `Progress updated from ${oldProgress}% to ${progress}% via WhatsApp`,
-    addedBy: user._id,
-    addedAt: new Date(),
-    progress: progress,
+  // Atomic update with verification
+  const updatedTask = await Task.findOneAndUpdate(
+    { _id: task._id },
+    updateData,
+    { new: true, runValidators: true }
+  ).populate('assignedTo', 'firstName lastName');
+
+  if (!updatedTask) {
+    logger.error('Task update failed - document not found after update', { taskId, userId: user._id });
+    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${taskId}. Please try again.`);
+    return;
+  }
+
+  // Verify the update actually persisted by checking the returned document
+  if (updatedTask.progress !== progress) {
+    logger.error('Task progress mismatch after save', { 
+      taskId, 
+      expected: progress, 
+      actual: updatedTask.progress,
+      userId: user._id 
+    });
+    await whatsappService.sendErrorMessage(phoneNumber, `Failed to save progress update. Please try again.`);
+    return;
+  }
+
+  logger.info('Task progress updated via WhatsApp', { 
+    taskId, 
+    oldProgress, 
+    newProgress: updatedTask.progress, 
+    userId: user._id,
+    verified: true 
   });
 
-  await task.save();
-  await task.populate('assignedTo', 'firstName lastName');
-
-  logger.info('Task progress updated via WhatsApp', { taskId, oldProgress, newProgress: progress, userId: user._id });
-
-  await whatsappService.sendTaskUpdateConfirmation(phoneNumber, task, 'progress');
+  await whatsappService.sendTaskUpdateConfirmation(phoneNumber, updatedTask, 'progress');
 }
 
 /**
