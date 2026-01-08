@@ -90,7 +90,8 @@ function generateDigestMessage(user, tasks, stats) {
     weekday: 'long', 
     day: '2-digit', 
     month: 'long', 
-    year: 'numeric' 
+    year: 'numeric',
+    timeZone: 'Asia/Karachi'
   });
   
   let message = `PVARA HRMS - Daily Task Summary\n${date}\n\nGood morning, ${user.firstName}.\n\n`;

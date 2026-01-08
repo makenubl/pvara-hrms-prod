@@ -355,8 +355,11 @@ async function listUpcomingDeadlines(user, phoneNumber) {
  * View task details
  */
 async function viewTaskDetails(user, phoneNumber, taskId) {
+  // Normalize task ID
+  const normalizedTaskId = normalizeTaskId(taskId);
+  
   const task = await Task.findOne({
-    project: taskId,
+    project: normalizedTaskId,
     company: getCompanyId(user)
   })
     .populate('assignedTo', 'firstName lastName email')
@@ -364,7 +367,7 @@ async function viewTaskDetails(user, phoneNumber, taskId) {
     .populate('secondaryAssignees', 'firstName lastName');
 
   if (!task) {
-    await whatsappService.sendErrorMessage(phoneNumber, `Task ${taskId} not found`);
+    await whatsappService.sendErrorMessage(phoneNumber, `Task ${normalizedTaskId || taskId} not found`);
     return;
   }
 
@@ -611,13 +614,29 @@ async function updateTaskStatus(user, phoneNumber, taskId, status) {
  * This is used when the user explicitly provides both (e.g., "completed 50%").
  */
 async function updateTaskStatusAndProgress(user, phoneNumber, taskId, status, progress) {
+  // Normalize task ID
+  const normalizedTaskId = normalizeTaskId(taskId);
+  if (!normalizedTaskId) {
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Task ID Required\n\nPlease specify a task ID.\n\nExample: "TASK-2026-0001 completed 50%"`);
+    return;
+  }
+
+  // Normalize status
+  const normalizedStatus = normalizeStatus(status);
+  if (!normalizedStatus) {
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Invalid Status\n\n"${status}" is not valid.\n\nValid statuses: pending, in-progress, completed, blocked, cancelled`);
+    return;
+  }
+
   const task = await Task.findOne({
-    project: taskId,
+    project: normalizedTaskId,
     company: getCompanyId(user)
   });
 
   if (!task) {
-    await whatsappService.sendErrorMessage(phoneNumber, `Task ${taskId} not found`);
+    await whatsappService.sendErrorMessage(phoneNumber, `Task ${normalizedTaskId} not found`);
     return;
   }
 
@@ -634,21 +653,21 @@ async function updateTaskStatusAndProgress(user, phoneNumber, taskId, status, pr
   const oldStatus = task.status;
   const oldProgress = task.progress;
 
-  const normalizedProgress = Math.min(100, Math.max(0, parseInt(progress, 10)));
-  const newProgress = !Number.isNaN(normalizedProgress) ? normalizedProgress : 
-    (status === 'completed' ? 100 : oldProgress);
+  const parsedProgress = parseInt(progress, 10);
+  const normalizedProgress = !isNaN(parsedProgress) ? Math.min(100, Math.max(0, parsedProgress)) : 
+    (normalizedStatus === 'completed' ? 100 : oldProgress);
 
   // Build atomic update
   const updateData = {
-    status: status,
-    progress: newProgress,
+    status: normalizedStatus,
+    progress: normalizedProgress,
     $push: {
       updates: {
-        message: `Status/progress updated via WhatsApp (status: ${oldStatus} → ${status}, progress: ${oldProgress}% → ${newProgress}%)`,
+        message: `Status/progress updated via WhatsApp (status: ${oldStatus} → ${normalizedStatus}, progress: ${oldProgress}% → ${normalizedProgress}%)`,
         addedBy: user._id,
         addedAt: new Date(),
-        status: status,
-        progress: newProgress,
+        status: normalizedStatus,
+        progress: normalizedProgress,
       }
     }
   };
@@ -660,21 +679,21 @@ async function updateTaskStatusAndProgress(user, phoneNumber, taskId, status, pr
     { new: true, runValidators: true }
   ).populate('assignedTo', 'firstName lastName');
 
-  if (!updatedTask || updatedTask.status !== status) {
+  if (!updatedTask || updatedTask.status !== normalizedStatus) {
     logger.error('Task status+progress update failed', { 
-      taskId, 
-      expectedStatus: status, 
+      taskId: normalizedTaskId, 
+      expectedStatus: normalizedStatus, 
       actualStatus: updatedTask?.status,
-      expectedProgress: newProgress,
+      expectedProgress: normalizedProgress,
       actualProgress: updatedTask?.progress,
       userId: user._id 
     });
-    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${taskId}. Please try again.`);
+    await whatsappService.sendErrorMessage(phoneNumber, `Failed to update task ${normalizedTaskId}. Please try again.`);
     return;
   }
 
   logger.info('Task status+progress updated via WhatsApp', {
-    taskId,
+    taskId: normalizedTaskId,
     oldStatus,
     newStatus: updatedTask.status,
     oldProgress,
@@ -792,13 +811,16 @@ async function updateTaskProgress(user, phoneNumber, taskId, progress) {
  * Add update/comment to task
  */
 async function addTaskUpdate(user, phoneNumber, taskId, message) {
+  // Normalize task ID
+  const normalizedTaskId = normalizeTaskId(taskId);
+  
   const task = await Task.findOne({
-    project: taskId,
+    project: normalizedTaskId,
     company: getCompanyId(user)
   });
 
   if (!task) {
-    await whatsappService.sendErrorMessage(phoneNumber, `Task ${taskId} not found`);
+    await whatsappService.sendErrorMessage(phoneNumber, `Task ${normalizedTaskId || taskId} not found`);
     return;
   }
 
@@ -835,14 +857,17 @@ The update has been recorded.`);
  * Cancel/Delete a task
  */
 async function cancelTask(user, phoneNumber, taskId) {
+  // Normalize task ID
+  const normalizedTaskId = normalizeTaskId(taskId);
+  
   const task = await Task.findOne({
-    project: taskId,
+    project: normalizedTaskId,
     company: getCompanyId(user)
   });
 
   if (!task) {
     await whatsappService.sendMessage(phoneNumber, 
-      `PVARA HRMS - Task Not Found\n\nTask ${taskId} was not found in the system.`);
+      `PVARA HRMS - Task Not Found\n\nTask ${normalizedTaskId || taskId} was not found in the system.`);
     return;
   }
 
@@ -854,7 +879,7 @@ async function cancelTask(user, phoneNumber, taskId) {
 
   if (!isAssignee && !isCreator && !isAdmin) {
     await whatsappService.sendMessage(phoneNumber, 
-      `PVARA HRMS - Permission Denied\n\nYou do not have permission to cancel task ${taskId}.`);
+      `PVARA HRMS - Permission Denied\n\nYou do not have permission to cancel task ${normalizedTaskId}.`);
     return;
   }
 
@@ -879,13 +904,16 @@ async function cancelTask(user, phoneNumber, taskId) {
  * Report blocker on task
  */
 async function reportBlocker(user, phoneNumber, taskId, blocker) {
+  // Normalize task ID
+  const normalizedTaskId = normalizeTaskId(taskId);
+  
   const task = await Task.findOne({
-    project: taskId,
+    project: normalizedTaskId,
     company: getCompanyId(user)
   });
 
   if (!task) {
-    await whatsappService.sendErrorMessage(phoneNumber, `Task ${taskId} not found`);
+    await whatsappService.sendErrorMessage(phoneNumber, `Task ${normalizedTaskId || taskId} not found`);
     return;
   }
 
@@ -936,20 +964,24 @@ async function setReminder(user, phoneNumber, parsed) {
       return;
     }
 
-    // Parse the reminder time
+    // Parse the reminder time - AI returns PKT time, convert to UTC for storage
     let reminderDate;
     try {
-      reminderDate = new Date(reminderTime);
-      if (isNaN(reminderDate.getTime())) {
+      // The AI returns time in PKT (UTC+5), we need to convert to UTC for server storage
+      const pktDate = new Date(reminderTime);
+      if (isNaN(pktDate.getTime())) {
         throw new Error('Invalid date');
       }
+      // Subtract 5 hours to convert PKT → UTC
+      const pktOffsetMs = 5 * 60 * 60 * 1000;
+      reminderDate = new Date(pktDate.getTime() - pktOffsetMs);
     } catch (err) {
       await whatsappService.sendMessage(phoneNumber,
         `PVARA HRMS - Reminder Error\n\nCould not understand the date/time. Please try again.\n\nExample: "Remind me about meeting at 3pm on 10th Jan"`);
       return;
     }
 
-    // Check if reminder time is in the future
+    // Check if reminder time is in the future (compare in UTC)
     if (reminderDate <= new Date()) {
       await whatsappService.sendMessage(phoneNumber,
         `PVARA HRMS - Reminder Error\n\nThe reminder time must be in the future. Please try again.`);
@@ -976,17 +1008,19 @@ async function setReminder(user, phoneNumber, parsed) {
 
     logger.info('Reminder created via WhatsApp', { reminderId, userId: user._id, reminderTime: reminderDate });
 
-    // Format the date nicely
+    // Format the date nicely in PKT timezone for display
     const formattedDate = reminderDate.toLocaleDateString('en-GB', { 
       weekday: 'long', 
       day: 'numeric', 
       month: 'long', 
-      year: 'numeric' 
+      year: 'numeric',
+      timeZone: 'Asia/Karachi'
     });
     const formattedTime = reminderDate.toLocaleTimeString('en-GB', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: true 
+      hour12: true,
+      timeZone: 'Asia/Karachi'
     });
 
     await whatsappService.sendMessage(phoneNumber,
@@ -1024,12 +1058,14 @@ async function listReminders(user, phoneNumber) {
       const date = reminder.reminderTime.toLocaleDateString('en-GB', {
         day: 'numeric',
         month: 'short',
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'Asia/Karachi'
       });
       const time = reminder.reminderTime.toLocaleTimeString('en-GB', {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true
+        hour12: true,
+        timeZone: 'Asia/Karachi'
       });
       
       message += `${index + 1}. ${reminder.title}\n`;

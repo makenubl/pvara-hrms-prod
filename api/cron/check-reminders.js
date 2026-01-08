@@ -145,7 +145,7 @@ ${reminder.title}
 ${reminder.message && reminder.message !== reminder.title ? reminder.message : ''}
 
 Reference: ${reminder.reminderId}
-Time: ${reminder.reminderTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}`.trim();
+Time: ${reminder.reminderTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Karachi' })}`.trim();
 
         await sendWhatsAppMessage(phoneNumber, message);
 

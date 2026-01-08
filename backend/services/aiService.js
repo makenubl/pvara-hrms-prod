@@ -295,8 +295,20 @@ class AIService {
    */
   async aiParse(message, user) {
     const today = new Date();
-    const currentDate = today.toISOString().split('T')[0]; // YYYY-MM-DD
-    const currentDateFormatted = today.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    
+    // Convert to Pakistan time (UTC+5) for display to AI
+    const pktOffset = 5 * 60 * 60 * 1000; // 5 hours in ms
+    const pktTime = new Date(today.getTime() + pktOffset);
+    const pktISOString = pktTime.toISOString().slice(0, 19); // Without Z suffix
+    
+    const currentDate = pktISOString.split('T')[0]; // YYYY-MM-DD in PKT
+    const currentDateFormatted = today.toLocaleDateString('en-GB', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric',
+      timeZone: 'Asia/Karachi'
+    });
 
     const systemPrompt = `You are a professional task management assistant for PVARA HRMS. Parse the user's WhatsApp message and extract the intended action.
 
@@ -343,17 +355,20 @@ RESPOND WITH JSON ONLY:
 }
 
 CONTEXT:
-- Current DateTime: ${today.toISOString()}
+- Current DateTime (PKT): ${currentDateFormatted} at ${pktISOString.split('T')[1]}
+- Current DateTime ISO (PKT): ${pktISOString}
+- Timezone: Pakistan Time (PKT, UTC+5) - ALL times should be calculated in PKT
 - User Role: ${user?.role || 'employee'}
 - User Name: ${user?.firstName || 'User'} ${user?.lastName || ''}
 - Only include fields relevant to the action
-- For dates: Convert to YYYY-MM-DD format. "tomorrow" = ${new Date(today.getTime() + 24*60*60*1000).toISOString().split('T')[0]}, "today" = ${currentDate}
+- For dates: Convert to YYYY-MM-DD format. "tomorrow" = ${new Date(pktTime.getTime() + 24*60*60*1000).toISOString().slice(0,10)}, "today" = ${currentDate}
 - For times: Use 24-hour format. "2:30 PM" = "14:30:00", "5pm" = "17:00:00"
-- For RELATIVE times: "in 2 minutes" / "after 5 mins" = add minutes to current time. Example: if now is ${today.toISOString()}, "in 2 minutes" = ${new Date(today.getTime() + 2*60*1000).toISOString().slice(0,19)}
-- For reminderTime: Always output as YYYY-MM-DDTHH:mm:ss. Calculate from current time for relative expressions.
+- For RELATIVE times: "in 2 minutes" / "after 5 mins" = add minutes to current PKT time. Example: if now is ${pktISOString} (PKT), "in 2 minutes" = ${new Date(pktTime.getTime() + 2*60*1000).toISOString().slice(0,19)}
+- For reminderTime: Always output as YYYY-MM-DDTHH:mm:ss in PKT. Calculate from current PKT time for relative expressions.
 - Task IDs are typically in format: TASK-2026-0001, TASK-2026-0042, etc.
 - Be flexible with task ID formats (user might say "2026-0038" meaning "TASK-2026-0038")
-- For reminders: Extract both the reminder subject and the datetime. If no subject given, use "Reminder"`;
+- For reminders: Extract both the reminder subject and the datetime. If no subject given, use "Reminder"
+- IMPORTANT: Current time in PKT is ${pktISOString}. If user says "in 10 mins", add 10 mins to THIS time.`;
 
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
