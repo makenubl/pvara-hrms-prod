@@ -265,9 +265,16 @@ async function processAction(action, user, phoneNumber) {
         break;
 
       case 'updateTaskStatus':
-        logger.info('Processing updateTaskStatus', { taskId: action.taskId, status: action.status, rawAction: action });
+        logger.info('Processing updateTaskStatus', { taskId: action.taskId, status: action.status, progress: action.progress, rawAction: action });
         if (!action.taskId) {
           await whatsappService.sendMessage(phoneNumber, 'PVARA HRMS - Error\n\nPlease specify a task ID.\n\nExample: "Task TASK-2026-0001 completed"');
+          break;
+        }
+        // If status is missing/invalid but progress is present, treat as progress update
+        const normalizedActionStatus = normalizeStatus(action.status);
+        if (!normalizedActionStatus && action.progress !== undefined) {
+          logger.info('Falling back to updateTaskProgress (status invalid, progress present)', { taskId: action.taskId, progress: action.progress });
+          await updateTaskProgress(user, phoneNumber, action.taskId, action.progress);
           break;
         }
         await updateTaskStatus(user, phoneNumber, action.taskId, action.status);

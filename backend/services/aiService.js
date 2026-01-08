@@ -224,20 +224,27 @@ class AIService {
       }
     }
 
-    // Update task progress
+    // Update task progress - check before status patterns as "50%" is progress, not status
     const progressPatterns = [
       /^(?:task\s+)?([A-Z]{2,4}-\d{4}-\d+)\s+(?:progress\s+)?(\d+)\s*%?/i,
       /^(?:update|set)\s+(?:task\s+)?([A-Z]{2,4}-\d{4}-\d+)\s+(?:progress\s+(?:to\s+)?)?(\d+)\s*%?/i,
       /^progress\s+(?:of\s+)?(?:task\s+)?([A-Z]{2,4}-\d{4}-\d+)\s+(?:is\s+|to\s+)?(\d+)\s*%?/i,
+      // "update the status of task 0044 to 50%" - user says "status" but means progress
+      /update\s+(?:the\s+)?(?:status|progress)\s+(?:of\s+)?(?:the\s+)?(?:task\s+)?(\d{4}-\d+|[A-Z]{2,4}-\d{4}-\d+)\s+(?:to\s+)?(\d+)\s*%/i,
     ];
 
     for (const pattern of progressPatterns) {
       const progressMatch = message.match(pattern);
       if (progressMatch) {
         const progress = Math.min(100, Math.max(0, parseInt(progressMatch[2])));
+        // Normalize taskId - add TASK- prefix if just numbers like "0044"
+        let taskId = progressMatch[1].toUpperCase();
+        if (/^\d{4}-\d+$/.test(taskId)) {
+          taskId = `TASK-${taskId}`;
+        }
         return {
           action: 'updateTaskProgress',
-          taskId: progressMatch[1].toUpperCase(),
+          taskId: taskId,
           progress: progress
         };
       }

@@ -23,6 +23,10 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/cron/*.js",
+      "use": "@vercel/node"
     }
   ],
   "headers": [
@@ -37,6 +41,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/cron/:path*",
+      "destination": "/api/cron/:path*"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/index.js"
