@@ -265,6 +265,7 @@ async function processAction(action, user, phoneNumber) {
         break;
 
       case 'updateTaskStatus':
+        logger.info('Processing updateTaskStatus', { taskId: action.taskId, status: action.status, rawAction: action });
         if (!action.taskId) {
           await whatsappService.sendMessage(phoneNumber, 'PVARA HRMS - Error\n\nPlease specify a task ID.\n\nExample: "Task TASK-2026-0001 completed"');
           break;
@@ -1056,17 +1057,35 @@ async function setReminder(user, phoneNumber, parsed) {
       return;
     }
 
-    // Parse the reminder time - AI returns PKT time, convert to UTC for storage
+    // Parse the reminder time - AI returns PKT time string (no timezone suffix)
+    // We need to interpret it as PKT and convert to UTC for storage
     let reminderDate;
     try {
-      // The AI returns time in PKT (UTC+5), we need to convert to UTC for server storage
-      const pktDate = new Date(reminderTime);
-      if (isNaN(pktDate.getTime())) {
+      // The AI returns time like "2026-01-09T14:30:00" which is PKT
+      // Parse it and treat as PKT (UTC+5)
+      
+      // First, parse as-is (JavaScript will treat it as local time on server)
+      // Since server is UTC, we need to manually handle the PKT offset
+      
+      // Create date from the string (interpreted as UTC since no suffix)
+      const parsedDate = new Date(reminderTime);
+      if (isNaN(parsedDate.getTime())) {
         throw new Error('Invalid date');
       }
-      // Subtract 5 hours to convert PKT → UTC
+      
+      // The AI already calculated the time in PKT. The string represents PKT time.
+      // When parsed without timezone, JS treats it as local time (UTC on Vercel).
+      // So "14:30:00" becomes 2:30 PM UTC, but it should be 2:30 PM PKT = 9:30 AM UTC.
+      // We need to SUBTRACT 5 hours to convert PKT → UTC.
       const pktOffsetMs = 5 * 60 * 60 * 1000;
-      reminderDate = new Date(pktDate.getTime() - pktOffsetMs);
+      reminderDate = new Date(parsedDate.getTime() - pktOffsetMs);
+      
+      logger.info('Reminder time parsing', {
+        input: reminderTime,
+        parsedAsUTC: parsedDate.toISOString(),
+        convertedToUTC: reminderDate.toISOString(),
+        displayPKT: reminderDate.toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }),
+      });
     } catch (err) {
       await whatsappService.sendMessage(phoneNumber,
         `PVARA HRMS - Reminder Error\n\nCould not understand the date/time. Please try again.\n\nExample: "Remind me about meeting at 3pm on 10th Jan"`);

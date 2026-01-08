@@ -105,14 +105,7 @@ class ConversationService {
           meetingSubject: 'What is the meeting about?',
         }
       },
-      updateTaskStatus: {
-        required: ['taskId', 'status'],
-        optional: ['progress'],
-        prompts: {
-          taskId: 'Which task? Please provide the task ID (e.g., TASK-2026-0001)',
-          status: 'What is the new status?\n\nOptions: pending, in-progress, completed, blocked',
-        }
-      },
+      // Note: updateTaskStatus handles its own validation, don't check here
       assignTask: {
         required: ['title', 'assigneeName'],
         optional: ['description', 'priority', 'deadline'],

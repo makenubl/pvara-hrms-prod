@@ -115,11 +115,16 @@ export default async function handler(req, res) {
 
     const dueReminders = await Reminder.find({
       status: 'pending',
-      sent: false,
+      sent: { $ne: true }, // Match false or undefined
       reminderTime: { $gte: windowStart, $lte: windowEnd }
     }).populate('user', 'firstName lastName phone whatsappNumber whatsappPreferences');
 
-    console.log(`Found ${dueReminders.length} due reminders`);
+    console.log(`Found ${dueReminders.length} due reminders`, {
+      now: now.toISOString(),
+      nowPKT: now.toLocaleString('en-GB', { timeZone: 'Asia/Karachi' }),
+      windowStart: windowStart.toISOString(),
+      windowEnd: windowEnd.toISOString(),
+    });
 
     let sentCount = 0;
     let errorCount = 0;
