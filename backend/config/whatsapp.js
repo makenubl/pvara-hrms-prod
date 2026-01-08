@@ -64,6 +64,7 @@ TASK MANAGEMENT:
 - "Update task [ID]: [status/progress]"
 - "Show my tasks" - List your tasks
 - "Show task [ID]" - View task details
+- "Cancel task [ID]" - Cancel a task
 
 FOR MANAGERS:
 - "Assign task: [title] to [name/email]"
@@ -73,6 +74,12 @@ STATUS UPDATES:
 - "Task [ID] progress 50%"
 - "Task [ID] is completed"
 - "Task [ID] blocked: [reason]"
+
+REMINDERS:
+- "Remind me about [subject] at [time] on [date]"
+- "Set reminder for [subject] at [time]"
+- "Show my reminders" - List upcoming reminders
+- "Cancel reminder [ID]" - Cancel a reminder
 
 VOICE NOTES:
 Send a voice message and it will be processed as a task update.

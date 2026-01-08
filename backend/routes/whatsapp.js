@@ -8,6 +8,7 @@ import whatsappService from '../services/whatsappService.js';
 import aiService from '../services/aiService.js';
 import User from '../models/User.js';
 import Task from '../models/Task.js';
+import Reminder from '../models/Reminder.js';
 import logger from '../config/logger.js';
 import whatsappConfig from '../config/whatsapp.js';
 
@@ -15,6 +16,13 @@ const router = express.Router();
 
 // Manager roles that can assign tasks to others
 const MANAGER_ROLES = ['admin', 'manager', 'hr', 'chairman', 'executive', 'director', 'hod', 'teamlead'];
+
+/**
+ * Helper to get company ID from user (handles populated or unpopulated company)
+ * @param {object} user - User object
+ * @returns {ObjectId} - Company ID
+ */
+const getCompanyId = (user) => user.company?._id || user.company;
 
 /**
  * POST /api/whatsapp/webhook
@@ -120,6 +128,10 @@ async function processAction(action, user, phoneNumber) {
         break;
 
       case 'viewTask':
+        if (!action.taskId) {
+          await whatsappService.sendMessage(phoneNumber, 'PVARA HRMS - Error\n\nPlease specify a task ID.\n\nExample: "Show task TASK-2026-0001"');
+          break;
+        }
         await viewTaskDetails(user, phoneNumber, action.taskId);
         break;
 
@@ -132,6 +144,10 @@ async function processAction(action, user, phoneNumber) {
         break;
 
       case 'updateTaskStatus':
+        if (!action.taskId) {
+          await whatsappService.sendMessage(phoneNumber, 'PVARA HRMS - Error\n\nPlease specify a task ID.\n\nExample: "Task TASK-2026-0001 completed"');
+          break;
+        }
         await updateTaskStatus(user, phoneNumber, action.taskId, action.status);
         break;
 
@@ -140,6 +156,10 @@ async function processAction(action, user, phoneNumber) {
         break;
 
       case 'updateTaskProgress':
+        if (!action.taskId) {
+          await whatsappService.sendMessage(phoneNumber, 'PVARA HRMS - Error\n\nPlease specify a task ID.\n\nExample: "Task TASK-2026-0001 progress 50%"');
+          break;
+        }
         await updateTaskProgress(user, phoneNumber, action.taskId, action.progress);
         break;
 
@@ -153,7 +173,25 @@ async function processAction(action, user, phoneNumber) {
 
       case 'deleteTask':
       case 'cancelTask':
+        if (!action.taskId) {
+          await whatsappService.sendMessage(phoneNumber, 'PVARA HRMS - Error\n\nPlease specify a task ID.\n\nExample: "Cancel task TASK-2026-0001"');
+          break;
+        }
         await cancelTask(user, phoneNumber, action.taskId);
+        break;
+
+      case 'setReminder':
+        await setReminder(user, phoneNumber, action);
+        break;
+
+      case 'listReminders':
+      case 'viewReminders':
+        await listReminders(user, phoneNumber);
+        break;
+
+      case 'cancelReminder':
+      case 'deleteReminder':
+        await cancelReminder(user, phoneNumber, action.reminderId);
         break;
 
       case 'unknown':
@@ -177,7 +215,7 @@ async function sendStatusSummary(user, phoneNumber) {
       { assignedTo: user._id },
       { secondaryAssignees: user._id }
     ],
-    company: user.company,
+    company: getCompanyId(user),
     status: { $ne: 'cancelled' }
   });
 
@@ -215,7 +253,7 @@ async function listUserTasks(user, phoneNumber, filters = {}) {
       { assignedTo: user._id },
       { secondaryAssignees: user._id }
     ],
-    company: user.company,
+    company: getCompanyId(user),
   };
 
   if (filters.status) query.status = filters.status;
@@ -245,7 +283,7 @@ async function listUpcomingDeadlines(user, phoneNumber) {
       { assignedTo: user._id },
       { secondaryAssignees: user._id }
     ],
-    company: user.company,
+    company: getCompanyId(user),
     status: { $nin: ['completed', 'cancelled'] },
     deadline: { $gte: now, $lte: nextWeek }
   }).sort({ deadline: 1 });
@@ -276,7 +314,7 @@ async function listUpcomingDeadlines(user, phoneNumber) {
 async function viewTaskDetails(user, phoneNumber, taskId) {
   const task = await Task.findOne({
     project: taskId,
-    company: user.company
+    company: getCompanyId(user)
   })
     .populate('assignedTo', 'firstName lastName email')
     .populate('assignedBy', 'firstName lastName')
@@ -335,7 +373,7 @@ async function createTask(user, phoneNumber, action) {
   }
 
   // Generate task ID
-  const taskCount = await Task.countDocuments({ company: user.company });
+  const taskCount = await Task.countDocuments({ company: getCompanyId(user) });
   const year = new Date().getFullYear();
   const taskId = `TASK-${year}-${String(taskCount + 1).padStart(4, '0')}`;
 
@@ -349,7 +387,7 @@ async function createTask(user, phoneNumber, action) {
     priority: action.priority || 'medium',
     status: 'pending',
     deadline: action.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default: 1 week
-    company: user.company,
+    company: getCompanyId(user),
     progress: 0,
   });
 
@@ -375,7 +413,7 @@ async function assignTask(user, phoneNumber, action) {
   // Find assignee by name or email
   const assigneeName = action.assigneeName.toLowerCase();
   const assignee = await User.findOne({
-    company: user.company,
+    company: getCompanyId(user),
     $or: [
       { email: assigneeName },
       { email: { $regex: assigneeName, $options: 'i' } },
@@ -391,7 +429,7 @@ async function assignTask(user, phoneNumber, action) {
   }
 
   // Generate task ID
-  const taskCount = await Task.countDocuments({ company: user.company });
+  const taskCount = await Task.countDocuments({ company: getCompanyId(user) });
   const year = new Date().getFullYear();
   const taskId = `TASK-${year}-${String(taskCount + 1).padStart(4, '0')}`;
 
@@ -405,7 +443,7 @@ async function assignTask(user, phoneNumber, action) {
     priority: action.priority || 'medium',
     status: 'pending',
     deadline: action.deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    company: user.company,
+    company: getCompanyId(user),
     progress: 0,
   });
 
@@ -440,7 +478,7 @@ Deadline: ${task.deadline.toLocaleDateString('en-GB', { day: '2-digit', month: '
 async function updateTaskStatus(user, phoneNumber, taskId, status) {
   const task = await Task.findOne({
     project: taskId,
-    company: user.company
+    company: getCompanyId(user)
   });
 
   if (!task) {
@@ -510,7 +548,7 @@ async function updateTaskStatus(user, phoneNumber, taskId, status) {
 async function updateTaskStatusAndProgress(user, phoneNumber, taskId, status, progress) {
   const task = await Task.findOne({
     project: taskId,
-    company: user.company
+    company: getCompanyId(user)
   });
 
   if (!task) {
@@ -589,7 +627,7 @@ async function updateTaskStatusAndProgress(user, phoneNumber, taskId, status, pr
 async function updateTaskProgress(user, phoneNumber, taskId, progress) {
   const task = await Task.findOne({
     project: taskId,
-    company: user.company
+    company: getCompanyId(user)
   });
 
   if (!task) {
@@ -669,7 +707,7 @@ async function updateTaskProgress(user, phoneNumber, taskId, progress) {
 async function addTaskUpdate(user, phoneNumber, taskId, message) {
   const task = await Task.findOne({
     project: taskId,
-    company: user.company
+    company: getCompanyId(user)
   });
 
   if (!task) {
@@ -712,7 +750,7 @@ The update has been recorded.`);
 async function cancelTask(user, phoneNumber, taskId) {
   const task = await Task.findOne({
     project: taskId,
-    company: user.company
+    company: getCompanyId(user)
   });
 
   if (!task) {
@@ -756,7 +794,7 @@ async function cancelTask(user, phoneNumber, taskId) {
 async function reportBlocker(user, phoneNumber, taskId, blocker) {
   const task = await Task.findOne({
     project: taskId,
-    company: user.company
+    company: getCompanyId(user)
   });
 
   if (!task) {
@@ -796,6 +834,177 @@ Reference: ${taskId}
 Issue: "${blocker}"
 
 Task status has been changed to BLOCKED. Management will be notified.`);
+}
+
+/**
+ * Set a personal reminder
+ */
+async function setReminder(user, phoneNumber, parsed) {
+  try {
+    const { reminderTitle, reminderMessage, reminderTime } = parsed;
+    
+    if (!reminderTime) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Reminder Error\n\nPlease specify when you want to be reminded.\n\nExample: "Remind me about the meeting at 2:30 PM tomorrow"`);
+      return;
+    }
+
+    // Parse the reminder time
+    let reminderDate;
+    try {
+      reminderDate = new Date(reminderTime);
+      if (isNaN(reminderDate.getTime())) {
+        throw new Error('Invalid date');
+      }
+    } catch (err) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Reminder Error\n\nCould not understand the date/time. Please try again.\n\nExample: "Remind me about meeting at 3pm on 10th Jan"`);
+      return;
+    }
+
+    // Check if reminder time is in the future
+    if (reminderDate <= new Date()) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Reminder Error\n\nThe reminder time must be in the future. Please try again.`);
+      return;
+    }
+
+    // Generate reminder ID
+    const count = await Reminder.countDocuments({ user: user._id });
+    const reminderId = `REM-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+
+    // Create the reminder
+    const reminder = new Reminder({
+      reminderId,
+      user: user._id,
+      company: getCompanyId(user),
+      title: reminderTitle || reminderMessage || 'Reminder',
+      message: reminderMessage || reminderTitle || 'You have a reminder',
+      reminderTime: reminderDate,
+      status: 'pending',
+      source: 'whatsapp',
+    });
+
+    await reminder.save();
+
+    logger.info('Reminder created via WhatsApp', { reminderId, userId: user._id, reminderTime: reminderDate });
+
+    // Format the date nicely
+    const formattedDate = reminderDate.toLocaleDateString('en-GB', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long', 
+      year: 'numeric' 
+    });
+    const formattedTime = reminderDate.toLocaleTimeString('en-GB', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Reminder Set\n\nReference: ${reminderId}\nTitle: ${reminder.title}\nWhen: ${formattedDate} at ${formattedTime}\n\nYou will receive a WhatsApp notification at the scheduled time.`);
+
+  } catch (error) {
+    logger.error('Error setting reminder:', error);
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Error\n\nFailed to set reminder. Please try again later.`);
+  }
+}
+
+/**
+ * List user's upcoming reminders
+ */
+async function listReminders(user, phoneNumber) {
+  try {
+    const reminders = await Reminder.find({
+      user: user._id,
+      status: 'pending',
+      reminderTime: { $gte: new Date() }
+    })
+    .sort({ reminderTime: 1 })
+    .limit(10);
+
+    if (reminders.length === 0) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - No Upcoming Reminders\n\nYou have no upcoming reminders.\n\nTo set a reminder, say: "Remind me about [something] at [time] on [date]"`);
+      return;
+    }
+
+    let message = `PVARA HRMS - Your Upcoming Reminders\n\n`;
+
+    reminders.forEach((reminder, index) => {
+      const date = reminder.reminderTime.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+      const time = reminder.reminderTime.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      message += `${index + 1}. ${reminder.title}\n`;
+      message += `   ID: ${reminder.reminderId}\n`;
+      message += `   When: ${date} at ${time}\n\n`;
+    });
+
+    message += `To cancel a reminder, say: "Cancel reminder [ID]"`;
+
+    await whatsappService.sendMessage(phoneNumber, message);
+
+  } catch (error) {
+    logger.error('Error listing reminders:', error);
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Error\n\nFailed to retrieve reminders. Please try again later.`);
+  }
+}
+
+/**
+ * Cancel a reminder
+ */
+async function cancelReminder(user, phoneNumber, reminderId) {
+  try {
+    if (!reminderId) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Reminder ID Required\n\nPlease specify the reminder ID to cancel.\n\nSay "list reminders" to see your reminder IDs.`);
+      return;
+    }
+
+    // Normalize reminder ID
+    let normalizedId = reminderId;
+    if (!normalizedId.startsWith('REM-')) {
+      normalizedId = `REM-${normalizedId}`;
+    }
+
+    const reminder = await Reminder.findOne({
+      $or: [
+        { reminderId: normalizedId },
+        { reminderId: reminderId }
+      ],
+      user: user._id
+    });
+
+    if (!reminder) {
+      await whatsappService.sendMessage(phoneNumber,
+        `PVARA HRMS - Reminder Not Found\n\nReminder ${reminderId} was not found or does not belong to you.`);
+      return;
+    }
+
+    reminder.status = 'cancelled';
+    await reminder.save();
+
+    logger.info('Reminder cancelled via WhatsApp', { reminderId: reminder.reminderId, userId: user._id });
+
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Reminder Cancelled\n\nReference: ${reminder.reminderId}\nTitle: ${reminder.title}\n\nThis reminder has been cancelled.`);
+
+  } catch (error) {
+    logger.error('Error cancelling reminder:', error);
+    await whatsappService.sendMessage(phoneNumber,
+      `PVARA HRMS - Error\n\nFailed to cancel reminder. Please try again later.`);
+  }
 }
 
 /**
@@ -880,6 +1089,24 @@ router.post('/test-ai', async (req, res) => {
       message: error.message,
       stack: error.stack 
     });
+  }
+});
+
+/**
+ * POST /api/whatsapp/trigger-digest
+ * Manually trigger daily digest (for admin/testing)
+ */
+router.post('/trigger-digest', async (req, res) => {
+  try {
+    const reminderScheduler = (await import('../services/reminderScheduler.js')).default;
+    
+    logger.info('Manually triggering daily digest via API');
+    await reminderScheduler.triggerDailyDigest();
+    
+    res.json({ success: true, message: 'Daily digest triggered successfully' });
+  } catch (error) {
+    logger.error('Failed to trigger daily digest:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

@@ -1,10 +1,11 @@
 /**
  * Reminder Scheduler Service
- * Sends WhatsApp notifications for task deadlines and daily digests
+ * Sends WhatsApp notifications for task deadlines, daily digests, and personal reminders
  */
 
 import Task from '../models/Task.js';
 import User from '../models/User.js';
+import Reminder from '../models/Reminder.js';
 import whatsappService from './whatsappService.js';
 import whatsappConfig from '../config/whatsapp.js';
 import logger from '../config/logger.js';
@@ -43,6 +44,7 @@ class ReminderScheduler {
     this.intervalId = setInterval(() => {
       this.checkAndSendReminders();
       this.checkDailyDigest(); // Check if it's time for daily digest
+      this.checkPersonalReminders(); // Check for personal reminders
     }, this.checkIntervalMs);
   }
 
@@ -301,9 +303,10 @@ class ReminderScheduler {
    */
   async sendDailyDigestToAll() {
     try {
-      // Get all active users with WhatsApp enabled
+      // Get all active users with WhatsApp enabled (exclude chairman)
       const users = await User.find({
         status: 'active',
+        role: { $ne: 'chairman' },
         'whatsappPreferences.enabled': { $ne: false },
         $or: [
           { whatsappNumber: { $exists: true, $ne: '' } },
@@ -397,6 +400,142 @@ class ReminderScheduler {
   async triggerDailyDigest() {
     logger.info('Manually triggering daily digest');
     await this.sendDailyDigestToAll();
+  }
+
+  /**
+   * Check and send personal reminders that are due
+   */
+  async checkPersonalReminders() {
+    try {
+      const now = new Date();
+      // Find reminders due within the last minute (to account for check interval)
+      const windowStart = new Date(now.getTime() - 60 * 1000);
+      const windowEnd = now;
+
+      const dueReminders = await Reminder.find({
+        status: 'pending',
+        sent: false,
+        reminderTime: { $gte: windowStart, $lte: windowEnd }
+      }).populate('user', 'firstName lastName phone whatsappNumber whatsappPreferences');
+
+      for (const reminder of dueReminders) {
+        await this.sendPersonalReminder(reminder);
+      }
+
+      if (dueReminders.length > 0) {
+        logger.info(`Processed ${dueReminders.length} personal reminders`);
+      }
+    } catch (error) {
+      logger.error('Failed to check personal reminders:', error);
+    }
+  }
+
+  /**
+   * Send a personal reminder notification
+   * @param {object} reminder - Reminder document
+   */
+  async sendPersonalReminder(reminder) {
+    try {
+      const user = reminder.user;
+      if (!user) {
+        logger.warn(`Reminder ${reminder.reminderId} has no user`);
+        return;
+      }
+
+      const phoneNumber = user.whatsappNumber || user.phone;
+      if (!phoneNumber) {
+        logger.warn(`User ${user._id} has no WhatsApp number for reminder`);
+        return;
+      }
+
+      // Check if user has WhatsApp enabled
+      if (user.whatsappPreferences?.enabled === false) {
+        logger.info(`Skipping reminder for ${user._id} - WhatsApp disabled`);
+        return;
+      }
+
+      const message = `PVARA HRMS - Reminder
+
+${reminder.title}
+
+${reminder.message !== reminder.title ? reminder.message : ''}
+
+Reference: ${reminder.reminderId}
+Time: ${reminder.reminderTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+
+      await whatsappService.sendMessage(phoneNumber, message.trim());
+
+      // Mark reminder as sent
+      reminder.sent = true;
+      reminder.sentAt = new Date();
+      reminder.status = 'completed';
+      await reminder.save();
+
+      logger.info(`Personal reminder sent: ${reminder.reminderId}`, {
+        userId: user._id,
+        reminderId: reminder.reminderId
+      });
+
+      // Handle recurring reminders
+      if (reminder.recurring?.recurType !== 'none') {
+        await this.createNextRecurringReminder(reminder);
+      }
+    } catch (error) {
+      logger.error(`Failed to send personal reminder ${reminder.reminderId}:`, error);
+    }
+  }
+
+  /**
+   * Create the next occurrence for a recurring reminder
+   * @param {object} reminder - Original reminder document
+   */
+  async createNextRecurringReminder(reminder) {
+    try {
+      const { recurType, interval, endDate } = reminder.recurring;
+      let nextTime = new Date(reminder.reminderTime);
+
+      // Calculate next reminder time based on recurType
+      switch (recurType) {
+        case 'daily':
+          nextTime.setDate(nextTime.getDate() + (interval || 1));
+          break;
+        case 'weekly':
+          nextTime.setDate(nextTime.getDate() + (7 * (interval || 1)));
+          break;
+        case 'monthly':
+          nextTime.setMonth(nextTime.getMonth() + (interval || 1));
+          break;
+        default:
+          return; // No recurring
+      }
+
+      // Check if next time is past end date
+      if (endDate && nextTime > new Date(endDate)) {
+        logger.info(`Recurring reminder ${reminder.reminderId} ended`);
+        return;
+      }
+
+      // Generate new reminder ID
+      const count = await Reminder.countDocuments({ user: reminder.user._id });
+      const newReminderId = `REM-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+
+      // Create next reminder
+      const nextReminder = new Reminder({
+        reminderId: newReminderId,
+        user: reminder.user._id,
+        title: reminder.title,
+        message: reminder.message,
+        reminderTime: nextTime,
+        recurring: reminder.recurring,
+        status: 'pending',
+        relatedTask: reminder.relatedTask
+      });
+
+      await nextReminder.save();
+      logger.info(`Created next recurring reminder: ${newReminderId}`);
+    } catch (error) {
+      logger.error(`Failed to create recurring reminder:`, error);
+    }
   }
 
   /**

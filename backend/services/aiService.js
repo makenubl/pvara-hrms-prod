@@ -315,6 +315,9 @@ AVAILABLE ACTIONS:
 - cancelTask: User wants to cancel/delete a task
 - reportBlocker: User wants to report a blocker on a task
 - status: User wants to see their task summary/dashboard
+- setReminder: User wants to set a personal reminder (e.g., "remind me about meeting at 2:30 PM", "remind for call at 5pm tomorrow")
+- listReminders: User wants to see their upcoming reminders
+- cancelReminder: User wants to cancel/delete a reminder
 - help: User wants help with commands
 - welcome: User is greeting (hi, hello, start)
 - unknown: Cannot determine intent
@@ -332,6 +335,10 @@ RESPOND WITH JSON ONLY:
   "assigneeName": "name or email if assigning",
   "message": "update/comment text",
   "blocker": "blocker description",
+  "reminderTitle": "short title for reminder",
+  "reminderMessage": "full reminder message/description",
+  "reminderTime": "YYYY-MM-DDTHH:mm:ss format for reminder datetime",
+  "reminderId": "reminder ID if cancelling",
   "filters": { "status": "...", "priority": "..." } for listTasks
 }
 
@@ -340,8 +347,11 @@ CONTEXT:
 - User Name: ${user?.firstName || 'User'} ${user?.lastName || ''}
 - Only include fields relevant to the action
 - For dates: Convert to YYYY-MM-DD format. "tomorrow" = ${new Date(today.getTime() + 24*60*60*1000).toISOString().split('T')[0]}, "today" = ${currentDate}
+- For times: Use 24-hour format. "2:30 PM" = "14:30:00", "5pm" = "17:00:00"
+- For reminderTime: Combine date and time as YYYY-MM-DDTHH:mm:ss (e.g., "remind at 2:30 PM on 8th Jan 2026" = "2026-01-08T14:30:00")
 - Task IDs are typically in format: TASK-2026-0001, TASK-2026-0042, etc.
-- Be flexible with task ID formats (user might say "2026-0038" meaning "TASK-2026-0038")`;
+- Be flexible with task ID formats (user might say "2026-0038" meaning "TASK-2026-0038")
+- For reminders: Extract both the reminder subject and the datetime`;
 
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
