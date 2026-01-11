@@ -23,6 +23,24 @@ import highlightRoutes from '../routes/highlights.js';
 import chatRoutes from '../routes/chat.js';
 import whatsappRoutes from '../routes/whatsapp.js';
 
+// Finance/ERP Routes
+import bankPaymentRoutes from '../routes/bankPayments.js';
+import budgetRoutes from '../routes/budgets.js';
+import journalEntryRoutes from '../routes/journalEntries.js';
+import financialReportRoutes from '../routes/financialReports.js';
+import chartOfAccountRoutes from '../routes/chartOfAccounts.js';
+import vendorRoutes from '../routes/vendors.js';
+import fixedAssetRoutes from '../routes/fixedAssets.js';
+import costCenterRoutes from '../routes/costCenters.js';
+import auditTrailRoutes from '../routes/auditTrail.js';
+import cashFlowRoutes from '../routes/cashFlowStatement.js';
+import monthlyClosingRoutes from '../routes/monthlyClosing.js';
+import multiCurrencyRoutes from '../routes/multiCurrency.js';
+import taxFilingRoutes from '../routes/taxFiling.js';
+import yearEndClosingRoutes from '../routes/yearEndClosing.js';
+import purchaseOrderRoutes from '../routes/purchaseOrders.js';
+import documentSequenceRoutes from '../routes/documentSequence.js';
+
 const app = express();
 
 // Ensure DB connection before handling requests
@@ -104,6 +122,24 @@ app.use('/api/worklogs', worklogRoutes);
 app.use('/api/highlights', highlightRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+
+// Finance/ERP Routes
+app.use('/api/bank-payments', bankPaymentRoutes);
+app.use('/api/budgets', budgetRoutes);
+app.use('/api/journal-entries', journalEntryRoutes);
+app.use('/api/financial-reports', financialReportRoutes);
+app.use('/api/chart-of-accounts', chartOfAccountRoutes);
+app.use('/api/vendors', vendorRoutes);
+app.use('/api/fixed-assets', fixedAssetRoutes);
+app.use('/api/cost-centers', costCenterRoutes);
+app.use('/api/audit-trail', auditTrailRoutes);
+app.use('/api/cash-flow', cashFlowRoutes);
+app.use('/api/monthly-closing', monthlyClosingRoutes);
+app.use('/api/multi-currency', multiCurrencyRoutes);
+app.use('/api/tax-filing', taxFilingRoutes);
+app.use('/api/year-end-closing', yearEndClosingRoutes);
+app.use('/api/purchase-orders', purchaseOrderRoutes);
+app.use('/api/document-sequence', documentSequenceRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
