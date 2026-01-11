@@ -33,12 +33,13 @@ const BankPayments = () => {
   const getStatusBadge = (status) => {
     const statusConfig = {
       draft: { variant: 'gray', label: 'Draft' },
-      pending_approval: { variant: 'yellow', label: 'Pending Approval' },
+      'pending-approval': { variant: 'yellow', label: 'Pending Approval' },
       approved: { variant: 'blue', label: 'Approved' },
+      'file-generated': { variant: 'cyan', label: 'File Generated' },
       submitted: { variant: 'purple', label: 'Submitted' },
-      paid: { variant: 'green', label: 'Paid' },
-      rejected: { variant: 'red', label: 'Rejected' },
-      failed: { variant: 'red', label: 'Failed' }
+      'partially-processed': { variant: 'orange', label: 'Partial' },
+      completed: { variant: 'green', label: 'Completed' },
+      cancelled: { variant: 'red', label: 'Cancelled' }
     };
     const config = statusConfig[status] || { variant: 'gray', label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -63,20 +64,35 @@ const BankPayments = () => {
 
   const handleGenerateRaast = async (batchId) => {
     try {
-      await api.post(`/bank-payments/${batchId}/generate-raast`);
-      toast.success('RAAST file generated successfully!');
+      // Download RAAST file using authenticated API call
+      const response = await api.get(`/bank-payments/${batchId}/download?format=raast`, {
+        responseType: 'blob'
+      });
+      
+      // Create download link
+      const blob = new Blob([response.data], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `RAAST_${batchId}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('RAAST file downloaded successfully!');
       fetchBatches();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to generate RAAST file');
+      toast.error(error.response?.data?.message || 'Failed to download RAAST file');
     }
   };
 
   const handleSubmitToBank = async (batchId) => {
-    if (!confirm('Are you sure you want to submit this batch to the bank?')) return;
+    if (!confirm('Are you sure you want to approve and submit this batch to the bank?')) return;
     
     try {
-      await api.post(`/bank-payments/${batchId}/submit`);
-      toast.success('Batch submitted to bank successfully!');
+      await api.post(`/bank-payments/${batchId}/approve`);
+      toast.success('Batch approved and submitted successfully!');
       fetchBatches();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to submit batch');
@@ -84,11 +100,11 @@ const BankPayments = () => {
   };
 
   const handleMarkPaid = async (batchId) => {
-    if (!confirm('Mark this batch as paid?')) return;
+    if (!confirm('Mark this batch as completed/paid?')) return;
     
     try {
-      await api.post(`/bank-payments/${batchId}/mark-paid`);
-      toast.success('Batch marked as paid!');
+      await api.post(`/bank-payments/${batchId}/complete`);
+      toast.success('Batch marked as completed!');
       fetchBatches();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to mark as paid');
@@ -124,13 +140,13 @@ const BankPayments = () => {
 
   const getStats = () => {
     const total = batches.length;
-    const pending = batches.filter(b => ['draft', 'pending_approval', 'approved'].includes(b.status)).length;
+    const pending = batches.filter(b => ['draft', 'pending-approval', 'approved'].includes(b.status)).length;
     const submitted = batches.filter(b => b.status === 'submitted').length;
-    const paid = batches.filter(b => b.status === 'paid').length;
+    const completed = batches.filter(b => b.status === 'completed').length;
     const totalAmount = batches.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
-    const paidAmount = batches.filter(b => b.status === 'paid').reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    const completedAmount = batches.filter(b => b.status === 'completed').reduce((sum, b) => sum + (b.totalAmount || 0), 0);
     
-    return { total, pending, submitted, paid, totalAmount, paidAmount };
+    return { total, pending, submitted, completed, totalAmount, completedAmount };
   };
 
   const stats = getStats();
@@ -183,21 +199,21 @@ const BankPayments = () => {
                 <CheckCircle className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">Paid</p>
-                <p className="text-2xl font-bold text-emerald-400">{stats.paid}</p>
+                <p className="text-sm text-slate-400">Completed</p>
+                <p className="text-2xl font-bold text-emerald-400">{stats.completed}</p>
               </div>
             </div>
           </div>
           <div className="backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl p-6">
             <p className="text-sm text-slate-400">Total Amount</p>
             <p className="text-xl font-bold text-white">{formatCurrency(stats.totalAmount)}</p>
-            <p className="text-xs text-emerald-400">Paid: {formatCurrency(stats.paidAmount)}</p>
+            <p className="text-xs text-emerald-400">Completed: {formatCurrency(stats.completedAmount)}</p>
           </div>
         </div>
 
         {/* Filters */}
         <div className="flex gap-2 flex-wrap">
-          {['', 'draft', 'pending_approval', 'approved', 'submitted', 'paid'].map(status => (
+          {['', 'draft', 'pending-approval', 'approved', 'submitted', 'completed'].map(status => (
             <button
               key={status}
               onClick={() => setFilterStatus(status)}
@@ -271,7 +287,17 @@ const BankPayments = () => {
                       View
                     </button>
                     
-                    {batch.status === 'approved' && !batch.raastFileGenerated && (
+                    {batch.status === 'draft' && (
+                      <button
+                        onClick={() => handleSubmitToBank(batch._id)}
+                        className="flex items-center gap-1 px-3 py-2 text-sm bg-cyan-500/20 text-cyan-300 rounded-xl hover:bg-cyan-500/30 border border-cyan-400/30 transition-all"
+                      >
+                        <Send className="w-4 h-4" />
+                        Approve
+                      </button>
+                    )}
+                    
+                    {['approved', 'file-generated'].includes(batch.status) && (
                       <button
                         onClick={() => handleGenerateRaast(batch._id)}
                         className="flex items-center gap-1 px-3 py-2 text-sm bg-purple-500/20 text-purple-300 rounded-xl hover:bg-purple-500/30 border border-purple-400/30 transition-all"
@@ -281,23 +307,13 @@ const BankPayments = () => {
                       </button>
                     )}
                     
-                    {batch.status === 'approved' && batch.raastFileGenerated && (
-                      <button
-                        onClick={() => handleSubmitToBank(batch._id)}
-                        className="flex items-center gap-1 px-3 py-2 text-sm bg-cyan-500/20 text-cyan-300 rounded-xl hover:bg-cyan-500/30 border border-cyan-400/30 transition-all"
-                      >
-                        <Send className="w-4 h-4" />
-                        Submit
-                      </button>
-                    )}
-                    
-                    {batch.status === 'submitted' && (
+                    {['approved', 'file-generated', 'submitted'].includes(batch.status) && (
                       <button
                         onClick={() => handleMarkPaid(batch._id)}
                         className="flex items-center gap-1 px-3 py-2 text-sm bg-emerald-500/20 text-emerald-300 rounded-xl hover:bg-emerald-500/30 border border-emerald-400/30 transition-all"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        Mark Paid
+                        Complete
                       </button>
                     )}
                   </div>

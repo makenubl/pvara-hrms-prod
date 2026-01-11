@@ -23,8 +23,12 @@ const MainLayout = ({ children }) => {
         ></div>
       )}
 
-      {/* Sidebar - Hidden on desktop when sidebarOpen is false */}
-      <div className={`${sidebarOpen ? 'block' : 'hidden md:hidden'}`}>
+      {/* Sidebar */}
+      <div className="hidden md:block h-full overflow-hidden">
+        <Sidebar />
+      </div>
+      {/* Mobile Sidebar */}
+      <div className={`${sidebarOpen ? 'block' : 'hidden'} md:hidden`}>
         <Sidebar />
       </div>
 

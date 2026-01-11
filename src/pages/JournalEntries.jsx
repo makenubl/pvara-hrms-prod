@@ -19,22 +19,23 @@ import { Badge } from '../components/UI';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
-const JournalEntries = () => {
+const JournalEntries = ({ openNew = false }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(openNew);
   const [editingEntry, setEditingEntry] = useState(null);
   const [chartOfAccounts, setChartOfAccounts] = useState([]);
 
   const getStatusBadgeVariant = (status) => {
     switch (status) {
       case 'draft': return 'gray';
-      case 'pending_approval': return 'yellow';
+      case 'pending': return 'yellow';
       case 'approved': return 'blue';
       case 'posted': return 'green';
       case 'rejected': return 'red';
       case 'reversed': return 'purple';
+      case 'cancelled': return 'gray';
       default: return 'gray';
     }
   };
@@ -157,7 +158,7 @@ const JournalEntries = () => {
             >
               <option value="" className="bg-slate-900">All Statuses</option>
               <option value="draft" className="bg-slate-900">Draft</option>
-              <option value="pending_approval" className="bg-slate-900">Pending Approval</option>
+              <option value="pending" className="bg-slate-900">Pending</option>
               <option value="approved" className="bg-slate-900">Approved</option>
               <option value="posted" className="bg-slate-900">Posted</option>
               <option value="rejected" className="bg-slate-900">Rejected</option>
@@ -175,7 +176,7 @@ const JournalEntries = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {['draft', 'pending_approval', 'approved', 'posted', 'rejected'].map(status => {
+          {['draft', 'pending', 'approved', 'posted', 'rejected'].map(status => {
             const count = entries.filter(e => e.status === status).length;
             return (
               <div 
@@ -264,7 +265,7 @@ const JournalEntries = () => {
                                 </button>
                               </>
                             )}
-                            {entry.status === 'pending_approval' && (
+                            {entry.status === 'pending' && (
                               <>
                                 <button 
                                   onClick={() => handleApprove(entry._id)}

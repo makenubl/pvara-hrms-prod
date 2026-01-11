@@ -89,10 +89,10 @@ const Sidebar = () => {
       <aside
         className={`${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } md:translate-x-0 fixed md:static inset-y-0 left-0 w-64 backdrop-blur-xl bg-gradient-to-b from-slate-900/80 via-slate-900/70 to-slate-900/60 border-r border-white/10 text-white transition-transform duration-300 z-40 md:z-auto overflow-y-auto shadow-2xl`}
+        } md:translate-x-0 fixed md:static inset-y-0 left-0 w-64 h-screen flex flex-col backdrop-blur-xl bg-gradient-to-b from-slate-900/80 via-slate-900/70 to-slate-900/60 border-r border-white/10 text-white transition-transform duration-300 z-40 md:z-auto shadow-2xl`}
       >
         {/* Logo Header */}
-        <div className="p-6 border-b border-white/10 bg-gradient-to-b from-white/5 to-transparent">
+        <div className="p-6 border-b border-white/10 bg-gradient-to-b from-white/5 to-transparent flex-shrink-0">
           <Link to="/dashboard" className="flex items-center gap-3 group">
             <div className="relative w-12 h-12">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg opacity-30 group-hover:opacity-50 blur-lg transition-opacity"></div>
@@ -109,40 +109,43 @@ const Sidebar = () => {
           </Link>
         </div>
 
-        {/* Navigation */}
-        <nav className="p-4 space-y-1">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => sidebarOpen && toggleSidebar()}
-                className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
-                  active
-                    ? 'bg-gradient-to-r from-cyan-500/30 to-blue-500/20 border border-cyan-400/50 text-cyan-100'
-                    : 'text-slate-300 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {active && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/40 to-blue-500/30 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-50"></div>
-                )}
-                <Icon size={20} className={`relative z-10 transition-transform ${active ? 'text-cyan-300' : ''}`} />
-                <span className="text-sm font-semibold relative z-10">{item.label}</span>
-                {active && (
-                  <div className="ml-auto w-1.5 h-1.5 bg-cyan-400 rounded-full relative z-10 animate-pulse"></div>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Scrollable Navigation Area */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Navigation */}
+          <nav className="p-4 space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => sidebarOpen && toggleSidebar()}
+                  className={`group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                    active
+                      ? 'bg-gradient-to-r from-cyan-500/30 to-blue-500/20 border border-cyan-400/50 text-cyan-100'
+                      : 'text-slate-300 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {active && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/40 to-blue-500/30 blur-xl group-hover:blur-2xl transition-all opacity-0 group-hover:opacity-50"></div>
+                  )}
+                  <Icon size={20} className={`relative z-10 transition-transform ${active ? 'text-cyan-300' : ''}`} />
+                  <span className="text-sm font-semibold relative z-10">{item.label}</span>
+                  {active && (
+                    <div className="ml-auto w-1.5 h-1.5 bg-cyan-400 rounded-full relative z-10 animate-pulse"></div>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
 
         {/* Divider */}
-        <div className="mx-4 my-4 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+        <div className="mx-4 my-2 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent flex-shrink-0"></div>
 
-        {/* User Info */}
-        <div className="px-4 py-4 rounded-xl bg-gradient-to-r from-white/5 to-white/0 border border-white/10 m-4">
+        {/* User Info - Fixed at bottom */}
+        <div className="px-4 py-4 rounded-xl bg-gradient-to-r from-white/5 to-white/0 border border-white/10 m-4 flex-shrink-0">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {user?.firstName?.[0] || user?.name?.charAt(0) || 'U'}

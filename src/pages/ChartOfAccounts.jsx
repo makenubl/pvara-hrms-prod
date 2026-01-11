@@ -38,15 +38,17 @@ const ChartOfAccounts = () => {
     { value: 'asset', label: 'Asset', color: 'blue' },
     { value: 'liability', label: 'Liability', color: 'red' },
     { value: 'equity', label: 'Equity', color: 'purple' },
-    { value: 'income', label: 'Income', color: 'green' },
+    { value: 'revenue', label: 'Revenue', color: 'green' },
     { value: 'expense', label: 'Expense', color: 'amber' },
+    { value: 'contra-asset', label: 'Contra Asset', color: 'cyan' },
+    { value: 'contra-liability', label: 'Contra Liability', color: 'orange' },
   ];
 
   const categories = {
     asset: ['current_asset', 'fixed_asset', 'other_asset'],
     liability: ['current_liability', 'long_term_liability'],
     equity: ['capital', 'reserves', 'retained_earnings'],
-    income: ['operating_income', 'other_income'],
+    revenue: ['operating_income', 'other_income'],
     expense: ['operating_expense', 'administrative_expense', 'financial_expense'],
   };
 

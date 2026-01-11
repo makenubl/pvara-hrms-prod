@@ -250,6 +250,10 @@ function App() {
           element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><JournalEntries /></ProtectedRoute>}
         />
         <Route
+          path="/finance/journal-entries/new"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><JournalEntries openNew /></ProtectedRoute>}
+        />
+        <Route
           path="/finance/bank-payments"
           element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><BankPayments /></ProtectedRoute>}
         />
