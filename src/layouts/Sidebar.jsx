@@ -21,6 +21,12 @@ import {
   Target,
   FileText,
   Link2,
+  Wallet,
+  Receipt,
+  PiggyBank,
+  Landmark,
+  ClipboardList,
+  TrendingUp,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
@@ -42,6 +48,15 @@ const Sidebar = () => {
     { icon: Link2, label: 'My Dependencies', path: '/my-dependencies', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
     { icon: Users, label: 'Employees', path: '/employees', roles: ['admin', 'hr', 'manager', 'chairman'] },
     { icon: Building2, label: 'Organization', path: '/organization', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
+    // Finance / ERP Module
+    { icon: Wallet, label: 'Finance Dashboard', path: '/finance', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    { icon: ClipboardList, label: 'Chart of Accounts', path: '/finance/chart-of-accounts', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    { icon: PiggyBank, label: 'Budget Management', path: '/finance/budgets', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    { icon: Briefcase, label: 'Vendors', path: '/finance/vendors', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    { icon: Receipt, label: 'Journal Entries', path: '/finance/journal-entries', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    { icon: Landmark, label: 'Bank Payments', path: '/finance/bank-payments', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    { icon: TrendingUp, label: 'Financial Reports', path: '/finance/reports', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    // Other
     { icon: FileText, label: 'Reports', path: '/reports', roles: ['admin', 'chairman'] },
     { icon: UserCircle, label: 'My Profile', path: '/profile', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },
     { icon: Settings, label: 'Settings', path: '/settings', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },

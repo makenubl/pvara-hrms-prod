@@ -261,7 +261,7 @@ const Employees = () => {
         <div className="backdrop-blur-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-2xl p-6 hover:border-white/30 transition-all shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-white text-lg">Employee List ({filteredEmployees.length})</h3>
-            <button onClick={() => toast.info('Export feature coming soon!')} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-300 hover:text-purple-200 hover:border-purple-400/50 text-sm font-semibold transition-all">
+            <button onClick={() => toast('Export feature coming soon!', { icon: 'ℹ️' })} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-400/30 text-purple-300 hover:text-purple-200 hover:border-purple-400/50 text-sm font-semibold transition-all">
               <Download size={16} />
               Export
             </button>

@@ -8,7 +8,7 @@ const getApiBaseUrl = () => {
   }
   if (typeof window !== 'undefined') {
     if (window.location.hostname === 'localhost') {
-      return 'http://localhost:5000';
+      return 'http://localhost:5001';
     }
     // For any production domain (pvara.team, vercel.app), use the main API
     return 'https://pvara-hrms-prod.vercel.app';

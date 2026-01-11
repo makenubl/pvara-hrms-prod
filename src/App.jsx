@@ -42,6 +42,15 @@ const TaskManagement = lazy(() => import('./pages/TaskManagement'));
 const MyDependencies = lazy(() => import('./pages/MyDependencies'));
 const Reports = lazy(() => import('./pages/Reports'));
 
+// ERP / Finance Module Pages
+const FinanceDashboard = lazy(() => import('./pages/FinanceDashboard'));
+const ChartOfAccounts = lazy(() => import('./pages/ChartOfAccounts'));
+const BudgetManagement = lazy(() => import('./pages/BudgetManagement'));
+const Vendors = lazy(() => import('./pages/Vendors'));
+const JournalEntries = lazy(() => import('./pages/JournalEntries'));
+const BankPayments = lazy(() => import('./pages/BankPayments'));
+const FinancialReports = lazy(() => import('./pages/FinancialReports'));
+
 // Role-based Dashboard Router
 const DashboardRouter = () => {
   const { user } = useAuthStore();
@@ -217,6 +226,36 @@ function App() {
         <Route
           path="/reports"
           element={<ProtectedRoute allowedRoles={['admin', 'chairman']}><Reports /></ProtectedRoute>}
+        />
+
+        {/* Finance / ERP Module Routes */}
+        <Route
+          path="/finance"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><FinanceDashboard /></ProtectedRoute>}
+        />
+        <Route
+          path="/finance/chart-of-accounts"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><ChartOfAccounts /></ProtectedRoute>}
+        />
+        <Route
+          path="/finance/budgets"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><BudgetManagement /></ProtectedRoute>}
+        />
+        <Route
+          path="/finance/vendors"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><Vendors /></ProtectedRoute>}
+        />
+        <Route
+          path="/finance/journal-entries"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><JournalEntries /></ProtectedRoute>}
+        />
+        <Route
+          path="/finance/bank-payments"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><BankPayments /></ProtectedRoute>}
+        />
+        <Route
+          path="/finance/reports"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'finance', 'accountant']}><FinancialReports /></ProtectedRoute>}
         />
 
         {/* Catch-all redirect to login */}
