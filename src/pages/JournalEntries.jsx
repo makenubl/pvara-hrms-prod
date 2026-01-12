@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Plus,
   Pencil,
@@ -20,12 +21,22 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const JournalEntries = ({ openNew = false }) => {
+  const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('');
   const [showModal, setShowModal] = useState(openNew);
   const [editingEntry, setEditingEntry] = useState(null);
   const [chartOfAccounts, setChartOfAccounts] = useState([]);
+
+  // Handle modal close - navigate back if opened via /new route
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingEntry(null);
+    if (openNew) {
+      navigate(-1); // Go back to previous page (Finance Dashboard or wherever user came from)
+    }
+  };
 
   const getStatusBadgeVariant = (status) => {
     switch (status) {
@@ -320,7 +331,7 @@ const JournalEntries = ({ openNew = false }) => {
             entry={editingEntry}
             chartOfAccounts={chartOfAccounts}
             onSave={handleSave}
-            onClose={() => { setShowModal(false); setEditingEntry(null); }}
+            onClose={handleCloseModal}
             formatCurrency={formatCurrency}
           />
         )}
