@@ -10,6 +10,10 @@ const getApiBaseUrl = () => {
     if (window.location.hostname === 'localhost') {
       return 'http://localhost:5000';
     }
+    // For feature branch preview deployments, use the feature branch backend
+    if (window.location.hostname.includes('feature')) {
+      return 'https://pvara-hrms-prod-git-feature-integrate-2e546b-makenubls-projects.vercel.app';
+    }
     // For any production domain (pvara.team, vercel.app), use the main API
     return 'https://pvara-hrms-prod.vercel.app';
   }
