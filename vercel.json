@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "npm install --production=false && npm run build",
   "installCommand": "npm install",
-  "functions": {
-    "api/**/*.js": {
-      "includeFiles": "backend/**"
-    }
-  },
   "crons": [
     {
       "path": "/api/cron/daily-digest",
@@ -27,11 +22,17 @@
     },
     {
       "src": "api/index.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/**"]
+      }
     },
     {
       "src": "api/cron/*.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/**"]
+      }
     }
   ],
   "headers": [
