@@ -11,18 +11,6 @@
       "src": "/(.*)",
       "methods": ["OPTIONS"],
       "headers": {
-        "Access-Control-Allow-Origin": "https://pvara.team",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-        "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Max-Age": "86400"
-      },
-      "status": 204
-    },
-    {
-      "src": "/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
         "Access-Control-Allow-Origin": "https://pvara-hrms-prod-frontend-git-feature-bb89b1-makenubls-projects.vercel.app",
         "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
         "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
