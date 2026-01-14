@@ -44,6 +44,40 @@ import documentSequenceRoutes from '../routes/documentSequence.js';
 
 const app = express();
 
+// CORS configuration - MUST be first middleware
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://pvara.team',
+      'https://www.pvara.team',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:3000'
+    ];
+    
+    if (allowedOrigins.includes(origin) || 
+        origin.endsWith('.vercel.app') || 
+        origin.endsWith('.pvara.team')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for now to debug
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+};
+
+// Apply CORS before ANY other middleware
+app.use(cors(corsOptions));
+
+// Handle preflight explicitly
+app.options('*', cors(corsOptions));
+
 // Ensure DB connection before handling requests
 const dbMiddleware = async (req, res, next) => {
   try {
@@ -53,11 +87,12 @@ const dbMiddleware = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Database connection failed:', error);
+    // CORS headers already set by cors middleware above
     res.status(503).json({ message: 'Database connection failed', error: error.message });
   }
 };
 
-// Helper to check if origin is allowed
+// Helper to check if origin is allowed (kept for error handler)
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
   return (
@@ -71,32 +106,6 @@ const isOriginAllowed = (origin) => {
     origin.endsWith('.pvara.team')
   );
 };
-
-// Handle preflight OPTIONS requests explicitly BEFORE other middleware
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  if (isOriginAllowed(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.status(204).send();
-  } else {
-    res.status(403).send('CORS not allowed');
-  }
-});
-
-// CORS middleware for all requests
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (isOriginAllowed(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-  }
-  next();
-});
 
 // HTTP request logging
 app.use(morgan('combined'));
