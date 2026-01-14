@@ -1,10 +1,4 @@
 import winston from 'winston';
-import DailyRotateFile from 'winston-daily-rotate-file';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Check if running in Vercel (serverless environment)
 const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
@@ -33,35 +27,9 @@ const consoleTransport = new winston.transports.Console({
   )
 });
 
-// Build transports array
+// Build transports array - use console only
+// File logging doesn't work well in Vercel serverless and adds unnecessary complexity
 const transports = [consoleTransport];
-
-// Only add file transports when NOT in Vercel (local/traditional server only)
-if (!isVercel) {
-  const logsDir = path.join(__dirname, '../logs');
-  
-  // Daily rotate file transport for all logs
-  const allLogsTransport = new DailyRotateFile({
-    filename: path.join(logsDir, 'application-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    maxSize: '20m',
-    maxFiles: '14d',
-    format: logFormat,
-    level: 'info'
-  });
-
-  // Daily rotate file transport for error logs
-  const errorLogsTransport = new DailyRotateFile({
-    filename: path.join(logsDir, 'error-%DATE%.log'),
-    datePattern: 'YYYY-MM-DD',
-    maxSize: '20m',
-    maxFiles: '30d',
-    format: logFormat,
-    level: 'error'
-  });
-
-  transports.push(allLogsTransport, errorLogsTransport);
-}
 
 // Create the logger
 const logger = winston.createLogger({
@@ -75,7 +43,7 @@ const logger = winston.createLogger({
 if (isVercel) {
   logger.info('🚀 Running in Vercel serverless environment - logs visible in Vercel dashboard');
 } else {
-  logger.info('💻 Running in local/server environment - logs saved to ./logs directory');
+  logger.info('💻 Running in local/server environment - console logs only');
 }
 
 // Create a stream object for Morgan HTTP logging
