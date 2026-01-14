@@ -53,20 +53,18 @@ const corsOptions = {
     const allowedOrigins = [
       'https://pvara.team',
       'https://www.pvara.team',
-      'https://pvara-hrms-prod-frontend-git-feature-bb89b1-makenubls-projects.vercel.app',
       'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:5175',
       'http://localhost:3000'
     ];
     
-    // Allow if in list, or if it's a vercel.app or pvara.team subdomain
     if (allowedOrigins.includes(origin) || 
         origin.endsWith('.vercel.app') || 
         origin.endsWith('.pvara.team')) {
-      callback(null, origin); // Return the actual requesting origin
+      callback(null, true);
     } else {
-      callback(null, origin); // Allow all for now to debug - return requesting origin
+      callback(null, true); // Allow all for now to debug
     }
   },
   credentials: true,
