@@ -163,9 +163,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Error handling
+// Error handling - ensure CORS headers are set even on errors
 app.use((err, req, res, next) => {
   console.error('Error:', err.message);
+  
+  // Set CORS headers on error responses
+  const origin = req.headers.origin;
+  if (isOriginAllowed(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  
   res.status(500).json({ 
     message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
