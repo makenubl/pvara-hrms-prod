@@ -437,5 +437,19 @@
       "storage": "s3"
     },
     "timestamp": "2026-01-14T07:48:43.538Z"
+  },
+  {
+    "id": "chat-Ahmad-1768377510439",
+    "userEmail": "ahmad.raza@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Ahmad",
+    "meta": {
+      "message": "review this doc",
+      "applied": 0,
+      "reply": "I can’t yet perform a substantive compliance review because the system couldn’t extract any text fro",
+      "document": "Profile__1_.pdf"
+    },
+    "timestamp": "2026-01-14T07:58:30.439Z"
   }
 ]

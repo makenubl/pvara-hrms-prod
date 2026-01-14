@@ -50,6 +50,28 @@ import reminderScheduler from './services/reminderScheduler.js';
 
 const app = express();
 
+// Handle preflight OPTIONS requests explicitly for all routes
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:3000',
+    'https://pvara.team',
+    'https://www.pvara.team',
+    'https://pvara-hrms-prod.vercel.app',
+    'https://pvara-hrms-prod-frontend.vercel.app'
+  ];
+  
+  if (origin && (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.pvara.team'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(204);
+});
+
 // CORS configuration for production
 const allowedOrigins = [
   'http://localhost:5173',
