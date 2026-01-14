@@ -152,22 +152,32 @@ router.post('/folders', authenticate, async (req, res) => {
     });
     await folderRecord.save();
     
-    // Also create local folder structure (for backward compatibility)
-    const { full } = resolveFolder(safeName);
-    if (!fs.existsSync(full)) {
-      fs.mkdirSync(full, { recursive: true });
-      const docsDir = path.join(full, 'documents');
-      fs.mkdirSync(docsDir, { recursive: true });
+    // Try to create local folder structure (for local dev - will fail silently on Vercel)
+    try {
+      const { full } = resolveFolder(safeName);
+      if (!fs.existsSync(full)) {
+        fs.mkdirSync(full, { recursive: true });
+        const docsDir = path.join(full, 'documents');
+        fs.mkdirSync(docsDir, { recursive: true });
+      }
+    } catch (fsError) {
+      // Ignore filesystem errors on Vercel (read-only filesystem)
+      console.log('Note: Local folder creation skipped (serverless environment)');
     }
 
-    appendActivity(getApplicationsBasePath(), {
-      id: `create-${safeName}-${Date.now()}`,
-      userEmail: userEmail || '',
-      userRole: req.user?.role || '',
-      action: 'create-folder',
-      folder: safeName,
-      timestamp: new Date().toISOString(),
-    });
+    // Try to append activity (will fail silently on Vercel)
+    try {
+      appendActivity(getApplicationsBasePath(), {
+        id: `create-${safeName}-${Date.now()}`,
+        userEmail: userEmail || '',
+        userRole: req.user?.role || '',
+        action: 'create-folder',
+        folder: safeName,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (activityError) {
+      // Ignore activity logging errors on serverless
+    }
 
     return res.status(201).json({
       message: 'Folder created',
@@ -210,20 +220,29 @@ router.delete('/folders', authenticate, async (req, res) => {
       { isDeleted: true, deletedAt: new Date(), deletedBy: userId }
     );
     
-    // Also delete from local filesystem if exists (for backward compatibility)
-    const { full } = resolveFolder(safeName);
-    if (fs.existsSync(full)) {
-      fs.rmSync(full, { recursive: true, force: true });
+    // Try to delete from local filesystem (will fail silently on Vercel)
+    try {
+      const { full } = resolveFolder(safeName);
+      if (fs.existsSync(full)) {
+        fs.rmSync(full, { recursive: true, force: true });
+      }
+    } catch (fsError) {
+      // Ignore filesystem errors on serverless
     }
 
-    appendActivity(getApplicationsBasePath(), {
-      id: `delete-${safeName}-${Date.now()}`,
-      userEmail: req.user?.email || '',
-      userRole: req.user?.role || '',
-      action: 'delete-folder',
-      folder: safeName,
-      timestamp: new Date().toISOString(),
-    });
+    // Try to append activity (will fail silently on Vercel)
+    try {
+      appendActivity(getApplicationsBasePath(), {
+        id: `delete-${safeName}-${Date.now()}`,
+        userEmail: req.user?.email || '',
+        userRole: req.user?.role || '',
+        action: 'delete-folder',
+        folder: safeName,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (activityError) {
+      // Ignore activity logging errors on serverless
+    }
 
     return res.status(200).json({
       message: 'Folder deleted',
@@ -341,40 +360,53 @@ router.post('/upload', authenticate, upload.array('files', 20), async (req, res)
     } else {
       // Local Storage Mode - write files from memory to disk
       console.log(`📁 Local Storage Mode - Writing ${files.length} file(s) to disk...`);
-      const { full } = resolveFolder(folderName);
-      const docsDir = path.join(full, 'documents');
-      if (!fs.existsSync(full)) fs.mkdirSync(full, { recursive: true });
-      if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
-      
-      for (const file of files) {
-        const safeFileName = file.originalname.replace(/[^a-zA-Z0-9-_.]/g, '_');
-        const filePath = path.join(docsDir, safeFileName);
-        fs.writeFileSync(filePath, file.buffer);
-        uploadedFiles.push({ name: safeFileName, size: file.size });
-        console.log(`   ✅ Saved: ${safeFileName}`);
-      }
-      
-      // Update application.json documents list
-      const appJsonPath = path.join(full, 'application.json');
-      if (fs.existsSync(appJsonPath)) {
-        try {
-          const data = JSON.parse(fs.readFileSync(appJsonPath, 'utf-8'));
-          const added = uploadedFiles.map(f => f.name);
-          data.documents = Array.from(new Set([...(data.documents || []), ...added]));
-          fs.writeFileSync(appJsonPath, JSON.stringify(data, null, 2));
-        } catch {}
+      try {
+        const { full } = resolveFolder(folderName);
+        const docsDir = path.join(full, 'documents');
+        if (!fs.existsSync(full)) fs.mkdirSync(full, { recursive: true });
+        if (!fs.existsSync(docsDir)) fs.mkdirSync(docsDir, { recursive: true });
+        
+        for (const file of files) {
+          const safeFileName = file.originalname.replace(/[^a-zA-Z0-9-_.]/g, '_');
+          const filePath = path.join(docsDir, safeFileName);
+          fs.writeFileSync(filePath, file.buffer);
+          uploadedFiles.push({ name: safeFileName, size: file.size });
+          console.log(`   ✅ Saved: ${safeFileName}`);
+        }
+        
+        // Update application.json documents list
+        const appJsonPath = path.join(full, 'application.json');
+        if (fs.existsSync(appJsonPath)) {
+          try {
+            const data = JSON.parse(fs.readFileSync(appJsonPath, 'utf-8'));
+            const added = uploadedFiles.map(f => f.name);
+            data.documents = Array.from(new Set([...(data.documents || []), ...added]));
+            fs.writeFileSync(appJsonPath, JSON.stringify(data, null, 2));
+          } catch {}
+        }
+      } catch (fsError) {
+        // On Vercel, local storage won't work - return error if STORAGE_MODE is local
+        console.error('Local storage error (serverless?):', fsError.message);
+        return res.status(500).json({ 
+          error: 'Local storage not available in serverless environment. Please configure S3 storage.' 
+        });
       }
     }
 
-    appendActivity(getApplicationsBasePath(), {
-      id: `upload-${folderName}-${Date.now()}`,
-      userEmail: req.user?.email || '',
-      userRole: req.user?.role || '',
-      action: 'upload-files',
-      folder: folderName,
-      meta: { files: uploadedFiles.map(f => f.name), storage: storageMode },
-      timestamp: new Date().toISOString(),
-    });
+    // Try to append activity (will fail silently on Vercel)
+    try {
+      appendActivity(getApplicationsBasePath(), {
+        id: `upload-${folderName}-${Date.now()}`,
+        userEmail: req.user?.email || '',
+        userRole: req.user?.role || '',
+        action: 'upload-files',
+        folder: folderName,
+        meta: { files: uploadedFiles.map(f => f.name), storage: storageMode },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (activityError) {
+      // Ignore activity logging errors on serverless
+    }
     
     console.log(`📤 Upload complete - Files: ${uploadedFiles.map(f => f.name).join(', ')} (Storage: ${storageMode})`);
     
