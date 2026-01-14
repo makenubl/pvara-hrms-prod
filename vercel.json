@@ -2,6 +2,11 @@
   "version": 2,
   "buildCommand": "npm install --production=false && npm run build",
   "installCommand": "npm install",
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "backend/**"
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/daily-digest",
