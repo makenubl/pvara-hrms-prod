@@ -61,20 +61,34 @@ const photoUpload = multer({
   }
 });
 
-// Configure multer for document uploads
-const documentStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../uploads/documents');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'doc-' + uniqueSuffix + path.extname(file.originalname));
+// Check if running in Vercel (serverless environment)
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV;
+
+// Configure multer for document uploads - use memory storage in serverless
+let documentStorage;
+try {
+  if (!isVercel) {
+    documentStorage = multer.diskStorage({
+      destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, '../uploads/documents');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+      },
+      filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'doc-' + uniqueSuffix + path.extname(file.originalname));
+      }
+    });
+  } else {
+    // Use memory storage for serverless (files stored in MongoDB or S3)
+    documentStorage = multer.memoryStorage();
   }
-});
+} catch (err) {
+  console.log('Falling back to memory storage:', err.message);
+  documentStorage = multer.memoryStorage();
+}
 
 const documentUpload = multer({
   storage: documentStorage,
@@ -374,10 +388,16 @@ router.delete('/documents/:id', authenticate, async (req, res) => {
       return res.status(404).json({ message: 'Document not found' });
     }
     
-    // Delete file from filesystem
-    const filePath = path.join(__dirname, '..', document.url);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Delete file from filesystem (only in non-serverless environment)
+    try {
+      if (!isVercel) {
+        const filePath = path.join(__dirname, '..', document.url);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    } catch (fsError) {
+      console.log('Filesystem cleanup skipped (serverless):', fsError.message);
     }
     
     // Remove from database
@@ -410,6 +430,13 @@ router.get('/documents/:id/download', authenticate, async (req, res) => {
     
     const filePath = path.join(__dirname, '..', document.url);
     
+    // In serverless, files are typically stored in S3/cloud - return error for local download
+    if (isVercel) {
+      return res.status(400).json({ 
+        message: 'Direct file download not available in production. Use the storage/download API instead.' 
+      });
+    }
+
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'File not found' });
     }
