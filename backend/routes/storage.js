@@ -22,6 +22,7 @@ import pdfParse from 'pdf-parse';
 // S3 and Document imports
 import { uploadToS3, deleteFromS3, getSignedDownloadUrl, getS3FileAsBuffer } from '../services/s3Service.js';
 import Document from '../models/Document.js';
+import Folder from '../models/Folder.js';
 
 // Storage mode getter - reads at runtime to ensure dotenv is loaded
 const getStorageMode = () => process.env.STORAGE_MODE || 'local';
@@ -127,28 +128,41 @@ router.post('/folders', authenticate, async (req, res) => {
   }
 
   try {
-    const { full, safeName } = resolveFolder(name);
+    const safeName = name.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const userId = req.user?._id;
+    const userEmail = req.user?.email;
     
-    if (fs.existsSync(full)) {
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+    
+    // Check if folder already exists for this user in MongoDB
+    const existingFolder = await Folder.findByNameAndOwner(safeName, userId);
+    if (existingFolder) {
       return res.status(409).json({ error: 'Folder already exists', folder: safeName });
     }
-
-    fs.mkdirSync(full, { recursive: true });
-    const docsDir = path.join(full, 'documents');
-    fs.mkdirSync(docsDir, { recursive: true });
-
-    const appJson = {
-      id: safeName,
-      companyName: '',
-      submittedBy: req.user?.email || '',
-      applicationDate: new Date().toISOString(),
-      documents: []
-    };
-    fs.writeFileSync(path.join(full, 'application.json'), JSON.stringify(appJson, null, 2));
+    
+    // Create folder record in MongoDB (user-specific)
+    const folderRecord = new Folder({
+      name: name,
+      safeName: safeName,
+      owner: userId,
+      ownerEmail: userEmail,
+      company: req.user?.company || null
+    });
+    await folderRecord.save();
+    
+    // Also create local folder structure (for backward compatibility)
+    const { full } = resolveFolder(safeName);
+    if (!fs.existsSync(full)) {
+      fs.mkdirSync(full, { recursive: true });
+      const docsDir = path.join(full, 'documents');
+      fs.mkdirSync(docsDir, { recursive: true });
+    }
 
     appendActivity(getApplicationsBasePath(), {
       id: `create-${safeName}-${Date.now()}`,
-      userEmail: req.user?.email || '',
+      userEmail: userEmail || '',
       userRole: req.user?.role || '',
       action: 'create-folder',
       folder: safeName,
@@ -158,6 +172,7 @@ router.post('/folders', authenticate, async (req, res) => {
     return res.status(201).json({
       message: 'Folder created',
       folder: safeName,
+      folderId: folderRecord._id
     });
   } catch (error) {
     console.error('Error creating folder:', error);
@@ -173,13 +188,33 @@ router.delete('/folders', authenticate, async (req, res) => {
   }
 
   try {
-    const { full, safeName } = resolveFolder(folder);
+    const safeName = folder.replace(/[^a-zA-Z0-9-_]/g, '_');
+    const userId = req.user?._id;
     
-    if (!fs.existsSync(full)) {
-      return res.status(404).json({ error: 'Folder not found' });
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
     }
-
-    fs.rmSync(full, { recursive: true, force: true });
+    
+    // Check if folder exists and belongs to this user
+    const folderRecord = await Folder.findByNameAndOwner(safeName, userId);
+    if (!folderRecord) {
+      return res.status(404).json({ error: 'Folder not found or access denied' });
+    }
+    
+    // Soft delete folder in MongoDB
+    await folderRecord.softDelete(userId);
+    
+    // Soft delete all documents in this folder for this user
+    await Document.updateMany(
+      { folder: safeName, uploadedBy: userId, isDeleted: false },
+      { isDeleted: true, deletedAt: new Date(), deletedBy: userId }
+    );
+    
+    // Also delete from local filesystem if exists (for backward compatibility)
+    const { full } = resolveFolder(safeName);
+    if (fs.existsSync(full)) {
+      fs.rmSync(full, { recursive: true, force: true });
+    }
 
     appendActivity(getApplicationsBasePath(), {
       id: `delete-${safeName}-${Date.now()}`,
@@ -200,13 +235,22 @@ router.delete('/folders', authenticate, async (req, res) => {
   }
 });
 
-// List folders
-router.get('/folders', authenticate, async (_req, res) => {
+// List folders (only user's own folders)
+router.get('/folders', authenticate, async (req, res) => {
   try {
-    const base = getApplicationsBasePath();
-    const entries = fs.readdirSync(base, { withFileTypes: true });
-    const folders = entries.filter(e => e.isDirectory() && !e.name.startsWith('.')).map(e => e.name);
-    res.json({ folders, storage: 'local' });
+    const userId = req.user?._id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+    
+    // Get folders from MongoDB that belong to this user
+    const userFolders = await Folder.findByOwner(userId);
+    const folders = userFolders.map(f => f.safeName);
+    
+    console.log(`📁 User ${req.user?.email} has ${folders.length} folders: ${folders.join(', ') || 'none'}`);
+    
+    res.json({ folders, storage: 'user-filtered' });
   } catch (error) {
     console.error('Error listing folders:', error);
     res.status(500).json({ error: error.message || 'Failed to list folders' });
@@ -346,7 +390,7 @@ router.post('/upload', authenticate, upload.array('files', 20), async (req, res)
   }
 });
 
-// List files in folder
+// List files in folder (only user's own files)
 router.get('/files', authenticate, async (req, res) => {
   const folderName = String(req.query.folder || '');
   if (!folderName) {
@@ -354,10 +398,28 @@ router.get('/files', authenticate, async (req, res) => {
   }
   
   try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+    
+    const safeFolderName = folderName.replace(/[^a-zA-Z0-9-_]/g, '_');
+    
+    // Verify the folder belongs to this user
+    const folderRecord = await Folder.findByNameAndOwner(safeFolderName, userId);
+    if (!folderRecord) {
+      return res.status(403).json({ error: 'Access denied to this folder' });
+    }
+    
     const storageMode = getStorageMode();
     if (storageMode === 's3') {
-      // Query MongoDB for files in this folder
-      const documents = await Document.findByFolder(folderName);
+      // Query MongoDB for files in this folder OWNED BY THIS USER
+      const documents = await Document.find({
+        folder: safeFolderName,
+        uploadedBy: userId,
+        isDeleted: false
+      }).sort({ createdAt: -1 });
+      
       const files = documents.map(doc => ({
         name: doc.filename,
         size: doc.size,
@@ -365,10 +427,12 @@ router.get('/files', authenticate, async (req, res) => {
         s3Key: doc.s3Key,
         mongoId: doc._id
       }));
+      
+      console.log(`📄 User ${req.user?.email} has ${files.length} files in folder "${safeFolderName}"`);
       res.json({ files, storage: 's3' });
     } else {
-      // Local storage
-      const { full } = resolveFolder(folderName);
+      // Local storage - files are already in user-specific folder structure
+      const { full } = resolveFolder(safeFolderName);
       const docsDir = path.join(full, 'documents');
       if (!fs.existsSync(docsDir)) {
         return res.json({ files: [], storage: 'local' });
@@ -392,17 +456,23 @@ router.get('/download', authenticate, async (req, res) => {
   }
   
   try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+    
     const storageMode = getStorageMode();
     if (storageMode === 's3') {
-      // Find document in MongoDB by folder and filename
+      // Find document in MongoDB by folder, filename, AND user ownership
       const document = await Document.findOne({ 
         folder: folderName, 
         filename: fileName,
+        uploadedBy: userId,
         isDeleted: { $ne: true }
       });
       
       if (!document) {
-        return res.status(404).json({ error: 'File not found' });
+        return res.status(404).json({ error: 'File not found or access denied' });
       }
       
       // Generate signed URL for download
@@ -415,7 +485,13 @@ router.get('/download', authenticate, async (req, res) => {
         storage: 's3'
       });
     } else {
-      // Local storage
+      // Local storage - verify folder ownership first
+      const safeFolderName = folderName.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const folderRecord = await Folder.findByNameAndOwner(safeFolderName, userId);
+      if (!folderRecord) {
+        return res.status(403).json({ error: 'Access denied to this folder' });
+      }
+      
       const { full } = resolveFolder(folderName);
       const filePath = path.join(full, 'documents', fileName);
       
@@ -439,32 +515,45 @@ router.delete('/files', authenticate, async (req, res) => {
   }
   
   try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ error: 'User authentication required' });
+    }
+    
+    const safeFolderName = String(folder).replace(/[^a-zA-Z0-9-_]/g, '_');
     const storageMode = getStorageMode();
+    
     if (storageMode === 's3') {
-      // Find document in MongoDB by folder and filename
+      // Find document in MongoDB by folder, filename, AND user ownership
       const document = await Document.findOne({ 
-        folder: String(folder), 
+        folder: safeFolderName, 
         filename: String(fileName),
+        uploadedBy: userId,
         isDeleted: { $ne: true }
       });
       
       if (!document) {
-        return res.status(404).json({ error: 'File not found' });
+        return res.status(404).json({ error: 'File not found or access denied' });
       }
       
       // Delete from S3
       await deleteFromS3(document.s3Key);
       
-      // Soft delete in MongoDB (or hard delete)
+      // Soft delete in MongoDB
       document.isDeleted = true;
       document.deletedAt = new Date();
-      document.deletedBy = req.user?._id || null;
+      document.deletedBy = userId;
       await document.save();
       
-      console.log(`🗑️ Deleted from S3: ${document.s3Key}`);
+      console.log(`🗑️ Deleted from S3 for user ${req.user?.email}: ${document.s3Key}`);
     } else {
-      // Local storage
-      const { full } = resolveFolder(String(folder));
+      // Local storage - verify folder ownership first
+      const folderRecord = await Folder.findByNameAndOwner(safeFolderName, userId);
+      if (!folderRecord) {
+        return res.status(403).json({ error: 'Access denied to this folder' });
+      }
+      
+      const { full } = resolveFolder(safeFolderName);
       const filePath = path.join(full, 'documents', String(fileName));
       
       if (!fs.existsSync(filePath)) {
@@ -475,14 +564,14 @@ router.delete('/files', authenticate, async (req, res) => {
     }
     
     // Delete associated recommendations
-    await deleteRecommendationsForDocument(String(folder), String(fileName));
+    await deleteRecommendationsForDocument(safeFolderName, String(fileName));
     
     appendActivity(getApplicationsBasePath(), {
       id: `delete-file-${folder}-${Date.now()}`,
       userEmail: req.user?.email || '',
       userRole: req.user?.role || '',
       action: 'delete-file',
-      folder: String(folder),
+      folder: safeFolderName,
       meta: { fileName: String(fileName), storage: storageMode },
       timestamp: new Date().toISOString(),
     });
