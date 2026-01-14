@@ -53,6 +53,7 @@ const corsOptions = {
     const allowedOrigins = [
       'https://pvara.team',
       'https://www.pvara.team',
+      'https://pvara-hrms-prod-frontend-git-feature-bb89b1-makenubls-projects.vercel.app',
       'http://localhost:5173',
       'http://localhost:5174',
       'http://localhost:5175',
