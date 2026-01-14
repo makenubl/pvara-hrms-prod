@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../backend-aiv2"
+		},
+		{
+			"path": "../frontend-aiv2"
+		}
+	],
+	"settings": {}
+}

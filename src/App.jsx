@@ -41,6 +41,7 @@ const Worklog = lazy(() => import('./pages/Worklog'));
 const TaskManagement = lazy(() => import('./pages/TaskManagement'));
 const MyDependencies = lazy(() => import('./pages/MyDependencies'));
 const Reports = lazy(() => import('./pages/Reports'));
+const Storage = lazy(() => import('./pages/Storage'));
 
 // ERP / Finance Module Pages
 const FinanceDashboard = lazy(() => import('./pages/FinanceDashboard'));
@@ -226,6 +227,10 @@ function App() {
         <Route
           path="/reports"
           element={<ProtectedRoute allowedRoles={['admin', 'chairman']}><Reports /></ProtectedRoute>}
+        />
+        <Route
+          path="/storage"
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director', 'manager', 'hr']}><Storage /></ProtectedRoute>}
         />
 
         {/* Finance / ERP Module Routes */}

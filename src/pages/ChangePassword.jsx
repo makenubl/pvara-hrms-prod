@@ -19,7 +19,12 @@ const ChangePassword = ({ onSuccess, isFirstTime = false }) => {
     setError('');
     setSuccess(false);
 
-    // Validation
+    // Validation - Check if current password is empty
+    if (!currentPassword || currentPassword.trim() === '') {
+      setError('Current password is required');
+      return;
+    }
+
     if (newPassword.length < 6) {
       setError('New password must be at least 6 characters long');
       return;
@@ -160,8 +165,8 @@ const ChangePassword = ({ onSuccess, isFirstTime = false }) => {
 
           <Button
             type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 py-3 text-white font-semibold rounded-lg disabled:opacity-50"
+            disabled={loading || !currentPassword || !newPassword || !confirmPassword}
+            className="w-full bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 py-3 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Changing Password...' : 'Change Password'}
           </Button>

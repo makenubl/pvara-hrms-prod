@@ -20,6 +20,7 @@ import MainLayout from '../layouts/MainLayout';
 import { Card, Button, Badge, Modal } from '../components/UI';
 import positionService from '../services/positionService';
 import departmentService from '../services/departmentService';
+import authService from '../services/authService';
 import { useAuthStore } from '../store/authStore';
 
 const Settings = () => {
@@ -34,6 +35,12 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useAuthStore();
+
+  // Password update state (security tab)
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
@@ -249,6 +256,39 @@ const Settings = () => {
     e.preventDefault();
     toast.success('Changes saved successfully!');
     console.log('✅ Saved personal info:', formData);
+  };
+
+  const handleUpdatePassword = async () => {
+    // Frontend validations similar to ChangePassword.jsx
+    if (!currentPasswordInput || currentPasswordInput.trim() === '') {
+      toast.error('Current password is required');
+      return;
+    }
+    if (!newPasswordInput || newPasswordInput.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+    if (newPasswordInput !== confirmPasswordInput) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    if (currentPasswordInput === newPasswordInput) {
+      toast.error('New password must be different from current password');
+      return;
+    }
+
+    setUpdatingPassword(true);
+    try {
+      await authService.changePassword(currentPasswordInput, newPasswordInput);
+      toast.success('Password changed successfully');
+      setCurrentPasswordInput('');
+      setNewPasswordInput('');
+      setConfirmPasswordInput('');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to change password');
+    } finally {
+      setUpdatingPassword(false);
+    }
   };
 
   const renderPositionTree = (pos, level = 0) => {
@@ -487,7 +527,9 @@ const Settings = () => {
                     <div className="relative">
                       <input
                         type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
+                        value={currentPasswordInput}
+                        onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                        placeholder="Enter current password"
                         className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                       />
                       <button
@@ -502,7 +544,9 @@ const Settings = () => {
                     <label className="block text-sm font-medium text-slate-300 mb-2">New Password</label>
                     <input
                       type="password"
-                      placeholder="••••••••"
+                      value={newPasswordInput}
+                      onChange={(e) => setNewPasswordInput(e.target.value)}
+                      placeholder="Enter new password (min 6 characters)"
                       className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     />
                   </div>
@@ -510,11 +554,24 @@ const Settings = () => {
                     <label className="block text-sm font-medium text-slate-300 mb-2">Confirm Password</label>
                     <input
                       type="password"
-                      placeholder="••••••••"
+                      value={confirmPasswordInput}
+                      onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                      placeholder="Confirm new password"
                       className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-400"
                     />
                   </div>
-                  <Button onClick={() => toast.success('Password update feature coming soon!')} className="w-full">Update Password</Button>
+                  <Button
+                    onClick={handleUpdatePassword}
+                    disabled={
+                      updatingPassword ||
+                      !currentPasswordInput ||
+                      !newPasswordInput ||
+                      !confirmPasswordInput
+                    }
+                    className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {updatingPassword ? 'Updating...' : 'Update Password'}
+                  </Button>
                 </div>
               </div>
 

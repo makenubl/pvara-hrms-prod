@@ -1,0 +1,383 @@
+[
+  {
+    "id": "create-Test_Folder-1767260049202",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "create-folder",
+    "folder": "Test_Folder",
+    "timestamp": "2026-01-01T09:34:09.204Z"
+  },
+  {
+    "id": "upload-Test Folder-1767260065131",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "upload-files",
+    "folder": "Test Folder",
+    "meta": {
+      "files": [
+        "_Updated__PVARA_NO_OBJECTION_CERTIFICATE_REGULATIONS__November_2025_1000021938.2_.pdf"
+      ]
+    },
+    "timestamp": "2026-01-01T09:34:25.131Z"
+  },
+  {
+    "id": "upload-Test_Folder-1767260118551",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "upload-files",
+    "folder": "Test_Folder",
+    "meta": {
+      "files": [
+        "PVARA_NOC__002_.docx__1_.pdf"
+      ]
+    },
+    "timestamp": "2026-01-01T09:35:18.552Z"
+  },
+  {
+    "id": "create-test_2-1767261507378",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "create-folder",
+    "folder": "test_2",
+    "timestamp": "2026-01-01T09:58:27.378Z"
+  },
+  {
+    "id": "create-test_3-1767261514022",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "create-folder",
+    "folder": "test_3",
+    "timestamp": "2026-01-01T09:58:34.022Z"
+  },
+  {
+    "id": "create-test_4-1767261521423",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "create-folder",
+    "folder": "test_4",
+    "timestamp": "2026-01-01T09:58:41.423Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767263771013",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-01T10:36:11.013Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767265909987",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-01T11:11:49.987Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767266660074",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "evalute this file",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "_Updated__PVARA_NO_OBJECTION_CERTIFICATE_REGULATIONS__November_2025_1000021938.2_.pdf"
+    },
+    "timestamp": "2026-01-01T11:24:20.074Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767267376035",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-01T11:36:16.035Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767268424493",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "_Updated__PVARA_NO_OBJECTION_CERTIFICATE_REGULATIONS__November_2025_1000021938.2_.pdf"
+    },
+    "timestamp": "2026-01-01T11:53:44.493Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767268444418",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "hee",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "_Updated__PVARA_NO_OBJECTION_CERTIFICATE_REGULATIONS__November_2025_1000021938.2_.pdf"
+    },
+    "timestamp": "2026-01-01T11:54:04.419Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767336960511",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "read this file",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-02T06:56:00.511Z"
+  },
+  {
+    "id": "chat-Test_Folder-1767337516478",
+    "userEmail": "admin@pvara.com",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "_Updated__PVARA_NO_OBJECTION_CERTIFICATE_REGULATIONS__November_2025_1000021938.2_.pdf"
+    },
+    "timestamp": "2026-01-02T07:05:16.478Z"
+  },
+  {
+    "id": "chat-Test_Folder-1768301674494",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "Certainly, let's review the document \"PVARA_NOC__002_.docx__1_.pdf\" under the given guidelines:\n\n✅ *",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-13T10:54:34.495Z"
+  },
+  {
+    "id": "chat-Test_Folder-1768302039403",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "_Updated__PVARA_NO_OBJECTION_CERTIFICATE_REGULATIONS__November_2025_1000021938.2_.pdf"
+    },
+    "timestamp": "2026-01-13T11:00:39.404Z"
+  },
+  {
+    "id": "chat-Test_Folder-1768302101058",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-13T11:01:41.058Z"
+  },
+  {
+    "id": "chat-Test_Folder-1768302370449",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "I'm here to help with your recommendations. You have 0 pending items. Say \"apply all\" to accept them",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-13T11:06:10.449Z"
+  },
+  {
+    "id": "chat-Test_Folder-1768304838064",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Test_Folder",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "✅ **Compliant Areas**\n- **Clear legal basis referenced**: Cites **Section 15 of the Virtual Assets O",
+      "document": "PVARA_NOC__002_.docx__1_.pdf"
+    },
+    "timestamp": "2026-01-13T11:47:18.064Z"
+  },
+  {
+    "id": "create-Usman-1768304946541",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "create-folder",
+    "folder": "Usman",
+    "timestamp": "2026-01-13T11:49:06.541Z"
+  },
+  {
+    "id": "upload-Usman-1768304957764",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "upload-files",
+    "folder": "Usman",
+    "meta": {
+      "files": [
+        "UN_Meeting.txt"
+      ]
+    },
+    "timestamp": "2026-01-13T11:49:17.764Z"
+  },
+  {
+    "id": "chat-Usman-1768305553301",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Usman",
+    "meta": {
+      "message": "review this document",
+      "applied": 0,
+      "reply": "✅ **Compliant Areas (what’s useful/acceptable)**\n- **Stakeholder alignment effort:** The transcript ",
+      "document": "UN_Meeting.txt"
+    },
+    "timestamp": "2026-01-13T11:59:13.301Z"
+  },
+  {
+    "id": "delete-Usman-1768372326582",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "delete-folder",
+    "folder": "Usman",
+    "timestamp": "2026-01-14T06:32:06.583Z"
+  },
+  {
+    "id": "create-Usman-1768372353481",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "create-folder",
+    "folder": "Usman",
+    "timestamp": "2026-01-14T06:32:33.482Z"
+  },
+  {
+    "id": "upload-Usman-1768372377112",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "upload-files",
+    "folder": "Usman",
+    "meta": {
+      "files": [
+        "Profile.pdf"
+      ],
+      "storage": "local"
+    },
+    "timestamp": "2026-01-14T06:32:57.112Z"
+  },
+  {
+    "id": "delete-test_2-1768373315441",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "delete-folder",
+    "folder": "test_2",
+    "timestamp": "2026-01-14T06:48:35.441Z"
+  },
+  {
+    "id": "delete-test_3-1768373318211",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "delete-folder",
+    "folder": "test_3",
+    "timestamp": "2026-01-14T06:48:38.211Z"
+  },
+  {
+    "id": "delete-test_4-1768373320797",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "delete-folder",
+    "folder": "test_4",
+    "timestamp": "2026-01-14T06:48:40.797Z"
+  },
+  {
+    "id": "delete-Test_Folder-1768373323342",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "delete-folder",
+    "folder": "Test_Folder",
+    "timestamp": "2026-01-14T06:48:43.342Z"
+  },
+  {
+    "id": "delete-Usman-1768373325933",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "delete-folder",
+    "folder": "Usman",
+    "timestamp": "2026-01-14T06:48:45.933Z"
+  },
+  {
+    "id": "create-Usman-1768373332089",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "create-folder",
+    "folder": "Usman",
+    "timestamp": "2026-01-14T06:48:52.089Z"
+  },
+  {
+    "id": "upload-Usman-1768373342273",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "upload-files",
+    "folder": "Usman",
+    "meta": {
+      "files": [
+        "Profile__1_.pdf"
+      ],
+      "storage": "s3"
+    },
+    "timestamp": "2026-01-14T06:49:02.273Z"
+  },
+  {
+    "id": "chat-Usman-1768374226221",
+    "userEmail": "salman.yousafi@pvara.gov.pk",
+    "userRole": "admin",
+    "action": "chat",
+    "folder": "Usman",
+    "meta": {
+      "message": "review this file",
+      "applied": 0,
+      "reply": "I can review it, but right now I don’t have any readable content from **“Profile__1_.pdf”** because ",
+      "document": "Profile__1_.pdf"
+    },
+    "timestamp": "2026-01-14T07:03:46.222Z"
+  }
+]
