@@ -27,6 +27,8 @@ import {
   Landmark,
   ClipboardList,
   TrendingUp,
+  HardDrive,
+  MessageSquare,
 } from 'lucide-react';
 import { useAppStore } from '../store/appStore';
 import { useAuthStore } from '../store/authStore';
@@ -56,6 +58,8 @@ const Sidebar = () => {
     { icon: Receipt, label: 'Journal Entries', path: '/finance/journal-entries', roles: ['admin', 'chairman', 'finance', 'accountant'] },
     { icon: Landmark, label: 'Bank Payments', path: '/finance/bank-payments', roles: ['admin', 'chairman', 'finance', 'accountant'] },
     { icon: TrendingUp, label: 'Financial Reports', path: '/finance/reports', roles: ['admin', 'chairman', 'finance', 'accountant'] },
+    // Storage & AI
+    { icon: HardDrive, label: 'Document Storage', path: '/storage', roles: ['admin', 'chairman', 'hr', 'manager', 'employee', 'finance', 'accountant'] },
     // Other
     { icon: FileText, label: 'Reports', path: '/reports', roles: ['admin', 'chairman'] },
     { icon: UserCircle, label: 'My Profile', path: '/profile', roles: ['admin', 'hr', 'manager', 'employee', 'chairman'] },

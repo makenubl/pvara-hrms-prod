@@ -230,7 +230,7 @@ function App() {
         />
         <Route
           path="/storage"
-          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director', 'manager', 'hr']}><Storage /></ProtectedRoute>}
+          element={<ProtectedRoute allowedRoles={['admin', 'chairman', 'executive', 'director', 'manager', 'hr', 'employee', 'finance', 'accountant']}><Storage /></ProtectedRoute>}
         />
 
         {/* Finance / ERP Module Routes */}

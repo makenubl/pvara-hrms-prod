@@ -43,6 +43,7 @@ import cashFlowRoutes from './routes/cashFlowStatement.js';
 import documentSequenceRoutes from './routes/documentSequence.js';
 import multiCurrencyRoutes from './routes/multiCurrency.js';
 import taxFilingRoutes from './routes/taxFiling.js';
+import storageRoutes from './routes/storage.js';
 
 // Services
 import reminderScheduler from './services/reminderScheduler.js';
@@ -137,6 +138,7 @@ app.use('/api/cash-flow', cashFlowRoutes);
 app.use('/api/document-sequences', documentSequenceRoutes);
 app.use('/api/multi-currency', multiCurrencyRoutes);
 app.use('/api/tax-filing', taxFilingRoutes);
+app.use('/api/storage', storageRoutes);
 
 // Debug endpoint (remove in production)
 import { authenticate } from './middleware/auth.js';
