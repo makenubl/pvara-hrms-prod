@@ -3,20 +3,29 @@ import logger from '../utils/logger.js';
 
 // Get API base URL - prefer env, fallback to localhost, else main Vercel deployment
 const getApiBaseUrl = () => {
+  console.log('🔍 Detecting API URL...');
+  console.log('🔍 VITE_API_URL:', import.meta.env.VITE_API_URL);
+  console.log('🔍 window.location.hostname:', typeof window !== 'undefined' ? window.location.hostname : 'N/A');
+  
   if (import.meta.env.VITE_API_URL) {
+    console.log('✅ Using VITE_API_URL:', import.meta.env.VITE_API_URL);
     return import.meta.env.VITE_API_URL;
   }
   if (typeof window !== 'undefined') {
     if (window.location.hostname === 'localhost') {
+      console.log('✅ Using localhost API');
       return 'http://localhost:5000';
     }
     // For feature branch preview deployments, use the feature branch backend
     if (window.location.hostname.includes('feature')) {
+      console.log('✅ Detected feature branch, using feature backend');
       return 'https://pvara-hrms-prod-git-feature-integrate-2e546b-makenubls-projects.vercel.app';
     }
     // For any production domain (pvara.team, vercel.app), use the main API
+    console.log('✅ Using production API');
     return 'https://pvara-hrms-prod.vercel.app';
   }
+  console.log('✅ Fallback to production API');
   return 'https://pvara-hrms-prod.vercel.app';
 };
 
