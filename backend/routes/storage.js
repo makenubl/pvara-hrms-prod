@@ -20,7 +20,7 @@ import { appendActivity, readActivities } from '../services/activity-log-service
 import pdfParse from 'pdf-parse';
 
 // S3 and Document imports
-import { uploadToS3, deleteFromS3, getSignedDownloadUrl, getS3FileAsBuffer } from '../services/s3Service.js';
+import { uploadToS3, deleteFromS3, getSignedDownloadUrl, getS3FileAsBuffer, existsInS3 } from '../services/s3Service.js';
 import Document from '../models/Document.js';
 import Folder from '../models/Folder.js';
 
@@ -45,8 +45,15 @@ const router = express.Router();
 // Base directory for storage folders
 function getApplicationsBasePath() {
   const base = path.join(process.cwd(), 'uploads', 'storage');
-  if (!fs.existsSync(base)) {
-    fs.mkdirSync(base, { recursive: true });
+  // Only create directories in local mode, not in S3/serverless mode
+  if (getStorageMode() !== 's3') {
+    try {
+      if (!fs.existsSync(base)) {
+        fs.mkdirSync(base, { recursive: true });
+      }
+    } catch (err) {
+      console.warn('Could not create local storage directory (expected in serverless):', err.message);
+    }
   }
   return base;
 }
@@ -626,13 +633,30 @@ router.get('/recommendations', authenticate, async (req, res) => {
   
   try {
     const trail = await listRecommendations(folderName, documentName);
+    const storageMode = getStorageMode();
     
     // Filter out recommendations for files that no longer exist
-    const { full } = resolveFolder(folderName);
-    const filteredTrail = trail.filter(entry => {
-      const docPath = path.join(full, 'documents', entry.documentName);
-      return fs.existsSync(docPath);
-    });
+    let filteredTrail = trail;
+    
+    if (storageMode === 's3') {
+      // In S3 mode, check if documents exist in MongoDB (which tracks S3 files)
+      const safeFolderName = folderName.replace(/[^a-zA-Z0-9-_]/g, '_');
+      const folder = await Folder.findOne({ safeName: safeFolderName });
+      if (folder) {
+        const existingDocs = await Document.find({ folderId: folder._id }).select('fileName');
+        const existingNames = new Set(existingDocs.map(d => d.fileName));
+        filteredTrail = trail.filter(entry => existingNames.has(entry.documentName));
+      } else {
+        filteredTrail = []; // Folder doesn't exist, no recommendations
+      }
+    } else {
+      // In local mode, check filesystem
+      const { full } = resolveFolder(folderName);
+      filteredTrail = trail.filter(entry => {
+        const docPath = path.join(full, 'documents', entry.documentName);
+        return fs.existsSync(docPath);
+      });
+    }
     
     res.json({ trail: filteredTrail });
   } catch (e) {

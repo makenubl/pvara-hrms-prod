@@ -60,25 +60,41 @@ export async function readActivitiesFromDb(folder) {
 
 /**
  * File-based activity logging (fallback/local)
+ * Note: In serverless environments (Vercel), file-based logging won't work.
+ * We gracefully fallback to MongoDB-only in those cases.
  */
 function getLogsPath(baseFolder) {
   const logsDir = path.join(baseFolder, '.logs');
-  if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+  try {
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+  } catch (err) {
+    // Serverless environment - filesystem is read-only
+    return null;
+  }
   return path.join(logsDir, 'activity.log.json');
 }
 
 export function appendActivity(baseFolder, entry) {
-  const file = getLogsPath(baseFolder);
   const now = new Date().toISOString();
   const payload = { ...entry, timestamp: now };
-  let list = [];
-  if (fs.existsSync(file)) {
-    try { list = JSON.parse(fs.readFileSync(file, 'utf-8')); } catch {}
-  }
-  list.push(payload);
-  fs.writeFileSync(file, JSON.stringify(list, null, 2));
   
-  // Also save to MongoDB
+  // Try file-based logging (works in local/dev mode)
+  const file = getLogsPath(baseFolder);
+  if (file) {
+    try {
+      let list = [];
+      if (fs.existsSync(file)) {
+        try { list = JSON.parse(fs.readFileSync(file, 'utf-8')); } catch {}
+      }
+      list.push(payload);
+      fs.writeFileSync(file, JSON.stringify(list, null, 2));
+    } catch (err) {
+      // Ignore file errors in serverless - MongoDB is the primary storage
+      console.warn('File-based activity logging skipped (serverless mode)');
+    }
+  }
+  
+  // Always save to MongoDB (works in all environments)
   appendActivityToDb(payload);
   
   return payload;
@@ -86,7 +102,7 @@ export function appendActivity(baseFolder, entry) {
 
 export function readActivities(baseFolder) {
   const file = getLogsPath(baseFolder);
-  if (!fs.existsSync(file)) return [];
+  if (!file || !fs.existsSync(file)) return [];
   try { return JSON.parse(fs.readFileSync(file, 'utf-8')); } catch { return []; }
 }
 
