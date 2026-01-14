@@ -40,7 +40,7 @@ import taxFilingRoutes from '../routes/taxFiling.js';
 import yearEndClosingRoutes from '../routes/yearEndClosing.js';
 import purchaseOrderRoutes from '../routes/purchaseOrders.js';
 import documentSequenceRoutes from '../routes/documentSequence.js';
-import storageRoutes from '../routes/storage.js';
+// import storageRoutes from '../routes/storage.js'; // Temporarily disabled - uses pdf-parse
 
 const app = express();
 
@@ -141,7 +141,7 @@ app.use('/api/tax-filing', taxFilingRoutes);
 app.use('/api/year-end-closing', yearEndClosingRoutes);
 app.use('/api/purchase-orders', purchaseOrderRoutes);
 app.use('/api/document-sequence', documentSequenceRoutes);
-app.use('/api/storage', storageRoutes);
+// app.use('/api/storage', storageRoutes); // Temporarily disabled
 
 // Root endpoint
 app.get('/', (req, res) => {
